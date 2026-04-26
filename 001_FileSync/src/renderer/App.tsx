@@ -3,11 +3,13 @@ import type { Job } from "@shared/types";
 import { JobList } from "./pages/JobList";
 import { JobBuilder } from "./pages/JobBuilder";
 import { RunView } from "./pages/RunView";
+import { History } from "./pages/History";
 
 type Page =
   | { name: "list" }
   | { name: "builder"; initial?: Job }
-  | { name: "run"; job: Job };
+  | { name: "run"; job: Job }
+  | { name: "history"; job: Job };
 
 export default function App() {
   const [page, setPage] = useState<Page>({ name: "list" });
@@ -27,6 +29,7 @@ export default function App() {
           onNew={() => setPage({ name: "builder" })}
           onEdit={(job) => setPage({ name: "builder", initial: job })}
           onRun={(job) => setPage({ name: "run", job })}
+          onHistory={(job) => setPage({ name: "history", job })}
         />
       );
     case "builder":
@@ -39,5 +42,7 @@ export default function App() {
       );
     case "run":
       return <RunView job={page.job} onBack={backToList} />;
+    case "history":
+      return <History job={page.job} onBack={backToList} />;
   }
 }

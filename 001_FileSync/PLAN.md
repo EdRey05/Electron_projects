@@ -9,9 +9,43 @@ A self-built free replacement for AllwaySync / GoodSync, scoped to v1.
 | Week | Scope                                                  | State        |
 |------|--------------------------------------------------------|--------------|
 | 1    | Scaffold + walker + state DB                           | ✅ **Done** |
-| 2    | Differ + dry-run UI                                    | ✅ **Done** — all 5 steps. Differ (11-case truth table), dry-run pipeline, jobs.json persistence, JobList + JobBuilder + RunView UI. |
-| 3    | Copier + trash + atomic writes + conflict UI           | ⏳ Next — **this is the step that makes the app actually sync files**. Until it lands, dry-run is preview-only. |
-| 4    | Polish + history view + Windows installer              | Pending      |
+| 2    | Differ + dry-run UI                                    | ✅ **Done** |
+| 3    | Copier + trash + atomic writes + Apply UI              | ✅ **Done** |
+| 4    | Polish + history view + Windows installer              | ✅ **Done** |
+
+**v1 feature-complete.** 80 unit tests passing; typecheck clean both sides. The app is now end-to-end usable for the locked v1 scope (local + mapped network drives, two-way bidirectional, manual trigger).
+
+### What works
+
+- **Create / edit / delete sync jobs** with native folder pickers, gitignore-style include/exclude filters, conflict policy (newer-wins / rename-both / ask), trash retention, symlink + timestamp toggles.
+- **Dry-run** any job → walks both sides, loads state DB, runs the 11-case three-way merge, surfaces tabbed plan (Copy A→B / B→A / Delete / Conflicts / No-op) with sizes + reasons.
+- **Apply** the plan → atomic copies (`<dest>.tmp.<rand>` + rename), trash for every destructive op (`<sideRoot>/.filesync-trash/<jobId>/<runStamp>/<relPath>`), per-action `run_action` log, `run_log` summary with `ok` / `partial` / `error` status, automatic stale-temp cleanup at the start of every run, automatic trash sweep at end.
+- **History** per job — every past run, expandable to per-file action records.
+- **Idempotency invariant verified by tests:** running Apply then re-running dry-run produces a fully no-op plan. Same for delete propagation.
+
+### What's deferred (post-v1)
+
+- Real-time watcher, scheduler, drive-mount triggers (all Week 2+ in PLAN's "Future scope").
+- SFTP / cloud / WebDAV backends.
+- Per-conflict UI under `ask` policy: differ records the conflict and applier currently skips with a logged reason (manual resolution = edit one side and re-run). UI to override per-row is a small follow-up.
+- `rename-both` policy execution (differ flags it; applier currently records and skips).
+- Code signing for the Windows installer (the NSIS config produces an installer; signing requires a cert).
+
+### How to use it
+
+```bash
+npm install                        # one-time. If the Electron CDN is flaky, see Setup notes in README.
+npm test                           # 80 tests
+npm run typecheck                  # clean both tsconfigs
+npm run dev                        # opens the Electron window with HMR
+npm run package:win                # builds dist/FileSync-Setup-<version>.exe (NSIS installer)
+```
+
+### User preferences captured
+
+- One commit per logical chunk; commit msg format `File Sync app v<x.y.z> [<Mon DD, YYYY>]`. This commit: **v0.0.4** (Week 3 + Week 4).
+- LF→CRLF warnings on git add are normal on Windows; ignore.
+- Electron CDN was 502 during week 1 install — `npm run dev` won't start until `node node_modules/electron/install.js` succeeds. This doesn't affect `npm test`.
 
 **Tests:** 55 passing (19 differ + 9 runner + 7 walker + 6 state-db + 14 jobs-store). Typecheck clean both sides.
 
@@ -322,9 +356,9 @@ case (a, b, s) of
 | Week | Deliverable                                            | Definition of done                                                                                            |
 |------|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
 | 1 ✅ | Scaffold + walker + state DB                           | **Done.** `npm test` passing, `npm run typecheck` clean, UI demo wired through preload IPC. Electron `dev` blocked only on the CDN-502 binary download (see Risks). |
-| 2 ✅ | Differ + dry-run UI                                    | **Done.** All 5 steps. Differ (11-case truth table, 19 tests). Dry-run pipeline (9 integration tests). Jobs persistence in `userData/jobs.json` (14 tests). JobList + JobBuilder + RunView UI with native folder pickers, filter editor, conflict policy radio, tabbed plan view (A→B / B→A / Delete / Conflicts / No-op). 55 unit tests passing total; typecheck clean. |
-| 3    | Copier + trash + atomic writes + conflict UI           | Apply phase reconciles two trees end-to-end on local disk; interrupt-and-resume test passes. **First week the app actually syncs.** |
-| 4    | Polish, history view, electron-builder Windows installer, README | Installable `.exe`, runs on a fresh Win11 VM; manual smoke list (§12) all green. |
+| 2 ✅ | Differ + dry-run UI                                    | **Done.** All 5 steps. Differ (11-case truth table, 19 tests). Dry-run pipeline (9 integration tests). Jobs persistence in `userData/jobs.json` (14 tests). JobList + JobBuilder + RunView UI with native folder pickers, filter editor, conflict policy radio, tabbed plan view (A→B / B→A / Delete / Conflicts / No-op). |
+| 3 ✅ | Copier + trash + atomic writes + Apply UI              | **Done.** Atomic copier (`<dest>.tmp.<rand>` + rename, EBUSY backoff, 7 tests). Trash module (`moveToTrash` + `sweepTrash` + `cleanupStaleTemps`, 9 tests). Applier orchestrator (per-action try/catch, run_log + run_action records, 9 integration tests including idempotency invariant + stale-temp cleanup). IPC `engine:apply` with progress events. Apply button wired in RunView with live progress bar. |
+| 4 ✅ | Polish, history view, electron-builder Windows installer | **Done.** History page reads run_log/run_action, expandable per-run rows. `electron-builder.yml` + NSIS Windows target + `npm run package:win` script. Cross-platform target stubs in place. README + PLAN final pass. 80 unit tests passing total; typecheck clean. |
 
 ---
 

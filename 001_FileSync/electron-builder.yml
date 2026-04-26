@@ -1,0 +1,47 @@
+appId: com.edrey05.filesync
+productName: FileSync
+copyright: Copyright © 2026 EdRey05
+
+# Source layout produced by electron-vite build:
+#   out/main/index.js
+#   out/preload/index.js
+#   out/renderer/index.html
+directories:
+  buildResources: build
+  output: dist
+
+files:
+  - "out/**/*"
+  - "package.json"
+  - "!**/*.map"
+  - "!**/*.ts"
+  - "!**/*.tsx"
+  - "!**/tests/**"
+
+asar: true
+asarUnpack:
+  # sql.js's wasm has to live outside the asar so it can be fetched at runtime.
+  - "node_modules/sql.js/dist/sql-wasm.wasm"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  artifactName: ${productName}-Setup-${version}.${ext}
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+
+# Cross-platform targets — code is platform-agnostic; just enable when needed.
+mac:
+  target: [{ target: dmg, arch: [arm64, x64] }]
+  category: public.app-category.utilities
+
+linux:
+  target:
+    - AppImage
+  category: Utility

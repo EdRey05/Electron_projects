@@ -210,6 +210,141 @@ export function loadStateMap(s: StateDb): Map<string, StateRecord> {
   return out;
 }
 
+export function removeStatePath(s: StateDb, path: string): void {
+  execRun(s.raw(), "DELETE FROM state WHERE path = ?", [path]);
+}
+
+export function upsertBothSides(
+  s: StateDb,
+  path: string,
+  aSize: number,
+  aMtimeMs: number,
+  bSize: number,
+  bMtimeMs: number,
+  syncedAt: number,
+): void {
+  execRun(
+    s.raw(),
+    `INSERT INTO state (path, side_a_size, side_a_mtime, side_b_size, side_b_mtime, last_synced_at)
+     VALUES (?, ?, ?, ?, ?, ?)
+     ON CONFLICT(path) DO UPDATE SET
+       side_a_size    = excluded.side_a_size,
+       side_a_mtime   = excluded.side_a_mtime,
+       side_b_size    = excluded.side_b_size,
+       side_b_mtime   = excluded.side_b_mtime,
+       last_synced_at = excluded.last_synced_at`,
+    [path, aSize, aMtimeMs, bSize, bMtimeMs, syncedAt],
+  );
+}
+
+// ---------- run_log / run_action ----------
+
+export interface RunLogRow {
+  id: number;
+  started_at: number;
+  ended_at: number | null;
+  files_copied: number;
+  files_deleted: number;
+  conflicts: number;
+  bytes_transferred: number;
+  status: string | null;
+  error: string | null;
+}
+
+export interface RunActionRow {
+  run_id: number;
+  path: string;
+  action: string;
+  bytes: number;
+  ok: number;
+  message: string | null;
+}
+
+export function insertRunLog(s: StateDb, startedAt: number): number {
+  const stmt = s
+    .raw()
+    .prepare("INSERT INTO run_log (started_at) VALUES (?)");
+  stmt.run([startedAt]);
+  stmt.free();
+  const idStmt = s.raw().prepare("SELECT last_insert_rowid() AS id");
+  idStmt.step();
+  const id = idStmt.getAsObject()["id"] as number;
+  idStmt.free();
+  return id;
+}
+
+export interface RunLogUpdate {
+  endedAt: number;
+  filesCopied: number;
+  filesDeleted: number;
+  conflicts: number;
+  bytesTransferred: number;
+  status: "ok" | "partial" | "error";
+  error?: string | null;
+}
+
+export function updateRunLog(s: StateDb, runId: number, u: RunLogUpdate): void {
+  execRun(
+    s.raw(),
+    `UPDATE run_log
+     SET ended_at = ?, files_copied = ?, files_deleted = ?, conflicts = ?,
+         bytes_transferred = ?, status = ?, error = ?
+     WHERE id = ?`,
+    [
+      u.endedAt,
+      u.filesCopied,
+      u.filesDeleted,
+      u.conflicts,
+      u.bytesTransferred,
+      u.status,
+      u.error ?? null,
+      runId,
+    ],
+  );
+}
+
+export function insertRunAction(
+  s: StateDb,
+  runId: number,
+  path: string,
+  action: string,
+  bytes: number,
+  ok: boolean,
+  message?: string,
+): void {
+  execRun(
+    s.raw(),
+    "INSERT INTO run_action (run_id, path, action, bytes, ok, message) VALUES (?, ?, ?, ?, ?, ?)",
+    [runId, path, action, bytes, ok ? 1 : 0, message ?? null],
+  );
+}
+
+export function listRunLogs(s: StateDb, limit = 100): RunLogRow[] {
+  const out: RunLogRow[] = [];
+  const stmt = s
+    .raw()
+    .prepare(
+      "SELECT id, started_at, ended_at, files_copied, files_deleted, conflicts, bytes_transferred, status, error FROM run_log ORDER BY id DESC LIMIT ?",
+    );
+  stmt.bind([limit]);
+  while (stmt.step()) out.push(stmt.getAsObject() as unknown as RunLogRow);
+  stmt.free();
+  return out;
+}
+
+export function listRunActions(s: StateDb, runId: number): RunActionRow[] {
+  const out: RunActionRow[] = [];
+  const stmt = s
+    .raw()
+    .prepare(
+      "SELECT run_id, path, action, bytes, ok, message FROM run_action WHERE run_id = ? ORDER BY rowid",
+    );
+  stmt.bind([runId]);
+  while (stmt.step()) out.push(stmt.getAsObject() as unknown as RunActionRow);
+  stmt.free();
+  return out;
+}
+
 export function transaction<T>(s: StateDb, fn: () => T): T {
   const db = s.raw();
   db.exec("BEGIN");

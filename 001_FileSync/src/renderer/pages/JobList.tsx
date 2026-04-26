@@ -6,10 +6,12 @@ export function JobList({
   onNew,
   onEdit,
   onRun,
+  onHistory,
 }: {
   onNew(): void;
   onEdit(job: Job): void;
   onRun(job: Job): void;
+  onHistory(job: Job): void;
 }) {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -83,8 +85,9 @@ export function JobList({
                   <td className="px-4 py-2 text-slate-400 text-xs">{j.onConflict}</td>
                   <td className="px-4 py-2 text-right space-x-1">
                     <Button variant="primary" onClick={() => onRun(j)}>
-                      Dry-run
+                      Run
                     </Button>
+                    <Button onClick={() => onHistory(j)}>History</Button>
                     <Button onClick={() => onEdit(j)}>Edit</Button>
                     <Button variant="danger" onClick={() => handleDelete(j)}>
                       Delete

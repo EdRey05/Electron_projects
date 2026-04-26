@@ -4,22 +4,23 @@ Self-built bidirectional file sync app. See [PLAN.md](./PLAN.md) for the full de
 
 ## Status
 
-**Week 2 of 4 done. Preview-only UI is live; Apply phase is Week 3.**
+**v1 feature-complete.** All 4 weeks of the plan done.
 
 - ✅ Week 1 — scaffold, walker (`@nodelib/fs.walk`), SQLite state DB (sql.js), IPC, React + Tailwind shell.
-- ✅ Week 2 — differ (full 11-case three-way merge), dry-run pipeline, `userData/jobs.json` persistence, JobList + JobBuilder + RunView UI with tabbed plan view.
-- ⏸ Week 3 — copier + trash + atomic writes (the Apply phase that actually moves bytes).
-- ⏸ Week 4 — polish, history view, Windows installer.
+- ✅ Week 2 — differ (11-case three-way merge), dry-run pipeline, `userData/jobs.json` persistence, JobList + JobBuilder + RunView UI.
+- ✅ Week 3 — atomic copier, trash module, applier orchestrator, IPC `engine:apply` with progress events, Apply button wired with live progress bar.
+- ✅ Week 4 — History page (per-run / per-action records), `electron-builder.yml` (NSIS Windows installer), polish.
 
-**55 unit tests passing**, typecheck clean both sides. **You can now create jobs and dry-run them in the UI**, but nothing syncs yet — the Apply button is disabled until Week 3. See [PLAN.md](./PLAN.md) for details.
+**80 unit tests passing**, typecheck clean both sides. The app does end-to-end bidirectional sync against local + mapped drives. See [PLAN.md](./PLAN.md) for the full status / "what's deferred" list.
 
 ## Dev
 
 ```bash
 npm install
 npm run dev          # opens Electron window with HMR
-npm test             # vitest unit tests (55 currently)
+npm test             # 80 unit tests
 npm run typecheck
+npm run package:win  # builds dist/FileSync-Setup-<version>.exe (NSIS installer)
 ```
 
 ## Setup notes

@@ -1,6 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Action, Job } from "@shared/types";
-import type { DryRunResponse } from "@shared/api";
+import type {
+  ApplyProgressEvent,
+  ApplyResponse,
+  DryRunResponse,
+} from "@shared/api";
 import { Button } from "../components/Button";
 import { formatBytes, formatDuration } from "../lib/format";
 
@@ -22,16 +26,29 @@ const TABS: { key: Tab; label: string; pred(a: Action): boolean }[] = [
   },
 ];
 
+type Phase =
+  | "idle"
+  | "scanning"
+  | "ready"
+  | "applying"
+  | "applied"
+  | "error";
+
 export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
-  const [phase, setPhase] = useState<"idle" | "running" | "done" | "error">("idle");
-  const [result, setResult] = useState<DryRunResponse | null>(null);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [dryRun, setDryRun] = useState<DryRunResponse | null>(null);
+  const [applyResult, setApplyResult] = useState<ApplyResponse | null>(null);
+  const [progress, setProgress] = useState<ApplyProgressEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("a-to-b");
+  const unsubRef = useRef<(() => void) | null>(null);
 
-  async function run() {
-    setPhase("running");
+  async function scan() {
+    setPhase("scanning");
     setError(null);
-    setResult(null);
+    setApplyResult(null);
+    setProgress(null);
+    setDryRun(null);
     try {
       const r = await window.api.engine.dryRun({
         jobId: job.id,
@@ -41,27 +58,78 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         policy: job.onConflict,
         followSymlinks: job.followSymlinks,
       });
-      setResult(r);
-      setPhase("done");
+      setDryRun(r);
+      setPhase("ready");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase("error");
     }
   }
 
+  async function applyPlan() {
+    if (!dryRun) return;
+    setPhase("applying");
+    setError(null);
+    setProgress({
+      jobId: job.id,
+      doneActions: 0,
+      totalActions: dryRun.plan.actions.length,
+      bytesTransferred: 0,
+      bytesTotal: dryRun.plan.summary.bytesToTransfer,
+      currentPath: "",
+      errors: 0,
+    });
+    unsubRef.current = window.api.engine.onApplyProgress((p) => {
+      if (p.jobId !== job.id) return;
+      setProgress(p);
+    });
+    try {
+      const result = await window.api.engine.apply({
+        jobId: job.id,
+        sideA: job.sideA,
+        sideB: job.sideB,
+        plan: dryRun.plan,
+        trash: job.trash,
+        preserveTimestamps: job.preserveTimestamps,
+      });
+      setApplyResult(result);
+      setPhase("applied");
+      // Re-scan to show the post-apply state (should be all noops).
+      await scan();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setPhase("error");
+    } finally {
+      unsubRef.current?.();
+      unsubRef.current = null;
+    }
+  }
+
   useEffect(() => {
-    run();
+    scan();
+    return () => {
+      unsubRef.current?.();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id]);
 
-  const filtered = result?.plan.actions.filter(
+  const filtered = dryRun?.plan.actions.filter(
     TABS.find((t) => t.key === tab)?.pred ?? (() => true),
   );
   const counts = TABS.map((t) => ({
     key: t.key,
     label: t.label,
-    n: result?.plan.actions.filter(t.pred).length ?? 0,
+    n: dryRun?.plan.actions.filter(t.pred).length ?? 0,
   }));
+
+  const actionable = dryRun
+    ? dryRun.plan.summary.copyAToB +
+        dryRun.plan.summary.copyBToA +
+        dryRun.plan.summary.deleteA +
+        dryRun.plan.summary.deleteB +
+        dryRun.plan.summary.conflicts >
+      0
+    : false;
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -76,34 +144,47 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={run} disabled={phase === "running"}>
-            {phase === "running" ? "Walking…" : "Re-scan"}
+          <Button onClick={scan} disabled={phase === "scanning" || phase === "applying"}>
+            {phase === "scanning" ? "Scanning…" : "Re-scan"}
           </Button>
           <Button
             variant="primary"
-            disabled
-            title="The Apply phase ships in Week 3 — for now, this is a preview only."
+            disabled={phase !== "ready" || !actionable}
+            onClick={applyPlan}
+            title={
+              !actionable
+                ? "Nothing to do — both sides are already in sync."
+                : "Execute the plan: copy, delete, and trash as previewed below."
+            }
           >
-            Apply (Week 3)
+            Apply
           </Button>
         </div>
       </header>
 
-      {phase === "running" && (
+      {phase === "scanning" && (
         <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-300">
           Walking both sides and computing diff…
         </div>
       )}
 
-      {phase === "error" && error && (
-        <div className="rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200">
+      {phase === "applying" && progress && (
+        <ApplyProgressBar progress={progress} />
+      )}
+
+      {phase === "applied" && applyResult && (
+        <ApplySummary result={applyResult} />
+      )}
+
+      {error && (
+        <div className="rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200 mt-3">
           {error}
         </div>
       )}
 
-      {phase === "done" && result && (
+      {(phase === "ready" || phase === "applied") && dryRun && (
         <>
-          <SummaryStats result={result} />
+          <SummaryStats result={dryRun} />
 
           <div className="mt-6 border-b border-slate-800 flex gap-1 overflow-x-auto">
             {counts.map((c) => (
@@ -125,6 +206,67 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
           <ActionTable actions={filtered ?? []} />
         </>
       )}
+    </div>
+  );
+}
+
+function ApplyProgressBar({ progress }: { progress: ApplyProgressEvent }) {
+  const pct = progress.totalActions
+    ? Math.round((progress.doneActions / progress.totalActions) * 100)
+    : 0;
+  const bytePct = progress.bytesTotal
+    ? Math.round((progress.bytesTransferred / progress.bytesTotal) * 100)
+    : 0;
+  return (
+    <div className="rounded-md border border-emerald-700/40 bg-emerald-900/10 p-4 mt-3">
+      <div className="text-sm text-emerald-200 mb-2">
+        Applying… {progress.doneActions} / {progress.totalActions} actions
+        {progress.errors > 0 && (
+          <span className="text-red-300 ml-2">({progress.errors} error{progress.errors > 1 ? "s" : ""})</span>
+        )}
+      </div>
+      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-emerald-500 transition-all"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="mt-2 text-xs text-slate-400 flex justify-between">
+        <span className="font-mono truncate max-w-[60%]">{progress.currentPath || "—"}</span>
+        <span className="tabular-nums">
+          {formatBytes(progress.bytesTransferred)} / {formatBytes(progress.bytesTotal)}
+          {progress.bytesTotal > 0 && ` (${bytePct}%)`}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ApplySummary({ result }: { result: ApplyResponse }) {
+  const ok = result.status === "ok";
+  return (
+    <div
+      className={`rounded-md border p-4 mt-3 text-sm ${
+        ok
+          ? "border-emerald-700/40 bg-emerald-900/20 text-emerald-200"
+          : "border-amber-700/40 bg-amber-900/20 text-amber-200"
+      }`}
+    >
+      <div className="font-medium">
+        {ok ? "Apply complete." : `Apply finished with status: ${result.status}.`}
+      </div>
+      <div className="text-xs mt-1 text-slate-300">
+        {result.filesCopied} copied, {result.filesDeleted} deleted (to trash),{" "}
+        {formatBytes(result.bytesTransferred)} transferred in{" "}
+        {formatDuration(result.endedAt - result.startedAt)}.
+        {result.errors.length > 0 && ` ${result.errors.length} error(s) — see history.`}
+        {result.trashSweep && result.trashSweep.removedDirs > 0 && (
+          <>
+            {" "}Trash sweep freed {formatBytes(result.trashSweep.freedBytes)} from{" "}
+            {result.trashSweep.removedDirs} old run folder(s).
+          </>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,13 +1,23 @@
 import { app, dialog, ipcMain } from "electron";
 import { join } from "node:path";
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { walk } from "./engine/walker";
-import { openStateDb, upsertSideA, transaction } from "./engine/state-db";
+import {
+  openStateDb,
+  upsertSideA,
+  transaction,
+  listRunActions,
+  listRunLogs,
+  type RunActionRow,
+  type RunLogRow,
+} from "./engine/state-db";
 import { dryRun, type DryRunResult } from "./engine/runner";
+import { apply, type ApplyProgress, type ApplyResult } from "./engine/applier";
 import { deleteJob, loadJobs, upsertJob } from "./jobs/store";
 import type {
   ConflictPolicy,
+  DiffPlan,
   Job,
   JobFilters,
   WalkRequest,
@@ -102,6 +112,78 @@ export function registerIpcHandlers(): void {
         policy: req.policy,
         followSymlinks: req.followSymlinks,
       });
+    },
+  );
+
+  ipcMain.handle(
+    "engine:apply",
+    async (
+      evt,
+      req: {
+        jobId: string;
+        sideA: string;
+        sideB: string;
+        plan: DiffPlan;
+        trash: { enabled: boolean; retainDays: number };
+        preserveTimestamps?: boolean;
+      },
+    ): Promise<ApplyResult> => {
+      const dbDir = join(app.getPath("userData"), "jobs");
+      mkdirSync(dbDir, { recursive: true });
+      const stateDbPath = join(dbDir, `${req.jobId}.sqlite`);
+      const sender = evt.sender;
+      return apply({
+        jobId: req.jobId,
+        sideA: req.sideA,
+        sideB: req.sideB,
+        stateDbPath,
+        plan: req.plan,
+        trash: req.trash,
+        preserveTimestamps: req.preserveTimestamps,
+        onProgress: (p: ApplyProgress) => {
+          if (!sender.isDestroyed()) {
+            sender.send("engine:apply:progress", { jobId: req.jobId, ...p });
+          }
+        },
+      });
+    },
+  );
+
+  // ---------- history ----------
+
+  ipcMain.handle(
+    "history:list",
+    async (
+      _evt,
+      jobId: string,
+    ): Promise<{ runs: RunLogRow[] }> => {
+      const dbDir = join(app.getPath("userData"), "jobs");
+      const stateDbPath = join(dbDir, `${jobId}.sqlite`);
+      if (!existsSync(stateDbPath)) return { runs: [] };
+      const db = await openStateDb(stateDbPath);
+      try {
+        return { runs: listRunLogs(db, 200) };
+      } finally {
+        db.close();
+      }
+    },
+  );
+
+  ipcMain.handle(
+    "history:actions",
+    async (
+      _evt,
+      req: { jobId: string; runId: number },
+    ): Promise<{ actions: RunActionRow[] }> => {
+      const dbDir = join(app.getPath("userData"), "jobs");
+      const stateDbPath = join(dbDir, `${req.jobId}.sqlite`);
+      if (!existsSync(stateDbPath)) return { actions: [] };
+      const db = await openStateDb(stateDbPath);
+      try {
+        return { actions: listRunActions(db, req.runId) };
+      } finally {
+        db.close();
+      }
     },
   );
 }
