@@ -1,10 +1,15 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type { DryRunRequest, FileSyncAPI } from "@shared/api";
-import type { WalkRequest } from "@shared/types";
+import type { Job, WalkRequest } from "@shared/types";
 
 const api: FileSyncAPI = {
   dialog: {
     openDirectory: () => ipcRenderer.invoke("dialog:openDirectory"),
+  },
+  jobs: {
+    list: () => ipcRenderer.invoke("jobs:list"),
+    upsert: (job: Partial<Job>) => ipcRenderer.invoke("jobs:upsert", job),
+    delete: (id: string) => ipcRenderer.invoke("jobs:delete", id),
   },
   engine: {
     walkAndPersist: (req: WalkRequest) => ipcRenderer.invoke("engine:walkAndPersist", req),

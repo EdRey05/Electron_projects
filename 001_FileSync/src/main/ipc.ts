@@ -5,7 +5,18 @@ import { randomUUID } from "node:crypto";
 import { walk } from "./engine/walker";
 import { openStateDb, upsertSideA, transaction } from "./engine/state-db";
 import { dryRun, type DryRunResult } from "./engine/runner";
-import type { ConflictPolicy, JobFilters, WalkRequest, WalkResult } from "@shared/types";
+import { deleteJob, loadJobs, upsertJob } from "./jobs/store";
+import type {
+  ConflictPolicy,
+  Job,
+  JobFilters,
+  WalkRequest,
+  WalkResult,
+} from "@shared/types";
+
+function jobsFilePath(): string {
+  return join(app.getPath("userData"), "jobs.json");
+}
 
 export function registerIpcHandlers(): void {
   ipcMain.handle("dialog:openDirectory", async (): Promise<string | null> => {
@@ -50,6 +61,22 @@ export function registerIpcHandlers(): void {
       return { ...result, durationMs, sessionId, dbPath };
     },
   );
+
+  // ---------- jobs ----------
+
+  ipcMain.handle("jobs:list", async (): Promise<Job[]> => {
+    return loadJobs(jobsFilePath());
+  });
+
+  ipcMain.handle("jobs:upsert", async (_evt, input: Partial<Job>): Promise<Job> => {
+    return upsertJob(jobsFilePath(), input);
+  });
+
+  ipcMain.handle("jobs:delete", async (_evt, id: string): Promise<void> => {
+    await deleteJob(jobsFilePath(), id);
+  });
+
+  // ---------- engine ----------
 
   ipcMain.handle(
     "engine:dryRun",

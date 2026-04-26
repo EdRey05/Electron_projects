@@ -4,14 +4,21 @@ Self-built bidirectional file sync app. See [PLAN.md](./PLAN.md) for the full de
 
 ## Status
 
-**Week 1 of 4 — scaffold + walker + state DB.** Complete: Electron shell, walker (`@nodelib/fs.walk`), SQLite state DB (sql.js), IPC plumbing, React + Tailwind UI demo, 13 unit tests passing.
+**Week 2 of 4 done. Preview-only UI is live; Apply phase is Week 3.**
+
+- ✅ Week 1 — scaffold, walker (`@nodelib/fs.walk`), SQLite state DB (sql.js), IPC, React + Tailwind shell.
+- ✅ Week 2 — differ (full 11-case three-way merge), dry-run pipeline, `userData/jobs.json` persistence, JobList + JobBuilder + RunView UI with tabbed plan view.
+- ⏸ Week 3 — copier + trash + atomic writes (the Apply phase that actually moves bytes).
+- ⏸ Week 4 — polish, history view, Windows installer.
+
+**55 unit tests passing**, typecheck clean both sides. **You can now create jobs and dry-run them in the UI**, but nothing syncs yet — the Apply button is disabled until Week 3. See [PLAN.md](./PLAN.md) for details.
 
 ## Dev
 
 ```bash
 npm install
 npm run dev          # opens Electron window with HMR
-npm test             # vitest unit tests (13 currently)
+npm test             # vitest unit tests (55 currently)
 npm run typecheck
 ```
 

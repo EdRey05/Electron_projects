@@ -8,10 +8,30 @@ A self-built free replacement for AllwaySync / GoodSync, scoped to v1.
 
 | Week | Scope                                                  | State        |
 |------|--------------------------------------------------------|--------------|
-| 1    | Scaffold + walker + state DB                           | ✅ **Done** — 13 unit tests passing, typecheck clean |
-| 2    | Differ + dry-run UI                                    | ⏳ Next      |
-| 3    | Copier + trash + atomic writes + conflict UI           | Pending      |
+| 1    | Scaffold + walker + state DB                           | ✅ **Done** |
+| 2    | Differ + dry-run UI                                    | ✅ **Done** — all 5 steps. Differ (11-case truth table), dry-run pipeline, jobs.json persistence, JobList + JobBuilder + RunView UI. |
+| 3    | Copier + trash + atomic writes + conflict UI           | ⏳ Next — **this is the step that makes the app actually sync files**. Until it lands, dry-run is preview-only. |
 | 4    | Polish + history view + Windows installer              | Pending      |
+
+**Tests:** 55 passing (19 differ + 9 runner + 7 walker + 6 state-db + 14 jobs-store). Typecheck clean both sides.
+
+### Can I use the app today?
+
+**Preview-only.** You can now create jobs through the UI, dry-run them, and see exactly what would change — but no bytes move yet. The Apply button is intentionally disabled with a "Week 3" label.
+
+What works:
+- Create / edit / delete sync jobs via the JobBuilder (folder pickers, filter editor, conflict policy, trash retention, etc.).
+- Dry-run any job → live progress → tabbed plan (Copy A→B / Copy B→A / Delete / Conflicts / No-op) with sizes, reasons, and a totals row.
+- Job config persisted to `userData/jobs.json` (atomic write); per-job state DB at `userData/jobs/<jobId>.sqlite`.
+
+What doesn't work yet:
+- **Apply phase** (copier + trash + atomic writes). This is Week 3.
+- **History view** of past runs. Week 4.
+- **Per-conflict resolution UI** under the `ask` policy is a tab listing — clicking individual rows to override doesn't decide anything yet because Apply is offline.
+
+Soft blocker: the Electron binary download was 502'd during week 1 install, so `npm run dev` won't start until you retry the CDN or run `node node_modules/electron/install.js` manually. This doesn't affect tests.
+
+**Earliest the app is end-user usable for actual syncing:** after Week 3.
 
 ---
 
@@ -301,9 +321,9 @@ case (a, b, s) of
 
 | Week | Deliverable                                            | Definition of done                                                                                            |
 |------|--------------------------------------------------------|---------------------------------------------------------------------------------------------------------------|
-| 1 ✅ | Scaffold + walker + state DB                           | **Done.** `npm test` → 13 passing (walker filters, gitignore globs, trash auto-exclude, SQLite schema/migrations, persistence). `npm run typecheck` clean. UI demo wired through preload IPC. Electron `dev` blocked only on the CDN-502 binary download (see Risks). |
-| 2    | Differ + dry-run UI                                    | Two-folder dry-run shows accurate plan against fixture trees covering all 11 cases in §7.                     |
-| 3    | Copier + trash + atomic writes + conflict UI           | Apply phase reconciles two trees end-to-end on local disk; interrupt-and-resume test passes.                  |
+| 1 ✅ | Scaffold + walker + state DB                           | **Done.** `npm test` passing, `npm run typecheck` clean, UI demo wired through preload IPC. Electron `dev` blocked only on the CDN-502 binary download (see Risks). |
+| 2 ✅ | Differ + dry-run UI                                    | **Done.** All 5 steps. Differ (11-case truth table, 19 tests). Dry-run pipeline (9 integration tests). Jobs persistence in `userData/jobs.json` (14 tests). JobList + JobBuilder + RunView UI with native folder pickers, filter editor, conflict policy radio, tabbed plan view (A→B / B→A / Delete / Conflicts / No-op). 55 unit tests passing total; typecheck clean. |
+| 3    | Copier + trash + atomic writes + conflict UI           | Apply phase reconciles two trees end-to-end on local disk; interrupt-and-resume test passes. **First week the app actually syncs.** |
 | 4    | Polish, history view, electron-builder Windows installer, README | Installable `.exe`, runs on a fresh Win11 VM; manual smoke list (§12) all green. |
 
 ---

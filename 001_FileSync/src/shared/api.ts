@@ -1,6 +1,7 @@
 import type {
   ConflictPolicy,
   DiffPlan,
+  Job,
   JobFilters,
   WalkRequest,
   WalkResult,
@@ -29,6 +30,11 @@ export interface DryRunResponse {
 export interface FileSyncAPI {
   dialog: {
     openDirectory(): Promise<string | null>;
+  };
+  jobs: {
+    list(): Promise<Job[]>;
+    upsert(job: Partial<Job>): Promise<Job>;
+    delete(id: string): Promise<void>;
   };
   engine: {
     walkAndPersist(req: WalkRequest): Promise<WalkResult & { sessionId: string; dbPath: string }>;
