@@ -4,7 +4,8 @@ import { mkdirSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { walk } from "./engine/walker";
 import { openStateDb, upsertSideA, transaction } from "./engine/state-db";
-import type { WalkRequest, WalkResult } from "@shared/types";
+import { dryRun, type DryRunResult } from "./engine/runner";
+import type { ConflictPolicy, JobFilters, WalkRequest, WalkResult } from "@shared/types";
 
 export function registerIpcHandlers(): void {
   ipcMain.handle("dialog:openDirectory", async (): Promise<string | null> => {
@@ -47,6 +48,33 @@ export function registerIpcHandlers(): void {
       }
 
       return { ...result, durationMs, sessionId, dbPath };
+    },
+  );
+
+  ipcMain.handle(
+    "engine:dryRun",
+    async (
+      _evt,
+      req: {
+        jobId: string;
+        sideA: string;
+        sideB: string;
+        filters?: JobFilters;
+        policy?: ConflictPolicy;
+        followSymlinks?: boolean;
+      },
+    ): Promise<DryRunResult> => {
+      const dbDir = join(app.getPath("userData"), "jobs");
+      mkdirSync(dbDir, { recursive: true });
+      return dryRun({
+        jobId: req.jobId,
+        sideA: req.sideA,
+        sideB: req.sideB,
+        stateDbPath: join(dbDir, `${req.jobId}.sqlite`),
+        filters: req.filters,
+        policy: req.policy,
+        followSymlinks: req.followSymlinks,
+      });
     },
   );
 }

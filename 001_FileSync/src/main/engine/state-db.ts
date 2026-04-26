@@ -1,6 +1,7 @@
 import initSqlJs, { type Database as SqlJsDatabase, type SqlJsStatic } from "sql.js";
 import { existsSync, readFileSync, writeFileSync, renameSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import type { StateRecord } from "@shared/types";
 
 const SCHEMA_VERSION = 1;
 
@@ -182,6 +183,31 @@ export function countState(s: StateDb): number {
   const n = stmt.getAsObject()["n"] as number;
   stmt.free();
   return n;
+}
+
+/**
+ * Load every row of `state` into a Map keyed by relative path. The differ
+ * consumes this directly — populating it on a one-shot scan is much cheaper
+ * than per-path SELECTs during the merge.
+ */
+export function loadStateMap(s: StateDb): Map<string, StateRecord> {
+  const out = new Map<string, StateRecord>();
+  const stmt = s
+    .raw()
+    .prepare(
+      "SELECT path, side_a_size, side_a_mtime, side_b_size, side_b_mtime FROM state",
+    );
+  while (stmt.step()) {
+    const row = stmt.getAsObject() as Record<string, number | string | null>;
+    out.set(row["path"] as string, {
+      aSize: row["side_a_size"] == null ? undefined : (row["side_a_size"] as number),
+      aMtime: row["side_a_mtime"] == null ? undefined : (row["side_a_mtime"] as number),
+      bSize: row["side_b_size"] == null ? undefined : (row["side_b_size"] as number),
+      bMtime: row["side_b_mtime"] == null ? undefined : (row["side_b_mtime"] as number),
+    });
+  }
+  stmt.free();
+  return out;
 }
 
 export function transaction<T>(s: StateDb, fn: () => T): T {

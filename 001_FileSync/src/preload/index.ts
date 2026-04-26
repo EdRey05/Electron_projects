@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { FileSyncAPI } from "@shared/api";
+import type { DryRunRequest, FileSyncAPI } from "@shared/api";
 import type { WalkRequest } from "@shared/types";
 
 const api: FileSyncAPI = {
@@ -8,6 +8,7 @@ const api: FileSyncAPI = {
   },
   engine: {
     walkAndPersist: (req: WalkRequest) => ipcRenderer.invoke("engine:walkAndPersist", req),
+    dryRun: (req: DryRunRequest) => ipcRenderer.invoke("engine:dryRun", req),
   },
   app: {
     userDataPath: () => ipcRenderer.invoke("app:userDataPath"),
