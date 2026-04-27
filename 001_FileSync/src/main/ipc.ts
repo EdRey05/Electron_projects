@@ -20,12 +20,26 @@ import type {
   DiffPlan,
   Job,
   JobFilters,
+  SyncDirection,
   WalkRequest,
   WalkResult,
 } from "@shared/types";
 
+import { createHash } from "node:crypto";
+
 function jobsFilePath(): string {
   return join(app.getPath("userData"), "jobs.json");
+}
+
+/**
+ * Stable id for an ad-hoc folder pair, used when there is no saved job —
+ * a sha1 of "<sideA>|<sideB>" (case-folded), truncated to 16 hex chars.
+ * Same path pair always resolves to the same id, so the per-pair state DB
+ * and trash directory are consistent across Workspace runs.
+ */
+function deriveAdhocJobId(sideA: string, sideB: string): string {
+  const key = `${sideA.toLowerCase()}|${sideB.toLowerCase()}`;
+  return "adhoc-" + createHash("sha1").update(key).digest("hex").slice(0, 16);
 }
 
 export function registerIpcHandlers(): void {
@@ -93,9 +107,10 @@ export function registerIpcHandlers(): void {
     async (
       _evt,
       req: {
-        jobId: string;
+        jobId?: string;
         sideA: string;
         sideB: string;
+        direction?: SyncDirection;
         filters?: JobFilters;
         policy?: ConflictPolicy;
         followSymlinks?: boolean;
@@ -103,11 +118,13 @@ export function registerIpcHandlers(): void {
     ): Promise<DryRunResult> => {
       const dbDir = join(app.getPath("userData"), "jobs");
       mkdirSync(dbDir, { recursive: true });
+      const jobId = req.jobId ?? deriveAdhocJobId(req.sideA, req.sideB);
       return dryRun({
-        jobId: req.jobId,
+        jobId,
         sideA: req.sideA,
         sideB: req.sideB,
-        stateDbPath: join(dbDir, `${req.jobId}.sqlite`),
+        direction: req.direction,
+        stateDbPath: join(dbDir, `${jobId}.sqlite`),
         filters: req.filters,
         policy: req.policy,
         followSymlinks: req.followSymlinks,
@@ -120,7 +137,7 @@ export function registerIpcHandlers(): void {
     async (
       evt,
       req: {
-        jobId: string;
+        jobId?: string;
         sideA: string;
         sideB: string;
         plan: DiffPlan;
@@ -130,10 +147,11 @@ export function registerIpcHandlers(): void {
     ): Promise<ApplyResult> => {
       const dbDir = join(app.getPath("userData"), "jobs");
       mkdirSync(dbDir, { recursive: true });
-      const stateDbPath = join(dbDir, `${req.jobId}.sqlite`);
+      const jobId = req.jobId ?? deriveAdhocJobId(req.sideA, req.sideB);
+      const stateDbPath = join(dbDir, `${jobId}.sqlite`);
       const sender = evt.sender;
       return apply({
-        jobId: req.jobId,
+        jobId,
         sideA: req.sideA,
         sideB: req.sideB,
         stateDbPath,
@@ -142,7 +160,7 @@ export function registerIpcHandlers(): void {
         preserveTimestamps: req.preserveTimestamps,
         onProgress: (p: ApplyProgress) => {
           if (!sender.isDestroyed()) {
-            sender.send("engine:apply:progress", { jobId: req.jobId, ...p });
+            sender.send("engine:apply:progress", { jobId, ...p });
           }
         },
       });

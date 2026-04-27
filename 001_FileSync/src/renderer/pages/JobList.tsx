@@ -7,11 +7,13 @@ export function JobList({
   onEdit,
   onRun,
   onHistory,
+  onBack,
 }: {
   onNew(): void;
   onEdit(job: Job): void;
   onRun(job: Job): void;
   onHistory(job: Job): void;
+  onBack?(): void;
 }) {
   const [jobs, setJobs] = useState<Job[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -41,8 +43,19 @@ export function JobList({
     <div className="p-8 max-w-6xl mx-auto">
       <header className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-3xl font-semibold tracking-tight">FileSync</h1>
-          <p className="text-slate-400 text-sm mt-1">Bidirectional sync jobs.</p>
+          {onBack && (
+            <button
+              onClick={onBack}
+              className="text-xs text-slate-400 hover:text-slate-200"
+            >
+              ← Back to Workspace
+            </button>
+          )}
+          <h1 className="text-2xl font-semibold tracking-tight mt-1">Saved jobs</h1>
+          <p className="text-slate-400 text-xs mt-0.5">
+            Saved configurations for repeat sync workflows. For one-off operations, use the
+            Workspace.
+          </p>
         </div>
         <Button variant="primary" onClick={onNew}>
           + New job

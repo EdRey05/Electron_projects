@@ -13,15 +13,20 @@ A self-built free replacement for AllwaySync / GoodSync, scoped to v1.
 | 3    | Copier + trash + atomic writes + Apply UI              | ✅ **Done** |
 | 4    | Polish + history view + Windows installer              | ✅ **Done** |
 
-**v1 feature-complete.** 80 unit tests passing; typecheck clean both sides. The app is now end-to-end usable for the locked v1 scope (local + mapped network drives, two-way bidirectional, manual trigger).
+**v1 feature-complete + Workspace UX redesign (v0.0.5).** 89 unit tests passing; typecheck clean both sides. The app is end-to-end usable for the locked v1 scope (local + mapped network drives) with both one-way mirror and bidirectional sync directions.
 
 ### What works
 
-- **Create / edit / delete sync jobs** with native folder pickers, gitignore-style include/exclude filters, conflict policy (newer-wins / rename-both / ask), trash retention, symlink + timestamp toggles.
-- **Dry-run** any job → walks both sides, loads state DB, runs the 11-case three-way merge, surfaces tabbed plan (Copy A→B / B→A / Delete / Conflicts / No-op) with sizes + reasons.
-- **Apply** the plan → atomic copies (`<dest>.tmp.<rand>` + rename), trash for every destructive op (`<sideRoot>/.filesync-trash/<jobId>/<runStamp>/<relPath>`), per-action `run_action` log, `run_log` summary with `ok` / `partial` / `error` status, automatic stale-temp cleanup at the start of every run, automatic trash sweep at end.
-- **History** per job — every past run, expandable to per-file action records.
-- **Idempotency invariant verified by tests:** running Apply then re-running dry-run produces a fully no-op plan. Same for delete propagation.
+- **Workspace** is the default home screen — pick two folders, choose a direction (Mirror →, Mirror ←, Sync ↔), click **Analyze**, review the per-file plan in a directory tree with per-row include/exclude checkboxes, click **Run**. Modeled after AllwaySync's analyze-then-run flow. No need to save a job upfront.
+- **Three sync directions:**
+  - `Mirror →` (a-to-b): make B match A. Stateless. New/changed files copy A→B; files only on B are deleted (to trash).
+  - `Mirror ←` (b-to-a): inverse mirror.
+  - `Sync ↔`: bidirectional three-way merge using a per-pair state DB. Detects deletes vs new files; conflicts auto-resolved by newer-wins.
+- **Per-file include/exclude** in the analysis tree. Folder rows toggle every leaf in their subtree at once. Excluded actions are filtered out before Run; the rest of the plan executes.
+- **Run** behavior: atomic copies (`<dest>.tmp.<rand>` + rename), trash for every destructive op (`<sideRoot>/.filesync-trash/<adhoc-id>/<runStamp>/<relPath>`), per-action `run_action` log, `run_log` summary with `ok` / `partial` / `error`, automatic stale-temp cleanup at the start of every run, automatic trash sweep at end.
+- **Saved jobs** (secondary screen, accessed via the "Saved jobs →" link on the Workspace) — for repeat workflows you want named and reusable. Includes the original RunView/History pages.
+- **Stable per-pair state DB** for ad-hoc Workspace runs: main derives an id from `sha1(sideA|sideB)` so the same folder pair always uses the same state DB and trash directory across sessions.
+- **Idempotency invariant verified by tests:** running Run then re-running Analyze produces a fully no-op plan. Same for delete propagation. Same for one-way mirror.
 
 ### What's deferred (post-v1)
 
@@ -35,7 +40,7 @@ A self-built free replacement for AllwaySync / GoodSync, scoped to v1.
 
 ```bash
 npm install                        # one-time. If the Electron CDN is flaky, see Setup notes in README.
-npm test                           # 80 tests
+npm test                           # 89 tests
 npm run typecheck                  # clean both tsconfigs
 npm run dev                        # opens the Electron window with HMR
 npm run package:win                # builds dist/FileSync-Setup-<version>.exe (NSIS installer)

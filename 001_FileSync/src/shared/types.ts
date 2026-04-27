@@ -1,5 +1,16 @@
 export type ConflictPolicy = "newer-wins" | "rename-both" | "ask";
 
+/**
+ * Direction of synchronization for a single Analyze/Run operation.
+ *
+ * - `a-to-b`: mirror — make B match A. Files only on B get deleted, A always
+ *   wins on differences. No state DB needed.
+ * - `b-to-a`: mirror — make A match B. Inverse of above.
+ * - `sync`: bidirectional three-way merge (the original behavior). Uses the
+ *   per-pair state DB to detect deletes vs new files.
+ */
+export type SyncDirection = "a-to-b" | "b-to-a" | "sync";
+
 export interface JobFilters {
   include: string[];
   exclude: string[];

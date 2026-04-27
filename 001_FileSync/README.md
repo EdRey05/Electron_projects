@@ -4,21 +4,22 @@ Self-built bidirectional file sync app. See [PLAN.md](./PLAN.md) for the full de
 
 ## Status
 
-**v1 feature-complete.** All 4 weeks of the plan done.
+**v1 feature-complete + Workspace UX (v0.0.5).** AllwaySync-style flow: pick two folders, choose a direction, Analyze, review the per-file tree, Run.
 
-- ✅ Week 1 — scaffold, walker (`@nodelib/fs.walk`), SQLite state DB (sql.js), IPC, React + Tailwind shell.
-- ✅ Week 2 — differ (11-case three-way merge), dry-run pipeline, `userData/jobs.json` persistence, JobList + JobBuilder + RunView UI.
-- ✅ Week 3 — atomic copier, trash module, applier orchestrator, IPC `engine:apply` with progress events, Apply button wired with live progress bar.
-- ✅ Week 4 — History page (per-run / per-action records), `electron-builder.yml` (NSIS Windows installer), polish.
+- ✅ Week 1 — scaffold, walker, SQLite state DB (sql.js), IPC, React + Tailwind shell.
+- ✅ Week 2 — differ (11-case three-way merge), dry-run pipeline, `jobs.json` persistence, JobList + JobBuilder + RunView UI.
+- ✅ Week 3 — atomic copier, trash module, applier orchestrator, `engine:apply` IPC with progress events, Apply UI.
+- ✅ Week 4 — History page, `electron-builder.yml` (NSIS Windows installer).
+- ✅ v0.0.5 — **Workspace as the default home**: two folder pickers + direction widget (Mirror →, Mirror ←, Sync ↔) + Analyze + per-row include/exclude tree + Run. One-way mirror modes are stateless; sync mode uses the per-pair state DB. Saved jobs become a secondary screen for repeat workflows.
 
-**80 unit tests passing**, typecheck clean both sides. The app does end-to-end bidirectional sync against local + mapped drives. See [PLAN.md](./PLAN.md) for the full status / "what's deferred" list.
+**89 unit tests passing**, typecheck clean both sides. See [PLAN.md](./PLAN.md) for the full status / what's deferred.
 
 ## Dev
 
 ```bash
 npm install
 npm run dev          # opens Electron window with HMR
-npm test             # 80 unit tests
+npm test             # 89 unit tests
 npm run typecheck
 npm run package:win  # builds dist/FileSync-Setup-<version>.exe (NSIS installer)
 ```

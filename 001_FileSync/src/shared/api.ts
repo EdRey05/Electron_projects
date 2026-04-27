@@ -3,14 +3,17 @@ import type {
   DiffPlan,
   Job,
   JobFilters,
+  SyncDirection,
   WalkRequest,
   WalkResult,
 } from "./types";
 
 export interface DryRunRequest {
-  jobId: string;
+  /** Omit for ad-hoc Workspace runs — main derives a stable id from the path pair. */
+  jobId?: string;
   sideA: string;
   sideB: string;
+  direction?: SyncDirection;
   filters?: JobFilters;
   policy?: ConflictPolicy;
   followSymlinks?: boolean;
@@ -20,6 +23,7 @@ export interface DryRunResponse {
   jobId: string;
   sideA: string;
   sideB: string;
+  direction: SyncDirection;
   walkA: { fileCount: number; totalBytes: number; durationMs: number };
   walkB: { fileCount: number; totalBytes: number; durationMs: number };
   stateLoadedRows: number;
@@ -28,7 +32,8 @@ export interface DryRunResponse {
 }
 
 export interface ApplyRequest {
-  jobId: string;
+  /** Omit for ad-hoc Workspace runs — main derives a stable id from the path pair. */
+  jobId?: string;
   sideA: string;
   sideB: string;
   plan: DiffPlan;
