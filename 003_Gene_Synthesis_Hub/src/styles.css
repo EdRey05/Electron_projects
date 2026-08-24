@@ -1,0 +1,28 @@
+/* Google Fonts MUST come before @tailwind directives (PostCSS rule). */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root { height: 100%; margin: 0; }
+
+body {
+  background: radial-gradient(1200px 800px at 0% 0%, #16294B 0%, #0B1426 60%, #07101E 100%);
+  color: #DCE4EE;
+  font-family: "IBM Plex Sans", system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* Subtle scrollbar styling for dark theme */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1F3A66; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #2C4F87; }
+
+/* Allow text selection inside inputs / entries */
+input, textarea, [contenteditable] {
+  user-select: text;
+}

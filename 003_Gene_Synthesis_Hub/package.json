@@ -1,0 +1,113 @@
+{
+  "name": "gene-synthesis-hub",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Electron desktop shell for the Gene Synthesis Hub. Modern UI around the existing Tkinter + Streamlit subapps; bundles a portable Python runtime and the subapp source so the whole thing ships in one folder with no install step.",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "electron .",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build": "vite build",
+    "start": "node scripts/start.js",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:portable": "npm run build && electron-builder --win portable",
+    "stage-python": "node scripts/stage-python.js",
+    "stage-subapps": "node scripts/stage-subapps.js"
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.edrey05.genesynthesishub",
+    "productName": "Gene Synthesis Hub",
+    "copyright": "Copyright © 2026 EdRey05",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/{.eslintrc,.prettierrc,.editorconfig}",
+      "!**/{__tests__,test,tests}/**",
+      "!**/{.DS_Store,.git,.github,docs,node_modules}/**"
+    ],
+    "extraResources": [
+      {
+        "from": "python-app/runtime",
+        "to": "python-app/runtime",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-app/runtime-venv",
+        "to": "python-app/runtime-venv",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-app/Code",
+        "to": "python-app/Code",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-app/Templates",
+        "to": "python-app/Templates",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-app/Databases",
+        "to": "python-app/Databases",
+        "filter": ["**/*"]
+      },
+      {
+        "from": "python-app/default_directories.ini",
+        "to": "python-app/default_directories.ini"
+      },
+      {
+        "from": "python-app/app_information.txt",
+        "to": "python-app/app_information.txt"
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "category": "public.app-category.productivity"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Science"
+    }
+  }
+}
