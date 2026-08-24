@@ -91,19 +91,56 @@ def _patch_bytes_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes) -> by
 
 
 def _patch_int_array_tag(buf: bytes, tag_name: str, tag_num: int, data: np.ndarray) -> bytes:
-    """Find and replace an integer-array tag entry (short uint16 / long int32).
+    """Find and replace an integer-array tag entry.
 
-    Encodes as little-endian. ABI uses element code 4 (ushort) for QVs/PLOC.
+    The element codes used by the ABI spec are:
+      1 = byte (uint8, 1 byte each)
+      2 = char (uint8, 1 byte each)  ← used by PBAS, PCON
+      4 = ushort (uint16, 2 bytes each)  ← used by PLOC
+      5 = short (int16, 2 bytes each)
+
+    For QVs we use element code 2 (char) since they're uint8 values.
+    For PLOCs we use element code 4 (ushort) but store them as int32 → 4 bytes
+    actually that's wrong. Let me match what Biopython expects.
+
+    Actually for Biopython to read PCON correctly, it must be char (element_code=2)
+    with elem_size=1. The data size = n_elem * elem_size.
     """
-    if data.dtype == np.uint8 or data.dtype == np.int32 or data.dtype == np.int64:
-        # Use 32-bit signed integers (element code 5)
-        elem_code = 5
-        arr_bytes = np.ascontiguousarray(data.astype(np.int32)).tobytes()
+    if tag_name == "PBAS":
+        # bytes, element_code 18 or 2 (char)
+        if data.dtype != np.uint8:
+            data = data.astype(np.uint8)
+        arr_bytes = data.tobytes()
+        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=2)
+    elif tag_name in ("PCON",):
+        # uint8 array → element_code 2 (char, 1 byte each)
+        if data.dtype != np.uint8:
+            data = data.astype(np.uint8)
+        arr_bytes = data.tobytes()
+        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=2)
+    elif tag_name == "PLOC":
+        # int32 array → element_code 4 (ushort, 2 bytes each) — but int32 doesn't fit
+        # Actually, Biopython reads PLOC as ushort (2 bytes each). So we must
+        # encode our int32 as uint16 (truncate high bits — safe for typical scan
+        # positions under 65535).
+        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
+        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
+    elif tag_name == "P1AM":
+        # uint16 amplitudes — element_code 4
+        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
+        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
+    elif tag_name.startswith("DATA"):
+        # uint16 channel data — element_code 4
+        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
+        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
     else:
-        # Use 16-bit unsigned (element code 4)
-        elem_code = 4
-        arr_bytes = np.ascontiguousarray(data.astype(np.uint16)).tobytes()
-    return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=elem_code)
+        # Default: try as uint16
+        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
+        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
 
 
 def _patch_array_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes, element_code: int) -> bytes:
@@ -121,10 +158,19 @@ def _patch_array_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes, eleme
     if len(buf) < 4 or buf[:4] != b"ABIF":
         raise ValueError(f"not an ABIF file: {buf[:4]!r}")
 
-    # Header
-    # version=2, dirEntryCount=4 bytes, reserved=4
-    # dir_offset_offset = 4
-    dir_offset = struct.unpack(">I", buf[4:8])[0]
+    # ABIF header structure (Biopython's _HEADFMT = ">H4sI2H3I"):
+    #   bytes 0-3:   "ABIF"
+    #   bytes 4-5:   version (uint16 big-endian)
+    #   bytes 6-9:   tag name "etdir" or similar (4 chars)
+    #   bytes 10-13: tag number (uint32)
+    #   bytes 14-15: element type
+    #   bytes 16-17: element size
+    #   bytes 18-21: number of elements
+    #   bytes 22-25: data size
+    #   bytes 26-29: data offset  ← THIS is the directory offset
+    if len(buf) < 30:
+        raise ValueError(f"ABIF header too short: {len(buf)} bytes")
+    dir_offset = struct.unpack(">I", buf[26:30])[0]
     # Number of directory entries (the ABIF spec stores this AFTER the offset)
     # In Biopython output the structure is:
     #   ABIF (4)
@@ -169,19 +215,18 @@ def _patch_array_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes, eleme
                     # Append new data at end of file
                     new_offset = len(buf)
                     buf = buf + data
-                    # Rewrite data_offset in the dir entry
-                    buf = (buf[:pos+20]
-                           + struct.pack(">I", new_offset)
-                           + buf[pos+24:])
-                    # Also rewrite data_size
-                    buf = (buf[:pos+16]
-                           + struct.pack(">I", len(data))
-                           + buf[pos+20:])
-                    # Update num_elements if our element size differs from ABI's
-                    elem_size = max(1, len(data) // max(1, num_elements)) if num_elements else 1
+                    # Compute element size from element_code
+                    # element_code: 1=byte, 2=char, 3=word, 4=ushort, 5=short, 6=int32, 7=float
+                    elem_size_map = {1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 4, 7: 4, 10: 8, 11: 8, 12: 8, 18: 1, 19: 1, 20: 8}
+                    elem_size = elem_size_map.get(element_code, max(1, len(data) // max(1, num_elements)) if num_elements else 1)
+                    new_num_elements = len(data) // elem_size if elem_size else len(data)
+                    # Rewrite the directory entry: data_offset, data_size, num_elements, element_size
                     buf = (buf[:pos+10]
                            + struct.pack(">H", elem_size)
-                           + buf[pos+12:])
+                           + struct.pack(">I", new_num_elements)
+                           + struct.pack(">I", len(data))
+                           + struct.pack(">I", new_offset)
+                           + buf[pos+24:])
                     return buf
         pos += 28
     # Tag not found — append a new dir entry + data
