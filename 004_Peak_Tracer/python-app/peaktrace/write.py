@@ -1,252 +1,211 @@
-"""Write a new .ab1 file with the processed trace + basecall + QVs.
+"""Conservative .ab1 writer: always APPEND new data at end of file, never try to
+do in-place overwrites that could shift the directory.
 
-Strategy:
-  1. Read the original .ab1 file as bytes
-  2. Parse its ABIF tag directory
-  3. Replace the channel data (DATA.9-12), basecall (PBAS.1/2), QVs (PCON.1/2),
-     peak locations (PLOC.1/2), and base amplitudes (P1AM.1/2, P2AM.1/2) with
-     our processed values
-  4. If `set_abi_limits` is True, clamp channel values to uint16 max
-  5. Write back to disk
-
-This avoids a full ABI file-format reimplementation while still letting us
-write a different channel-data + basecall into a Seq7-stamped file (so
-instrument metadata is preserved).
-
-For v0 we use Biopython + manual binary patching. If abifpy is installed we
-prefer it (cleaner API). Falls back to a minimal manual writer.
+Strategy: read template, identify which entries to replace (PBAS/PCON/PLOC/P1AM/DATA9-12),
+build a NEW file from scratch with the directory rebuilt. This is what write_rebuild.py does.
 """
 from __future__ import annotations
 from pathlib import Path
 import struct
 import numpy as np
 
-from .read import Trace, CHANNELS, _asarr, _g
-from Bio import SeqIO
-
-# ABI tag IDs we need to overwrite
-TAG_PBAS = b"PBAS"
-TAG_PCON = b"PCON"
-TAG_PLOC = b"PLOC"
-TAG_DATA = b"DATA"
-TAG_P1AM = b"P1AM"  # base amplitudes (primary basecall, indexed by base)
-TAG_P2AM = b"P2AM"  # base amplitudes (secondary basecall — we leave at Seq7 default)
+from .read import CHANNELS
 
 
-def _ab1_entry_byte_for(tag: bytes) -> int:
-    """Convert a 4-char ABIF tag to its 1-byte representation."""
-    if len(tag) != 4:
-        return 0
-    return (tag[0] << 24) | (tag[1] << 16) | (tag[2] << 8) | tag[3]
+def _read_dir_entries(buf: bytes):
+    """Read all directory entries starting at the dir_offset in the header."""
+    if len(buf) < 30 or buf[:4] != b"ABIF":
+        raise ValueError(f"not an ABIF file: {buf[:4]!r}")
+    head = struct.unpack(">H4sI2H3I", buf[4:4 + 26])
+    dir_offset = head[7]
+    entries = []
+    pos = dir_offset
+    while pos + 28 <= len(buf):
+        d = struct.unpack(">4sI2H4I", buf[pos:pos + 28])
+        if d[0] == b"\x00\x00\x00\x00":
+            break
+        entries.append({
+            "name": d[0],
+            "tag_number": d[1],
+            "element_code": d[2],
+            "element_size": d[3],
+            "num_elements": d[4],
+            "data_size": d[5],
+            "data_offset": d[6],
+            "data_handle": d[7],
+        })
+        pos += 28
+    return dir_offset, entries
 
 
-def write_ab1(out_path: Path,
-              trace: Trace,
-              pb: np.ndarray,
-              qv: np.ndarray,
-              ploc: np.ndarray,
-              p1am: np.ndarray = None,
-              set_abi_limits: bool = True,
-              clamp_max: int = 65535) -> None:
-    """Write a new .ab1 file based on `trace` (template) with our new data.
+def write_ab1(
+    out_path: Path,
+    trace,
+    pb: np.ndarray,
+    qv: np.ndarray,
+    ploc: np.ndarray,
+    p1am: np.ndarray | None = None,
+    set_abi_limits: bool = True,
+    clamp_max: int = 65535,
+) -> None:
+    """Rebuild .ab1 file from scratch, copying non-replaced tags from template.
 
-    The simplest robust strategy: read the original file as bytes, find the
-    data offsets for each tag, and replace the tag entries with our new data.
-    This avoids re-implementing the ABI directory layout from scratch.
-
-    For v0 (real-data validation only): we re-emit using Biopython's writer
-    capability if available. If not, we write a minimal header pointing to
-    our data and let downstream tools (sister company) sort it out.
+    This is safer than in-place edits: any data size change doesn't shift the
+    directory or corrupt neighboring tags.
     """
-    # For now: copy the template file and patch specific tags.
-    raw = Path(trace.src_path).read_bytes()
+    template_path = Path(trace.src_path)
+    template_buf = template_path.read_bytes()
+    _, entries = _read_dir_entries(template_buf)
 
-    # 1. Patch channel DATA tags (9, 10, 11, 12)
-    for ch in CHANNELS:
-        if ch not in trace.channels:
-            continue
-        arr = trace.channels[ch]
-        if set_abi_limits:
-            arr = np.minimum(arr, clamp_max)
-        raw = _patch_data_tag(raw, ch, arr.astype(np.uint16))
-
-    # 2. Patch PBAS.1, PCON.1, PLOC.1 with our new arrays
-    raw = _patch_bytes_tag(raw, "PBAS", 1, bytes(int(b) for b in pb if b > 0))
-    raw = _patch_int_array_tag(raw, "PCON", 1, qv.astype(np.uint8))
-    raw = _patch_int_array_tag(raw, "PLOC", 1, ploc.astype(np.int32))
+    # Encode our new data
+    pbas_bytes = bytes(int(b) for b in pb if b > 0)
+    pcon_bytes = bytes(int(b) for b in qv)
+    ploc_data = np.clip(ploc.astype(np.int32), 0, 32767).astype(">i2").tobytes()
     if p1am is not None:
-        raw = _patch_int_array_tag(raw, "P1AM", 1, p1am.astype(np.uint16))
+        p1am_data = np.clip(p1am.astype(np.int32), 0, 32767).astype(">i2").tobytes()
+    else:
+        p1am_data = None
 
-    out_path.write_bytes(raw)
+    # Tags we're replacing
+    replacement_tags = {
+        b"PBAS": {1, 2},
+        b"PCON": {1, 2},
+        b"PLOC": {1, 2},
+    }
+    if p1am_data is not None:
+        replacement_tags[b"P1AM"] = {1}
+
+    # For DATA.9-12 we keep the template data (no rescale in v1.2)
+    # We'll write DATA.9-12 in our new file using template values
+
+    # Build new file structure
+    new_buf = bytearray()
+    # Reserve 34 bytes for header
+    new_buf.extend(b"\x00" * 34)
+
+    new_entries = []
+
+    # Step 1: copy non-replaced template data blocks
+    # Filter out entries whose tag names contain non-ASCII bytes (Biopython can't decode them).
+    for entry in entries:
+        key = (entry["name"], entry["tag_number"])
+        if entry["name"] in replacement_tags and entry["tag_number"] in replacement_tags[entry["name"]]:
+            continue
+        # DATA9-12 we'll add separately below
+        if entry["name"] == b"DATA" and entry["tag_number"] in (9, 10, 11, 12):
+            continue
+        # Skip empty entries
+        if entry["data_size"] == 0:
+            continue
+        # Skip entries with non-ASCII tag names — Biopython can't decode them
+        # Use strict ASCII check (each byte must be 0x20-0x7e)
+        if not all(0x20 <= b <= 0x7e for b in entry["name"]):
+            continue
+        # Skip entries with invalid offsets (offset + size past EOF — likely garbage)
+        if entry["data_offset"] + entry["data_size"] > len(template_buf):
+            continue
+        data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+        data_offset = len(new_buf)
+        new_buf.extend(data)
+        new_entries.append({
+            "name": entry["name"],
+            "tag_number": entry["tag_number"],
+            "element_code": entry["element_code"],
+            "element_size": entry["element_size"],
+            "num_elements": entry["num_elements"],
+            "data_size": entry["data_size"],
+            "data_offset": data_offset,
+        })
+
+    # Step 2: add our new PBAS/PCON/PLOC
+    for tag_name, data, num, ec, es in [
+        (b"PBAS", pbas_bytes, len(pbas_bytes), 2, 1),
+        (b"PCON", pcon_bytes, len(pcon_bytes), 2, 1),
+        (b"PLOC", ploc_data, len(ploc), 4, 2),
+    ]:
+        for tag_num in replacement_tags[tag_name]:
+            data_offset = len(new_buf)
+            new_buf.extend(data)
+            new_entries.append({
+                "name": tag_name,
+                "tag_number": tag_num,
+                "element_code": ec,
+                "element_size": es,
+                "num_elements": num,
+                "data_size": len(data),
+                "data_offset": data_offset,
+            })
+
+    # Step 3: add P1AM.1 if provided
+    if p1am_data is not None:
+        data_offset = len(new_buf)
+        new_buf.extend(p1am_data)
+        new_entries.append({
+            "name": b"P1AM",
+            "tag_number": 1,
+            "element_code": 4,
+            "element_size": 2,
+            "num_elements": len(p1am),
+            "data_size": len(p1am_data),
+            "data_offset": data_offset,
+        })
+
+    # Step 4: add DATA.9-12 from template (preserve original channel data)
+    for entry in entries:
+        if entry["name"] == b"DATA" and entry["tag_number"] in (9, 10, 11, 12):
+            data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+            data_offset = len(new_buf)
+            new_buf.extend(data)
+            new_entries.append({
+                "name": entry["name"],
+                "tag_number": entry["tag_number"],
+                "element_code": entry["element_code"],
+                "element_size": entry["element_size"],
+                "num_elements": entry["num_elements"],
+                "data_size": entry["data_size"],
+                "data_offset": data_offset,
+            })
+
+    # Append directory entries
+    dir_offset = len(new_buf)
+    for e in new_entries:
+        new_buf.extend(e["name"])
+        new_buf.extend(struct.pack(">I", e["tag_number"]))
+        new_buf.extend(struct.pack(">H", e["element_code"]))
+        new_buf.extend(struct.pack(">H", e["element_size"]))
+        new_buf.extend(struct.pack(">I", e["num_elements"]))
+        new_buf.extend(struct.pack(">I", e["data_size"]))
+        new_buf.extend(struct.pack(">I", e["data_offset"]))
+        new_buf.extend(b"\x00\x00\x00\x00")
+
+    # Write header
+    new_buf[0:4] = b"ABIF"
+    new_buf[4:6] = struct.pack(">H", 101)
+    new_buf[6:10] = b"etdir"
+    new_buf[10:14] = struct.pack(">I", 1)
+    new_buf[14:16] = struct.pack(">H", 1023)
+    new_buf[16:18] = struct.pack(">H", 28)
+    new_buf[18:22] = struct.pack(">I", len(new_entries))
+    new_buf[22:26] = struct.pack(">I", len(new_entries) * 28)
+    new_buf[26:30] = struct.pack(">I", dir_offset)
+    new_buf[30:34] = struct.pack(">I", len(new_entries))
+
+    out_path.write_bytes(bytes(new_buf))
 
 
+# Keep old API names for compatibility
 def _patch_data_tag(buf: bytes, channel: int, data: np.ndarray) -> bytes:
-    """Find and replace the DATA.{channel} tag entry with our new uint16 array."""
-    return _patch_int_array_tag(buf, "DATA", channel, data)
+    """Not used in v1.2's rebuild approach."""
+    return buf
 
 
 def _patch_bytes_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes) -> bytes:
-    """Find and replace a byte-string tag entry.
-
-    For PBAS, the input file uses element_code=2 (char) per Biopython's _BYTEFMT.
-    The data is one byte per base (ASCII character). Single-byte endianness is
-    trivially correct.
-    """
-    return _patch_array_tag(buf, tag_name, tag_num, data, element_code=2)
+    return buf
 
 
 def _patch_int_array_tag(buf: bytes, tag_name: str, tag_num: int, data: np.ndarray) -> bytes:
-    """Find and replace an integer-array tag entry.
-
-    ABI element codes (verified by reading Biopython's AbiIO._BYTEFMT, Aug 24):
-      1 = byte (signed, 1 byte each)
-      2 = char (signed, 1 byte each)   ← PBAS, PCON use this
-      3 = word (unsigned, 2 bytes)
-      4 = short (signed, 2 bytes)      ← PLOC uses this
-      5 = long (signed, 4 bytes)
-      7 = float (4 bytes)
-     18 = pString (byte string)
-
-    ABI byte order is BIG-ENDIAN (Biopython uses ">" prefix when reading).
-    numpy.ndarray.tobytes() on x86 is LITTLE-ENDIAN — so we must convert to
-    big-endian explicitly via .astype(ENDIAN_DTYPE).tobytes() or via byteswap.
-    """
-    if tag_name == "PBAS":
-        # char (code 2) — single bytes, ASCII characters
-        # ndarray.tobytes() preserves byte order for single bytes — OK as-is.
-        if data.dtype != np.uint8:
-            data = data.astype(np.uint8)
-        arr_bytes = data.tobytes()
-        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=2)
-    elif tag_name == "PCON":
-        # char (code 2) — single bytes
-        if data.dtype != np.uint8:
-            data = data.astype(np.uint8)
-        arr_bytes = data.tobytes()
-        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=2)
-    elif tag_name == "PLOC":
-        # short (code 4) — SIGNED int16, big-endian
-        data_clipped = np.clip(data, 0, 32767).astype(">i2")
-        arr_bytes = data_clipped.tobytes()
-        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
-    elif tag_name == "P1AM":
-        # short (code 4) — SIGNED int16, big-endian
-        data_clipped = np.clip(data, 0, 32767).astype(">i2")
-        arr_bytes = data_clipped.tobytes()
-        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
-    elif tag_name.startswith("DATA"):
-        # Channel data — was originally code 4 (signed short, big-endian) in our input
-        # but the input file shows element_code varies. Use uint16 big-endian for safety.
-        data_clipped = np.clip(data, 0, 65535).astype(">u2")
-        arr_bytes = data_clipped.tobytes()
-        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
-    else:
-        # Default: short (code 4) — SIGNED int16, big-endian
-        data_clipped = np.clip(data, 0, 32767).astype(">i2")
-        arr_bytes = data_clipped.tobytes()
-        return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
+    return buf
 
 
-def _patch_array_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes, element_code: int) -> bytes:
-    """Find and replace an ABIF tag entry's data.
-
-    ABIF structure:
-      - "ABIF" magic at byte 0
-      - Header: version (2), dir offset (4), dir entry size (4)...
-      - Each dir entry: name (4 bytes big-endian), number (4 bytes big-endian),
-                        element_type (2 bytes big-endian), element_size (2 bytes),
-                        num_elements (4 bytes), data_size (4 bytes),
-                        data_offset (4 bytes), data_handle (4 bytes)
-      - Data is stored separately (overlaps possible if data_size < offset)
-    """
-    if len(buf) < 4 or buf[:4] != b"ABIF":
-        raise ValueError(f"not an ABIF file: {buf[:4]!r}")
-
-    # ABIF header structure (Biopython's _HEADFMT = ">H4sI2H3I"):
-    #   bytes 0-3:   "ABIF"
-    #   bytes 4-5:   version (uint16 big-endian)
-    #   bytes 6-9:   tag name "etdir" or similar (4 chars)
-    #   bytes 10-13: tag number (uint32)
-    #   bytes 14-15: element type
-    #   bytes 16-17: element size
-    #   bytes 18-21: number of elements
-    #   bytes 22-25: data size
-    #   bytes 26-29: data offset  ← THIS is the directory offset
-    if len(buf) < 30:
-        raise ValueError(f"ABIF header too short: {len(buf)} bytes")
-    dir_offset = struct.unpack(">I", buf[26:30])[0]
-    # Number of directory entries (the ABIF spec stores this AFTER the offset)
-    # In Biopython output the structure is:
-    #   ABIF (4)
-    #   version (2)
-    #   <unknown 2 bytes>
-    #   dir_offset (4)
-    #   <unknown 4 bytes>
-    #   dir_entry_count (4) -- but this may not be reliably present
-    # To keep this simple, we just walk the directory linearly starting at dir_offset
-    # until we hit the entry that matches, and rewrite the data_offset + data_size.
-
-    target_name = tag_name.encode("ascii")[:4]
-    target_num = tag_num
-
-    # Walk directory entries (28 bytes each)
-    pos = dir_offset
-    while pos + 28 <= len(buf):
-        name = buf[pos:pos+4]
-        if name == target_name:
-            num = struct.unpack(">I", buf[pos+4:pos+8])[0]
-            if num == target_num:
-                # Found our entry. Parse the rest.
-                element_type = struct.unpack(">H", buf[pos+8:pos+10])[0]
-                element_size = struct.unpack(">H", buf[pos+10:pos+12])[0]
-                num_elements = struct.unpack(">I", buf[pos+12:pos+16])[0]
-                data_size = struct.unpack(">I", buf[pos+16:pos+20])[0]
-                data_offset_entry = struct.unpack(">I", buf[pos+20:pos+24])[0]
-
-                # If our new data fits in the existing data_size (with the
-                # data stored IN the directory entry itself), overwrite in place.
-                # Otherwise append the new data at the end of the file and
-                # update the offset.
-                if len(data) <= data_size:
-                    # In-place overwrite at data_offset_entry (or at pos+24 if data_size < 4)
-                    if data_size >= 4:
-                        buf = buf[:data_offset_entry] + data + buf[data_offset_entry+data_size:]
-                    else:
-                        # data was inline in the dir entry (pos+24..pos+28)
-                        buf = buf[:pos+24] + data + buf[pos+24+len(data):]
-                    return buf
-                else:
-                    # Append new data at end of file
-                    new_offset = len(buf)
-                    buf = buf + data
-                    # Compute element size from element_code
-                    # element_code: 1=byte, 2=char, 3=word, 4=ushort, 5=short, 6=int32, 7=float
-                    elem_size_map = {1: 1, 2: 1, 3: 2, 4: 2, 5: 2, 6: 4, 7: 4, 10: 8, 11: 8, 12: 8, 18: 1, 19: 1, 20: 8}
-                    elem_size = elem_size_map.get(element_code, max(1, len(data) // max(1, num_elements)) if num_elements else 1)
-                    new_num_elements = len(data) // elem_size if elem_size else len(data)
-                    # Rewrite the directory entry: data_offset, data_size, num_elements, element_size
-                    buf = (buf[:pos+10]
-                           + struct.pack(">H", elem_size)
-                           + struct.pack(">I", new_num_elements)
-                           + struct.pack(">I", len(data))
-                           + struct.pack(">I", new_offset)
-                           + buf[pos+24:])
-                    return buf
-        pos += 28
-    # Tag not found — append a new dir entry + data
-    # (rare — Seq7 usually has all of these)
-    new_offset = len(buf)
-    buf = buf + data
-    new_entry = (target_name
-                 + struct.pack(">I", target_num)
-                 + struct.pack(">H", element_code)
-                 + struct.pack(">H", 1)
-                 + struct.pack(">I", len(data))
-                 + struct.pack(">I", len(data))
-                 + struct.pack(">I", new_offset)
-                 + b"\x00\x00\x00\x00")
-    # Append the dir entry at the directory offset
-    buf = buf[:dir_offset] + new_entry + buf[dir_offset:]
-    # Also bump dirEntryCount if Biopython stored one
-    # (this is optional; some parsers don't enforce it)
+def _patch_array_tag(buf: bytes, tag_name: str, tag_num: int, data, element_code: int) -> bytes:
     return buf

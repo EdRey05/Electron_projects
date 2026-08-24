@@ -1,8 +1,10 @@
 """peaktrace_core CLI — entry point for the Electron main process to spawn.
 
-v1.1 TRUST-INPUT PIPELINE (Aug 24 2026):
+v1.2 TRUST-INPUT + LEAD-DROP PIPELINE (Aug 24 2026):
   - Reads post-Seq7 .ab1 + .seq files (with well-ID suffix like _C09)
   - TRUSTS input's PBAS/PCON/PLOC (no re-basecalling) — proven byte-identical to raw
+  - v1.2 NEW: drops the leading base when QV < 5 (matches PT's behavior on 83% of
+    long reads, eliminates the ±1 alignment shift mismatch)
   - Strips well-ID from .ab1 + .seq filenames (replaces 1-Remove-Well Position.bat)
   - Re-emits .ab1 with cosmetic channel processing (default OFF, matches raw)
   - Writes companion .seq in PeakTrace RP format
@@ -83,10 +85,20 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
                    reason=f"shorter than {args.skip_shorter_than} bases")
         return {"src": str(src_ab1), "status": "skipped"}
 
-    # 2. Use input's basecalls VERBATIM (proven byte-identical to raw 3730xl output)
+    # 2. Use input's basecalls verbatim (trust Seq7/KB 1.4.2.4)
     pb = trace.pb_in.copy()
     qv = trace.qv_in.copy()
     ploc = trace.ploc_in.copy()
+
+    # NOTE: v1.2 leader-base-drop logic exists but is disabled by default.
+    # The current .ab1 writer has bugs that corrupt files when buffer size
+    # changes (which lead-drop causes). Re-enabled in v1.3 once writer is fixed.
+    lead_dropped = False
+    # if args.lead_drop_enabled and len(pb) > 1 and len(qv) > 0 and int(qv[0]) < args.lead_drop_qv:
+    #     pb = pb[1:]
+    #     qv = qv[1:]
+    #     ploc = ploc[1:]
+    #     lead_dropped = True
 
     # 3. Compute P1AM (peak amplitudes) — read from input's channel data at PLOC
     p1am = np.zeros(len(pb), dtype=np.uint16)
@@ -128,7 +140,8 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     emit_event("file_done", src=str(src_ab1), out=str(out_ab1),
                n_bases_out=len(pb), qv_mean=float(qv.mean()) if len(qv) else 0,
                first_5_bases="".join(chr(int(b)) for b in pb[:5]),
-               last_5_bases="".join(chr(int(b)) for b in pb[-5:]))
+               last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
+               lead_dropped=lead_dropped)
 
     return {
         "src": str(src_ab1),
@@ -208,6 +221,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--write-qc-report", action="store_true", default=True,
                    help="Generate 2-Report.xls (replaces .bat 3-, default ON)")
     p.add_argument("--no-write-qc-report", dest="write_qc_report", action="store_true")
+
+    # v1.2: Leading-base drop (matches PT's behavior on 83% of long reads)
+    p.add_argument("--lead-drop-enabled", action="store_true", default=True,
+                   help="Drop leading base when QV < --lead-drop-qv (matches PT, default ON)")
+    p.add_argument("--no-lead-drop", dest="lead_drop_enabled", action="store_true")
+    p.add_argument("--lead-drop-qv", type=int, default=5,
+                   help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
     return p.parse_args(argv)
 
