@@ -1,0 +1,85 @@
+{
+  "name": "peak-tracer",
+  "version": "0.0.1",
+  "private": true,
+  "description": "In-house replacement for Nucleics Auto PeakTrace RP. Processes Sanger .ab1 chromatograms (spectral deconvolution → baseline → smoothing → re-basecall → .ab1 output) using a fully open-source Python pipeline.",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "electron .",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build": "vite build",
+    "start": "electron .",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:portable": "npm run build && electron-builder --win portable"
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.edrey05.peaktracer",
+    "productName": "Peak Tracer",
+    "copyright": "Copyright © 2026 EdRey05",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "python-app/Code/**/*",
+      "python-app/requirements.txt",
+      "package.json",
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/{.eslintrc,.prettierrc,.editorconfig}",
+      "!**/{__tests__,test,tests}/**",
+      "!**/{.DS_Store,.git,.github,docs,node_modules}/**",
+      "!**/{runtime,runtime-venv}/**"
+    ],
+    "extraResources": [
+      {
+        "from": "python-app",
+        "to": "python-app",
+        "filter": ["Code/**/*", "requirements.txt"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility"
+    }
+  }
+}

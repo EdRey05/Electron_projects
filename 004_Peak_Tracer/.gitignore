@@ -1,0 +1,14 @@
+node_modules
+out
+dist
+.vite
+*.log
+.DS_Store
+.env
+.env.*
+coverage
+tests/.tmp
+build
+release
+python-app/runtime-venv
+python-app/runtime

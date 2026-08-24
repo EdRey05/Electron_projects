@@ -1,0 +1,55 @@
+/* Google Fonts MUST come before @tailwind directives (PostCSS rule). */
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
+
+/* Range slider styling — match the paper/ink palette */
+.pt-range {
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: #DCE5E1;
+  outline: none;
+}
+.pt-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1F3A5F;
+  cursor: pointer;
+  border: 2px solid #F5F7F6;
+  box-shadow: 0 0 0 1px #1F3A5F;
+}
+.pt-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #1F3A5F;
+  cursor: pointer;
+  border: 2px solid #F5F7F6;
+  box-shadow: 0 0 0 1px #1F3A5F;
+}
+
+.pt-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.pt-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+.pt-scroll::-webkit-scrollbar-thumb {
+  background: #C8D2CD;
+  border-radius: 4px;
+}
+.pt-scroll::-webkit-scrollbar-thumb:hover {
+  background: #8FA39D;
+}
