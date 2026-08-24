@@ -12,3 +12,5 @@ build
 release
 python-app/runtime-venv
 python-app/runtime
+python-app/**/__pycache__
+*.pyc
