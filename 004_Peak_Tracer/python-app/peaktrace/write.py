@@ -58,7 +58,7 @@ def write_ab1(
     _, entries = _read_dir_entries(template_buf)
 
     # Encode our new data
-    pbas_bytes = bytes(int(b) for b in pb if b > 0)
+    pbas_bytes = bytes(int(b) for b in pb)
     pcon_bytes = bytes(int(b) for b in qv)
     ploc_data = np.clip(ploc.astype(np.int32), 0, 32767).astype(">i2").tobytes()
     if p1am is not None:

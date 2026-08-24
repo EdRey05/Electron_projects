@@ -18,15 +18,15 @@ const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 // ---- bundled python location (matches 003_Gene_Synthesis_Hub pattern) ----
 function pythonExePath() {
-  // Production: python-app/runtime-venv/Scripts/python.exe (Windows)
+  // Production: python-app/runtime/Scripts/python.exe (Windows)
   if (app.isPackaged) {
-    const venvPy = path.join(process.resourcesPath, "python-app", "runtime-venv", "Scripts", "python.exe");
+    const venvPy = path.join(process.resourcesPath, "python-app", "runtime", "Scripts", "python.exe");
     if (fs.existsSync(venvPy)) return venvPy;
     const sysPy = path.join(process.resourcesPath, "python-app", "runtime", "python.exe");
     if (fs.existsSync(sysPy)) return sysPy;
   }
-  // Development: <repo>/004_Peak_Tracer/python-app/runtime-venv/Scripts/python.exe
-  const devVenv = path.join(__dirname, "..", "python-app", "runtime-venv", "Scripts", "python.exe");
+  // Development: <repo>/004_Peak_Tracer/python-app/runtime/Scripts/python.exe
+  const devVenv = path.join(__dirname, "..", "python-app", "runtime", "Scripts", "python.exe");
   if (fs.existsSync(devVenv)) return devVenv;
   // Fall back to whatever's on PATH
   return "python";
@@ -34,9 +34,9 @@ function pythonExePath() {
 
 function peaktraceScriptPath() {
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "python-app", "Code", "peaktrace_core.py");
+    return path.join(process.resourcesPath, "python-app", "peaktrace_core.py");
   }
-  return path.join(__dirname, "..", "python-app", "Code", "peaktrace_core.py");
+  return path.join(__dirname, "..", "python-app", "peaktrace_core.py");
 }
 
 function createWindow() {
