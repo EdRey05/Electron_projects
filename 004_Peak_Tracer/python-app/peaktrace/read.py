@@ -94,18 +94,35 @@ def read_ab1(path: Path) -> Trace:
 
 
 def write_seq(path: Path, pb: np.ndarray, ploc: np.ndarray, qv: np.ndarray) -> None:
-    """Write an ABI-style .seq file.
+    """Write an ABI-style .seq file matching PeakTrace RP / Seq7 output format.
 
-    Matches the format produced by Seq7/PeakTrace RP so downstream tools read it:
-      Line 1: "QUALITY VALUES"
-      Line 2: bases as one long string
-      Line 3: peak locations, comma-separated
-      Line 4: QVs, comma-separated
+    Format verified Aug 24 by inspecting PeakTrace RP output:
+      Line 1: sample basename padded to a fixed total length + CRLF
+      Line 2: sample basename padded to same length + LF
+      Line 3: sample basename padded to same length + CRLF
+      Line 4: the base sequence
 
-    Some tools expect a slightly different layout; this matches what Ed showed in
-    the POS1-H01.seq sample.
+    The padding rule (observed across 58 PT files): line1 length = basename_len + 6.
+      Examples:
+        basename_len=41 → padded_len=47 (41 + 6)
+        basename_len=49 → padded_len=55 (49 + 6)
+        basename_len=40 → padded_len=46 (40 + 6)
+
+    The basename is taken from the output filename's stem. We only emit bases
+    (no PLOC/QV) — matches what PeakTrace RP emits, which is what the sister
+    company expects.
     """
+    sample = path.stem
+    basename_len = len(sample)
+    padded_len = basename_len + 6
+    sample_padded = sample + " " * (padded_len - basename_len)
+
     bases = "".join(chr(int(c)) for c in pb if c > 0)
-    plocs = ",".join(str(int(x)) for x in ploc)
-    qvs = ",".join(str(int(x)) for x in qv)
-    path.write_text(f"QUALITY VALUES\n{bases}\n{plocs}\n{qvs}\n", encoding="ascii")
+
+    content = (
+        sample_padded + "\r\n"
+        + sample_padded + "\n"
+        + sample_padded + "\r\n"
+        + bases
+    )
+    path.write_bytes(content.encode("ascii"))
