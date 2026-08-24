@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS = {
   waveletSharpening: false,         // OFF in RP mode; ON for full PeakTrace emulation
   skipShorterThan: 500,             // "skip short/pcr base" in PeakTrace RP
   setAbiLimits: true,               // "set abi limits" checkbox — clamp output to uint16 range
+  traceRescaleFactor: 0.5,          // PeakTrace RP rescales channel data to ~½ input amplitude (verified Aug 24 on real data)
+  dropLeadingBase: true,            // Drop leading-base injection artifact (verified Aug 24 — seq7 starts with C, pt starts with G)
 
   // Basecaller settings
   qualityThreshold: 20,             // "good quality threshold" — Q20 = "good" base
@@ -53,9 +55,10 @@ const DEFAULT_SETTINGS = {
   goodBaseImprovement: -10,         // "good base improvement" — -10
 
   // Output settings
-  filenameSuffix: "_pt",
+  filenameSuffix: "",                   // PeakTrace RP strips well ID, doesn't add suffix (Aug 24 real-data finding)
+  stripWellId: true,                    // Default ON: strip trailing _C09 etc.
   preserveMetadata: true,
-  emitSeq: false,                   // PeakTrace emits .seq; BBI deletes them. We OFF by default.
+  emitSeq: false,                       // PeakTrace emits .seq; BBI deletes them. We OFF by default.
   maxWorkers: 4,
 };
 
@@ -491,6 +494,22 @@ export default function PeakTracer() {
                   />
                   <span style={{ color: ink }}>Set ABI limits (clamp output values)</span>
                 </label>
+                <NumSlider
+                  label="Trace rescale factor"
+                  value={settings.traceRescaleFactor}
+                  onChange={(v) => setSettings((s) => ({ ...s, traceRescaleFactor: v }))}
+                  min={0.1} max={2.0} step={0.05}
+                  suffix="x (≈0.5 matches PeakTrace RP)"
+                />
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.dropLeadingBase}
+                    onChange={(e) => setSettings((s) => ({ ...s, dropLeadingBase: e.target.checked }))}
+                  />
+                  <span style={{ color: ink }}>Drop leading-base artifact</span>
+                  <span className="text-xs" style={{ color: muted }}>(verified: PT skips first base)</span>
+                </label>
 
                 {/* --- Group 2: Basecaller --- */}
                 <NumSlider
@@ -564,15 +583,24 @@ export default function PeakTracer() {
                   <span style={{ color: ink }}>Emit .seq files (PeakTrace artifact)</span>
                   <span className="text-xs" style={{ color: muted }}>(BBI deletes these)</span>
                 </label>
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.stripWellId}
+                    onChange={(e) => setSettings((s) => ({ ...s, stripWellId: e.target.checked }))}
+                  />
+                  <span style={{ color: ink }}>Strip well-ID suffix from filename</span>
+                  <span className="text-xs" style={{ color: muted }}>(e.g. _C09 → removed; matches PeakTrace RP)</span>
+                </label>
                 <div className="flex flex-col gap-1 md:col-span-2">
-                  <label className="text-xs" style={{ color: muted }}>Filename suffix</label>
+                  <label className="text-xs" style={{ color: muted }}>Filename suffix (only added if strip is OFF)</label>
                   <input
                     type="text"
                     value={settings.filenameSuffix}
                     onChange={(e) => setSettings((s) => ({ ...s, filenameSuffix: e.target.value }))}
                     className="px-3 py-2 text-sm rounded border font-mono"
                     style={{ borderColor: border, color: ink, background: inputBg }}
-                    placeholder="_pt"
+                    placeholder="(empty)"
                   />
                 </div>
               </div>
