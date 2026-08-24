@@ -28,18 +28,31 @@ const coral = "#E26B5A";            // error / process failed
 const muted = "#8FA39D";            // secondary text
 const inputBg = "#FFFFFF";
 
-// ---------- default settings (will be tuned against real PeakTrace RP output) ----------
+// ---------- default settings (mirrors BBI's actual PeakTrace RP 6.961 config from Aug 24 2026 screenshot) ----------
 const DEFAULT_SETTINGS = {
-  mode: "rp",                       // "rp" | "full" | "passthrough"
-  smoothingWindow: 5,
-  smoothingOrder: 2,
-  baselineWindow: 400,
-  baselinePercentile: 10,
-  waveletSharpening: false,
-  qualityThreshold: 20,
-  minPeakSnr: 3.0,
-  mixedBaseThreshold: 0.25,
-  passThroughKbBasecall: false,
+  mode: "rp",                       // "rp" | "full" | "passthrough"  — RP matches PeakTrace RP
+  cleanBaseline: true,              // "clean baseline" checkbox in PeakTrace RP — ON
+  smoothingLevel: 3,                // "extra smoothing level" in PeakTrace RP — 3
+                                   // (maps to Savitzky-Golay window = 2*level+1 = 7)
+  smoothingOrder: 2,                // Savitzky-Golay polynomial order
+  baselineWindow: 400,              // rolling baseline window in scan points
+  baselinePercentile: 10,           // low-percentile floor for baseline
+  applyPeakResolution: true,        // "no peak resolution" unchecked → RP does apply some resolution
+  waveletSharpening: false,         // OFF in RP mode; ON for full PeakTrace emulation
+  skipShorterThan: 500,             // "skip short/pcr base" in PeakTrace RP
+  setAbiLimits: true,               // "set abi limits" checkbox — clamp output to uint16 range
+
+  // Basecaller settings
+  qualityThreshold: 20,             // "good quality threshold" — Q20 = "good" base
+  nBaseThreshold: 5,                // "n base threshold" — QV below this becomes N
+  mixedPeakThreshold: 0,            // "mixed peak threshold" — 0% = NO mixed bases (BBI uses pure single-base mode)
+  qAverageTrimValue: 9,             // "q average trim value" — 9
+  qAverageTrimWindow: 40,           // "q average trim window" — 40
+  trim3EndOnly: true,               // "trim 3' end only" — ON (critical, don't trim 5')
+  signalStartPeak: "auto",          // "signal start peak" — auto
+  goodBaseImprovement: -10,         // "good base improvement" — -10
+
+  // Output settings
   filenameSuffix: "_pt",
   preserveMetadata: true,
   emitSeq: false,                   // PeakTrace emits .seq; BBI deletes them. We OFF by default.
@@ -406,14 +419,25 @@ export default function PeakTracer() {
               </div>
             </div>
 
-            {/* Advanced settings */}
+            {/* Advanced settings — mirrors every PeakTrace RP option from the Aug 24 2026 screenshot */}
             {showAdvanced && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mt-4 pt-4 border-t" style={{ borderColor: border }}>
+                {/* --- Group 1: Trace processing --- */}
+                <label className="flex items-center gap-2 text-sm cursor-pointer md:col-span-2">
+                  <input
+                    type="checkbox"
+                    checked={settings.cleanBaseline}
+                    onChange={(e) => setSettings((s) => ({ ...s, cleanBaseline: e.target.checked }))}
+                  />
+                  <span style={{ color: ink }}>Clean baseline (apply baseline subtraction)</span>
+                  <span className="text-xs" style={{ color: muted }}>(matches PeakTrace RP default: ON)</span>
+                </label>
                 <NumSlider
-                  label="Smoothing window"
-                  value={settings.smoothingWindow}
-                  onChange={(v) => setSettings((s) => ({ ...s, smoothingWindow: v }))}
-                  min={1} max={21} step={2}
+                  label="Smoothing level (extra smoothing)"
+                  value={settings.smoothingLevel}
+                  onChange={(v) => setSettings((s) => ({ ...s, smoothingLevel: v }))}
+                  min={0} max={10} step={1}
+                  suffix={` (Savitzky-Golay win=${settings.smoothingLevel * 2 + 1})`}
                 />
                 <NumSlider
                   label="Smoothing polynomial order"
@@ -434,31 +458,15 @@ export default function PeakTracer() {
                   min={1} max={50} step={1}
                   suffix="%"
                 />
-                <NumSlider
-                  label="Quality threshold"
-                  value={settings.qualityThreshold}
-                  onChange={(v) => setSettings((s) => ({ ...s, qualityThreshold: v }))}
-                  min={5} max={60} step={1}
-                />
-                <NumSlider
-                  label="Min peak SNR"
-                  value={settings.minPeakSnr}
-                  onChange={(v) => setSettings((s) => ({ ...s, minPeakSnr: v }))}
-                  min={1.0} max={10.0} step={0.1}
-                />
-                <NumSlider
-                  label="Mixed-base threshold"
-                  value={settings.mixedBaseThreshold}
-                  onChange={(v) => setSettings((s) => ({ ...s, mixedBaseThreshold: v }))}
-                  min={0.05} max={0.5} step={0.05}
-                />
-                <NumSlider
-                  label="Max parallel workers"
-                  value={settings.maxWorkers}
-                  onChange={(v) => setSettings((s) => ({ ...s, maxWorkers: v }))}
-                  min={1} max={16} step={1}
-                />
-
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.applyPeakResolution}
+                    onChange={(e) => setSettings((s) => ({ ...s, applyPeakResolution: e.target.checked }))}
+                  />
+                  <span style={{ color: ink }}>Apply light peak resolution</span>
+                  <span className="text-xs" style={{ color: muted }}>(RP does this despite the name)</span>
+                </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
@@ -468,15 +476,77 @@ export default function PeakTracer() {
                   <span style={{ color: ink }}>Enable wavelet sharpening</span>
                   <span className="text-xs" style={{ color: muted }}>(Full mode only)</span>
                 </label>
+                <NumSlider
+                  label="Skip reads shorter than"
+                  value={settings.skipShorterThan}
+                  onChange={(v) => setSettings((s) => ({ ...s, skipShorterThan: v }))}
+                  min={0} max={2000} step={50}
+                  suffix=" bases"
+                />
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"
-                    checked={settings.passThroughKbBasecall}
-                    onChange={(e) => setSettings((s) => ({ ...s, passThroughKbBasecall: e.target.checked }))}
+                    checked={settings.setAbiLimits}
+                    onChange={(e) => setSettings((s) => ({ ...s, setAbiLimits: e.target.checked }))}
                   />
-                  <span style={{ color: ink }}>Pass-through KB basecall</span>
-                  <span className="text-xs" style={{ color: muted }}>(skip our basecaller)</span>
+                  <span style={{ color: ink }}>Set ABI limits (clamp output values)</span>
                 </label>
+
+                {/* --- Group 2: Basecaller --- */}
+                <NumSlider
+                  label="Quality threshold (good QV)"
+                  value={settings.qualityThreshold}
+                  onChange={(v) => setSettings((s) => ({ ...s, qualityThreshold: v }))}
+                  min={5} max={60} step={1}
+                />
+                <NumSlider
+                  label="N-base threshold (QV → N)"
+                  value={settings.nBaseThreshold}
+                  onChange={(v) => setSettings((s) => ({ ...s, nBaseThreshold: v }))}
+                  min={0} max={30} step={1}
+                />
+                <NumSlider
+                  label="Mixed peak threshold"
+                  value={settings.mixedPeakThreshold}
+                  onChange={(v) => setSettings((s) => ({ ...s, mixedPeakThreshold: v }))}
+                  min={0} max={200} step={5}
+                  suffix="%"
+                />
+                <NumSlider
+                  label="Q-average trim value"
+                  value={settings.qAverageTrimValue}
+                  onChange={(v) => setSettings((s) => ({ ...s, qAverageTrimValue: v }))}
+                  min={0} max={40} step={1}
+                />
+                <NumSlider
+                  label="Q-average trim window"
+                  value={settings.qAverageTrimWindow}
+                  onChange={(v) => setSettings((s) => ({ ...s, qAverageTrimWindow: v }))}
+                  min={5} max={200} step={5}
+                />
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.trim3EndOnly}
+                    onChange={(e) => setSettings((s) => ({ ...s, trim3EndOnly: e.target.checked }))}
+                  />
+                  <span style={{ color: ink }}>Trim 3' end only</span>
+                  <span className="text-xs" style={{ color: muted }}>(critical: keep 5' primer intact)</span>
+                </label>
+                <NumSlider
+                  label="Good base improvement delta"
+                  value={settings.goodBaseImprovement}
+                  onChange={(v) => setSettings((s) => ({ ...s, goodBaseImprovement: v }))}
+                  min={-999} max={999} step={1}
+                />
+                <NumSlider
+                  label="Max parallel workers"
+                  value={settings.maxWorkers}
+                  onChange={(v) => setSettings((s) => ({ ...s, maxWorkers: v }))}
+                  min={1} max={16} step={1}
+                />
+
+                {/* --- Group 3: Output --- */}
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
                     type="checkbox"

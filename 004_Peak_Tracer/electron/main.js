@@ -117,20 +117,30 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
     "--input-dir", inputDir,
     "--output-dir", outputDir,
     "--mode", settings.mode || "rp",
-    "--smoothing-window", String(settings.smoothingWindow ?? 5),
+    "--smoothing-level", String(settings.smoothingLevel ?? 3),       // PeakTrace RP default
     "--smoothing-order", String(settings.smoothingOrder ?? 2),
     "--baseline-window", String(settings.baselineWindow ?? 400),
     "--baseline-percentile", String(settings.baselinePercentile ?? 10),
     "--quality-threshold", String(settings.qualityThreshold ?? 20),
-    "--min-peak-snr", String(settings.minPeakSnr ?? 3.0),
-    "--mixed-base-threshold", String(settings.mixedBaseThreshold ?? 0.25),
+    "--n-base-threshold", String(settings.nBaseThreshold ?? 5),
+    "--mixed-peak-threshold", String(settings.mixedPeakThreshold ?? 0),  // BBI: 0% = no mixed bases
+    "--q-average-trim-value", String(settings.qAverageTrimValue ?? 9),
+    "--q-average-trim-window", String(settings.qAverageTrimWindow ?? 40),
+    "--skip-shorter-than", String(settings.skipShorterThan ?? 500),
+    "--good-base-improvement", String(settings.goodBaseImprovement ?? -10),
     "--filename-suffix", settings.filenameSuffix || "_pt",
     "--max-workers", String(settings.maxWorkers ?? 4),
   ];
+  if (settings.cleanBaseline === false) args.push("--no-clean-baseline");
+  else args.push("--clean-baseline");
+  if (settings.applyPeakResolution) args.push("--apply-peak-resolution");
   if (settings.waveletSharpening) args.push("--wavelet-sharpening");
   if (settings.preserveMetadata) args.push("--preserve-metadata");
   if (settings.emitSeq) args.push("--emit-seq");
-  if (settings.passThroughKbBasecall) args.push("--pass-through-kb-basecall");
+  if (settings.trim3EndOnly === false) args.push("--no-trim-3-only");  // off = trim both ends
+  else args.push("--trim-3-only");
+  if (settings.setAbiLimits) args.push("--set-abi-limits");
+  if (settings.signalStartPeak) args.push("--signal-start-peak", settings.signalStartPeak);
 
   return new Promise((resolve) => {
     const child = spawn(py, args, { windowsHide: true });
