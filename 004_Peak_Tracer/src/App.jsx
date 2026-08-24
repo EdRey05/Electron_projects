@@ -58,7 +58,7 @@ const DEFAULT_SETTINGS = {
   filenameSuffix: "",                   // PeakTrace RP strips well ID, doesn't add suffix (Aug 24 real-data finding)
   stripWellId: true,                    // Default ON: strip trailing _C09 etc.
   preserveMetadata: true,
-  emitSeq: false,                       // PeakTrace emits .seq; BBI deletes them. We OFF by default.
+  emitSeq: true,                        // PeakTrace emits .seq; Ed confirmed Aug 24 some customers need them. ON by default.
   maxWorkers: 4,
 };
 
@@ -581,7 +581,7 @@ export default function PeakTracer() {
                     onChange={(e) => setSettings((s) => ({ ...s, emitSeq: e.target.checked }))}
                   />
                   <span style={{ color: ink }}>Emit .seq files (PeakTrace artifact)</span>
-                  <span className="text-xs" style={{ color: muted }}>(BBI deletes these)</span>
+                  <span className="text-xs" style={{ color: muted }}>(some customers need these — Ed Aug 24)</span>
                 </label>
                 <label className="flex items-center gap-2 text-sm cursor-pointer">
                   <input
