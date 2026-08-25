@@ -100,21 +100,26 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         ploc = ploc[1:]
         lead_dropped = True
 
-    # v2.0: Late-read extension — recover bases beyond Seq7's 3' end
+    # v2.0: Late-read extension via trace interpolation + re-basecalling
+    # PeakTrace RP produces ~1.2x more scan data than Seq7 (e.g. 19,831 vs 16,026).
+    # We replicate this by interpolating the trace to higher resolution, then
+    # re-basecalling with adaptive peak detection. This recovers bases that
+    # Seq7 missed because peaks were below its detection threshold.
     extended = False
     ext_bases_added = 0
     if args.extend_late_read and len(pb) > 0:
         try:
-            from .peak import extend_late_read
-            pb, ploc, qv = extend_late_read(
-                trace, None, pb, ploc, qv,
-                tail_start_pos=int(ploc[-1]),
-                min_peak_factor_tail=args.extend_min_snr,
-                stop_quiet_scans=args.extend_stop_quiet,
-                stop_min_amp=args.extend_stop_amp,
+            from .peak import extend_late_read_interpolated
+            pb_new, ploc_new, qv_new = extend_late_read_interpolated(
+                trace,
+                interpolation_factor=args.extend_interp_factor,
+                min_snr=args.extend_min_snr,
+                stop_quiet_bases=args.extend_stop_quiet,
             )
-            ext_bases_added = len(pb) - trace.n_bases
-            extended = ext_bases_added > 0
+            ext_bases_added = len(pb_new) - len(pb)
+            if ext_bases_added > 0:
+                pb, ploc, qv = pb_new, ploc_new, qv_new
+                extended = True
         except Exception as e:
             emit_event("file_error", src=str(src_ab1), error=f"extend failed: {e}")
 
@@ -247,15 +252,15 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
-    # v2.0: Late-read extension (recover bases beyond Seq7's 3' end)
+    # v2.0: Late-read extension (interpolate trace + re-basecall)
     p.add_argument("--extend-late-read", action="store_true", default=False,
-                   help="Extend basecalling beyond Seq7's 3' end (matches PT's late-read recovery)")
+                   help="Extend basecalling by interpolating trace + re-calling peaks")
+    p.add_argument("--extend-interp-factor", type=float, default=1.25,
+                   help="Interpolation factor (default 1.25 = PT's typical upsampling)")
     p.add_argument("--extend-min-snr", type=float, default=1.3,
-                   help="Minimum SNR threshold for tail peaks (default 1.3)")
-    p.add_argument("--extend-stop-quiet", type=int, default=80,
-                   help="Stop after N consecutive quiet scans (default 80)")
-    p.add_argument("--extend-stop-amp", type=int, default=15,
-                   help="Stop when max channel amp drops below this (default 15)")
+                   help="Minimum SNR for extended peaks (default 1.3)")
+    p.add_argument("--extend-stop-quiet", type=int, default=40,
+                   help="Stop after N consecutive low-quality bases (default 40)")
 
     return p.parse_args(argv)
 
