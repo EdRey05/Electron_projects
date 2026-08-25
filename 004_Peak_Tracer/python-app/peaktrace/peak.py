@@ -229,6 +229,82 @@ def trim_3_end(bases: np.ndarray, qvs: np.ndarray, value: int = 9, window: int =
     return bases[:trim_pos], qvs[:trim_pos]
 
 
+def get_data14_channels(trace: Trace) -> dict:
+    """Extract DATA1-4 (full-resolution processed channels) from trace.tags.
+
+    Returns dict {1: ndarray, 2: ndarray, 3: ndarray, 4: ndarray} (A, C, G, T).
+    Empty dict if DATA1-4 are absent.
+    """
+    full = {}
+    for ch in (1, 2, 3, 4):
+        tag = f"DATA{ch}"
+        if tag in trace.tags:
+            arr = np.asarray(trace.tags[tag], dtype=np.float64)
+            if len(arr) > 100:
+                full[ch] = arr
+    return full
+
+
+def detect_peaks_data14(trace: Trace,
+                        min_snr: float = 1.3,
+                        distance: int = 8,
+                        adaptive_fill: bool = True) -> dict:
+    """Detect peaks in DATA1-4 at PT-like density (~12.3 scans/base).
+
+    Strategy:
+      1. Per channel, find_peaks with prominence = noise * min_snr
+      2. Adaptive fill pass: where adjacent peaks in the COMBINED signal are
+         > 1.5x the median spacing, re-run find_peaks on that gap region with
+         prominence * 0.8 to pick up marginal peaks Seq7-style detectors miss
+      3. Returns dict {ch: peak_positions} in DATA1-4 coordinates
+
+    Sanity: total peaks across channels should be ~ len(DATA1) / 12.3.
+    """
+    from scipy.signal import find_peaks
+
+    full = get_data14_channels(trace)
+    if not full:
+        return {}
+
+    n = len(next(iter(full.values())))
+    peaks = {}
+    noise = {}
+    for ch, arr in full.items():
+        noise[ch] = max(1.0, float(np.percentile(arr, 5)))
+        pk, _ = find_peaks(arr, prominence=noise[ch] * min_snr, distance=distance)
+        peaks[ch] = pk.astype(np.int32)
+
+    if not adaptive_fill:
+        return peaks
+
+    # Adaptive fill: find gaps in the combined peak train and re-scan them
+    combined_peaks = np.sort(np.concatenate([peaks[ch] for ch in peaks]))
+    if len(combined_peaks) < 20:
+        return peaks
+    spacings = np.diff(combined_peaks)
+    median_spacing = float(np.median(spacings))
+    if median_spacing <= 0:
+        return peaks
+
+    gap_threshold = median_spacing * 1.5
+    gap_idx = np.where(spacings > gap_threshold)[0]
+
+    for gi in gap_idx:
+        lo = int(combined_peaks[gi])
+        hi = int(combined_peaks[gi + 1])
+        if hi - lo < distance * 2:
+            continue
+        for ch, arr in full.items():
+            sub = arr[lo:hi]
+            # Re-scan with lower prominence
+            pk, _ = find_peaks(sub, prominence=noise[ch] * min_snr * 0.8, distance=distance)
+            if len(pk):
+                new_peaks = pk + lo
+                peaks[ch] = np.sort(np.concatenate([peaks[ch], new_peaks])).astype(np.int32)
+
+    return peaks
+
+
 def extend_late_read_interpolated(
     trace: Trace,
     interpolation_factor: float = 1.25,
