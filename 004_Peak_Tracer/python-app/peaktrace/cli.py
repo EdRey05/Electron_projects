@@ -94,11 +94,29 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     # The current .ab1 writer has bugs that corrupt files when buffer size
     # changes (which lead-drop causes). Re-enabled in v1.3 once writer is fixed.
     lead_dropped = False
-    # if args.lead_drop_enabled and len(pb) > 1 and len(qv) > 0 and int(qv[0]) < args.lead_drop_qv:
-    #     pb = pb[1:]
-    #     qv = qv[1:]
-    #     ploc = ploc[1:]
-    #     lead_dropped = True
+    if args.lead_drop_enabled and len(pb) > 1 and len(qv) > 0 and int(qv[0]) < args.lead_drop_qv:
+        pb = pb[1:]
+        qv = qv[1:]
+        ploc = ploc[1:]
+        lead_dropped = True
+
+    # v2.0: Late-read extension — recover bases beyond Seq7's 3' end
+    extended = False
+    ext_bases_added = 0
+    if args.extend_late_read and len(pb) > 0:
+        try:
+            from .peak import extend_late_read
+            pb, ploc, qv = extend_late_read(
+                trace, None, pb, ploc, qv,
+                tail_start_pos=int(ploc[-1]),
+                min_peak_factor_tail=args.extend_min_snr,
+                stop_quiet_scans=args.extend_stop_quiet,
+                stop_min_amp=args.extend_stop_amp,
+            )
+            ext_bases_added = len(pb) - trace.n_bases
+            extended = ext_bases_added > 0
+        except Exception as e:
+            emit_event("file_error", src=str(src_ab1), error=f"extend failed: {e}")
 
     # 3. Compute P1AM (peak amplitudes) — read from input's channel data at PLOC
     p1am = np.zeros(len(pb), dtype=np.uint16)
@@ -228,6 +246,16 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--no-lead-drop", dest="lead_drop_enabled", action="store_true")
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
+
+    # v2.0: Late-read extension (recover bases beyond Seq7's 3' end)
+    p.add_argument("--extend-late-read", action="store_true", default=False,
+                   help="Extend basecalling beyond Seq7's 3' end (matches PT's late-read recovery)")
+    p.add_argument("--extend-min-snr", type=float, default=1.3,
+                   help="Minimum SNR threshold for tail peaks (default 1.3)")
+    p.add_argument("--extend-stop-quiet", type=int, default=80,
+                   help="Stop after N consecutive quiet scans (default 80)")
+    p.add_argument("--extend-stop-amp", type=int, default=15,
+                   help="Stop when max channel amp drops below this (default 15)")
 
     return p.parse_args(argv)
 
