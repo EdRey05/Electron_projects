@@ -434,7 +434,8 @@ def extend_late_read_interpolated(
 def rebasecall_data14(trace: Trace,
                       map_params: dict,
                       peaks14: dict,
-                      min_snr: float = 1.3) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+                      min_snr: float = 1.3,
+                      pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
 
     Merge rule:
@@ -447,9 +448,12 @@ def rebasecall_data14(trace: Trace,
     """
     from .align import map_to_data9
 
+    if pb is None: pb = trace.pb_in.copy()
+    if ploc is None: ploc = trace.ploc_in.copy()
+    if qv is None: qv = trace.qv_in.copy()
     full = get_data14_channels(trace)
     if not full or not peaks14 or not map_params.get("ok"):
-        return trace.pb_in.copy(), trace.ploc_in.copy(), trace.qv_in.copy()
+        return pb, ploc, qv
 
     # Channel noise from DATA1-4
     noise = {ch: max(1.0, float(np.percentile(arr, 5))) for ch, arr in full.items()}
@@ -472,13 +476,13 @@ def rebasecall_data14(trace: Trace,
         amps = merged[pos]
         primary_ch, primary_amp = max(amps.items(), key=lambda kv: kv[1])
         snr = primary_amp / noise[primary_ch]
-        qv = max(1, min(62, int(round(10 * np.log10(snr * 10))))) if snr >= 1.0 else 1
+        qv_val = max(1, min(62, int(round(10 * np.log10(snr * 10))))) if snr >= 1.0 else 1
         cand_pos14.append(pos)
         cand_base.append(ord(BASE_OF_FULL[primary_ch]))
-        cand_qv.append(qv)
+        cand_qv.append(qv_val)
 
     if not cand_pos14:
-        return trace.pb_in.copy(), trace.ploc_in.copy(), trace.qv_in.copy()
+        return pb, ploc, qv
 
     # Map to DATA9-12 coords
     cand_pos9 = map_to_data9(np.array(cand_pos14), map_params)
@@ -493,13 +497,12 @@ def rebasecall_data14(trace: Trace,
     # Only add new bases where Seq7 has a GAP (dropped peak) — i.e., where the
     # distance flanking Seq7 calls exceeds 1.5x median Seq7 spacing. Within
     # normal-density regions, trust Seq7 and add nothing.
-    seq7_pos = trace.ploc_in.astype(np.int32)
+    seq7_pos = ploc.astype(np.int32)
     spacings = np.diff(seq7_pos)
     med_spacing = float(np.median(spacings)) if len(spacings) else 12.0
     gap_centers = []  # (gap_start, gap_end) in DATA9-12 coords
-    # Leading gap (before first Seq7 base)
-    if len(seq7_pos) and seq7_pos[0] > med_spacing * 1.5:
-        gap_centers.append((0, int(seq7_pos[0])))
+    # NOTE: no leading gap — inserting bases before the first Seq7 call risks
+    # primer-injection artifacts and breaks prefix integrity. Skip it.
     for i in range(len(seq7_pos) - 1):
         if spacings[i] > med_spacing * 1.5:
             gap_centers.append((int(seq7_pos[i]), int(seq7_pos[i + 1])))
@@ -519,10 +522,13 @@ def rebasecall_data14(trace: Trace,
     new_base = cand_base[keep_new]
     new_qv = cand_qv[keep_new]
 
+    if len(new_pos) == 0:
+        return pb, ploc, qv
+
     # Final merge: Seq7 + new, sorted by position
     all_pos = np.concatenate([seq7_pos, new_pos])
-    all_base = np.concatenate([trace.pb_in, new_base])
-    all_qv = np.concatenate([trace.qv_in, new_qv])
+    all_base = np.concatenate([pb, new_base])
+    all_qv = np.concatenate([qv, new_qv])
     order = np.argsort(all_pos, kind="stable")
 
     return (all_base[order].astype(np.uint8),

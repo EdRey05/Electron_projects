@@ -100,28 +100,55 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         ploc = ploc[1:]
         lead_dropped = True
 
-    # v2.0: Late-read extension via trace interpolation + re-basecalling
-    # PeakTrace RP produces ~1.2x more scan data than Seq7 (e.g. 19,831 vs 16,026).
-    # We replicate this by interpolating the trace to higher resolution, then
-    # re-basecalling with adaptive peak detection. This recovers bases that
-    # Seq7 missed because peaks were below its detection threshold.
+    # v1.3: Re-basecall from DATA1-4 full-resolution channels
+    # Seq7 truncates DATA9-12 to ~16k scans; DATA1-4 carry ~18.7k scans of the
+    # same run. Re-basecalling DATA1-4 at PT-like density (~12.3 scans/base)
+    # recovers bases Seq7 dropped, merged into Seq7's spacing gaps.
     extended = False
     ext_bases_added = 0
-    if args.extend_late_read and len(pb) > 0:
+    map_r2 = 0.0
+    if args.rebasecall_data14 and len(pb) > 0:
         try:
-            from .peak import extend_late_read_interpolated
-            pb_new, ploc_new, qv_new = extend_late_read_interpolated(
-                trace,
-                interpolation_factor=args.extend_interp_factor,
-                min_snr=args.extend_min_snr,
-                stop_quiet_bases=args.extend_stop_quiet,
-            )
-            ext_bases_added = len(pb_new) - len(pb)
-            if ext_bases_added > 0:
-                pb, ploc, qv = pb_new, ploc_new, qv_new
-                extended = True
+            from .align import learn_coordinate_map
+            from .peak import detect_peaks_data14, rebasecall_data14
+            map_params = learn_coordinate_map(trace)
+            map_r2 = map_params.get("r_squared", 0.0)
+            if map_params.get("ok"):
+                peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr)
+                pb_new, ploc_new, qv_new = rebasecall_data14(
+                    trace, map_params, peaks14, min_snr=args.extend_min_snr,
+                    pb=pb, ploc=ploc, qv=qv)
+                # Sanity: every original call must survive in the merged output
+                # (same positions, same bases, same order). Internal gap insertions
+                # are expected — we don't require prefix identity by index.
+                orig_positions = set(int(x) for x in ploc)
+                new_positions = set(int(x) for x in ploc_new)
+                if orig_positions.issubset(new_positions) and len(pb_new) >= len(pb):
+                    # also check bases at original positions are unchanged
+                    ok = True
+                    pos_to_base = {}
+                    for pos_, b_ in zip(ploc_new, pb_new):
+                        pos_to_base.setdefault(int(pos_), int(b_))
+                    for pos_, b_ in zip(ploc, pb):
+                        if pos_to_base.get(int(pos_), -1) != int(b_):
+                            ok = False
+                            break
+                    if ok:
+                        ext_bases_added = len(pb_new) - len(pb)
+                        if ext_bases_added > 0:
+                            pb, ploc, qv = pb_new, ploc_new, qv_new
+                            extended = True
+                    else:
+                        emit_event("file_warn", src=str(src_ab1),
+                                   msg="rebasecall altered an original call; rejected")
+                else:
+                    emit_event("file_warn", src=str(src_ab1),
+                               msg="rebasecall lost original positions; rejected")
+            else:
+                emit_event("file_warn", src=str(src_ab1),
+                           msg=f"coordinate map r2={map_r2:.3f} too low; trust-input")
         except Exception as e:
-            emit_event("file_error", src=str(src_ab1), error=f"extend failed: {e}")
+            emit_event("file_error", src=str(src_ab1), error=f"rebasecall failed: {e}")
 
     # 3. Compute P1AM (peak amplitudes) — read from input's channel data at PLOC
     p1am = np.zeros(len(pb), dtype=np.uint16)
@@ -164,7 +191,8 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
                n_bases_out=len(pb), qv_mean=float(qv.mean()) if len(qv) else 0,
                first_5_bases="".join(chr(int(b)) for b in pb[:5]),
                last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
-               lead_dropped=lead_dropped)
+               lead_dropped=lead_dropped, extended=extended,
+               ext_bases_added=ext_bases_added, map_r_squared=map_r2)
 
     return {
         "src": str(src_ab1),
@@ -252,15 +280,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
-    # v2.0: Late-read extension (interpolate trace + re-basecall)
-    p.add_argument("--extend-late-read", action="store_true", default=False,
-                   help="Extend basecalling by interpolating trace + re-calling peaks")
-    p.add_argument("--extend-interp-factor", type=float, default=1.25,
-                   help="Interpolation factor (default 1.25 = PT's typical upsampling)")
+    # v1.3: Re-basecall from DATA1-4 raw channels (recovers late reads)
+    p.add_argument("--rebasecall-data14", action="store_true", default=False,
+                   help="Re-basecall from DATA1-4 full-resolution channels, merged into Seq7 gaps")
     p.add_argument("--extend-min-snr", type=float, default=1.3,
-                   help="Minimum SNR for extended peaks (default 1.3)")
+                   help="Minimum SNR for re-basecalled peaks (default 1.3)")
     p.add_argument("--extend-stop-quiet", type=int, default=40,
-                   help="Stop after N consecutive low-quality bases (default 40)")
+                   help="Reserved for future tail-stop logic (default 40)")
 
     return p.parse_args(argv)
 
