@@ -108,47 +108,52 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     ext_bases_added = 0
     map_r2 = 0.0
     if args.rebasecall_data14 and len(pb) > 0:
-        try:
-            from .align import learn_coordinate_map
-            from .peak import detect_peaks_data14, rebasecall_data14
-            map_params = learn_coordinate_map(trace)
-            map_r2 = map_params.get("r_squared", 0.0)
-            if map_params.get("ok"):
-                peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr)
-                pb_new, ploc_new, qv_new = rebasecall_data14(
-                    trace, map_params, peaks14, min_snr=args.extend_min_snr,
-                    pb=pb, ploc=ploc, qv=qv)
-                # Sanity: every original call must survive in the merged output
-                # (same positions, same bases, same order). Internal gap insertions
-                # are expected — we don't require prefix identity by index.
-                orig_positions = set(int(x) for x in ploc)
-                new_positions = set(int(x) for x in ploc_new)
-                if orig_positions.issubset(new_positions) and len(pb_new) >= len(pb):
-                    # also check bases at original positions are unchanged
-                    ok = True
-                    pos_to_base = {}
-                    for pos_, b_ in zip(ploc_new, pb_new):
-                        pos_to_base.setdefault(int(pos_), int(b_))
-                    for pos_, b_ in zip(ploc, pb):
-                        if pos_to_base.get(int(pos_), -1) != int(b_):
-                            ok = False
-                            break
-                    if ok:
-                        ext_bases_added = len(pb_new) - len(pb)
-                        if ext_bases_added > 0:
-                            pb, ploc, qv = pb_new, ploc_new, qv_new
-                            extended = True
+        # Only attempt re-basecalling on reads where Seq7 already called a
+        # substantial sequence (>= min_rebasecall_len). Short reads are already
+        # well-trimmed by Seq7; extending them produces junk low-QV tails.
+        if len(pb) < args.min_rebasecall_len:
+            emit_event("file_skip_rebasecall", src=str(src_ab1),
+                       reason=f"only {len(pb)} bases, below {args.min_rebasecall_len}")
+        else:
+            try:
+                from .align import learn_coordinate_map
+                from .peak import detect_peaks_data14, rebasecall_data14
+                map_params = learn_coordinate_map(trace)
+                map_r2 = map_params.get("r_squared", 0.0)
+                if map_params.get("ok"):
+                    peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr)
+                    pb_new, ploc_new, qv_new = rebasecall_data14(
+                        trace, map_params, peaks14, min_snr=args.extend_min_snr,
+                        pb=pb, ploc=ploc, qv=qv)
+                    # Sanity: every original call must survive in the merged output
+                    # (same positions, same bases). Internal gap insertions expected.
+                    orig_positions = set(int(x) for x in ploc)
+                    new_positions = set(int(x) for x in ploc_new)
+                    if orig_positions.issubset(new_positions) and len(pb_new) >= len(pb):
+                        ok = True
+                        pos_to_base = {}
+                        for pos_, b_ in zip(ploc_new, pb_new):
+                            pos_to_base.setdefault(int(pos_), int(b_))
+                        for pos_, b_ in zip(ploc, pb):
+                            if pos_to_base.get(int(pos_), -1) != int(b_):
+                                ok = False
+                                break
+                        if ok:
+                            ext_bases_added = len(pb_new) - len(pb)
+                            if ext_bases_added > 0:
+                                pb, ploc, qv = pb_new, ploc_new, qv_new
+                                extended = True
+                        else:
+                            emit_event("file_warn", src=str(src_ab1),
+                                       msg="rebasecall altered an original call; rejected")
                     else:
                         emit_event("file_warn", src=str(src_ab1),
-                                   msg="rebasecall altered an original call; rejected")
+                                   msg="rebasecall lost original positions; rejected")
                 else:
                     emit_event("file_warn", src=str(src_ab1),
-                               msg="rebasecall lost original positions; rejected")
-            else:
-                emit_event("file_warn", src=str(src_ab1),
-                           msg=f"coordinate map r2={map_r2:.3f} too low; trust-input")
-        except Exception as e:
-            emit_event("file_error", src=str(src_ab1), error=f"rebasecall failed: {e}")
+                               msg=f"coordinate map r2={map_r2:.3f} too low; trust-input")
+            except Exception as e:
+                emit_event("file_error", src=str(src_ab1), error=f"rebasecall failed: {e}")
 
     # 3. Compute P1AM (peak amplitudes) — read from input's channel data at PLOC
     p1am = np.zeros(len(pb), dtype=np.uint16)
@@ -287,6 +292,9 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Minimum SNR for re-basecalled peaks (default 1.3)")
     p.add_argument("--extend-stop-quiet", type=int, default=40,
                    help="Reserved for future tail-stop logic (default 40)")
+    p.add_argument("--min-rebasecall-len", type=int, default=1000,
+                   help="Only re-basecall reads with >= this many bases (default 1000; "
+                        "shorter reads are already well-trimmed and extending them adds junk)")
 
     return p.parse_args(argv)
 
