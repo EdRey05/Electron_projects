@@ -214,41 +214,42 @@ def write_qc_report(out_dir: Path, results: list, args) -> Path:
     """Generate 2-Report.xls (replaces 3-Rename And Report.bat's QC report).
 
     Format: tab-separated values saved as .xls (matches what the .bat produced).
-    Each row: <sample_basename><TAB>"<status>"
+    Header row + one row per file with stats the sister company can use to triage.
+
+    Columns: basename, status, n_bases_in, n_bases_out, qv_mean, extended, lead_dropped
 
     Status values (matches 3-Rename And Report.bat):
-      "OK" — file processed successfully
-      "Skipped" — too short
-      "Error" — read/write failure
-
-    For v1.1 we only produce "OK" / "Skipped" / "Error" — subfolder QC
-    (High Background / Superimposed / Fail / Fail addon) is deferred to v2.0.
+      "OK" - file processed successfully
+      "Skipped" - too short
+      "Error" - read/write failure
     """
     report_path = out_dir / "2-Report.xls"
-    lines = []
+    lines = ["basename\tstatus\tn_bases_in\tn_bases_out\tqv_mean\textended\tlead_dropped"]
     for r in results:
+        basename = Path(r["src"]).stem
+        if args.strip_well_id:
+            basename = strip_well_id(basename)
+        basename += args.filename_suffix
+
         if r["status"] == "ok":
-            basenamestem = Path(r["src"]).stem
-            if args.strip_well_id:
-                basenamestem = strip_well_id(basenamestem)
-            basenamestem += args.filename_suffix
-            lines.append(f"{basenamestem}\tOK")
+            lines.append(
+                f"{basename}\tOK"
+                f"\t{r.get('n_bases_in', '')}"
+                f"\t{r.get('n_bases_out', '')}"
+                f"\t{r.get('qv_mean', 0):.1f}"
+                f"\t{'Y' if r.get('extended') else 'N'}"
+                f"\t{'Y' if r.get('lead_dropped') else 'N'}"
+            )
         elif r["status"] == "skipped":
-            basenamestem = Path(r["src"]).stem
-            if args.strip_well_id:
-                basenamestem = strip_well_id(basenamestem)
-            basenamestem += args.filename_suffix
             reason = r.get("reason", "skipped")
-            lines.append(f"{basenamestem}\tSkipped ({reason})")
+            lines.append(f"{basename}\tSkipped ({reason})\t\t\t\t\t")
         elif r["status"] == "error":
-            basenamestem = Path(r["src"]).stem
-            if args.strip_well_id:
-                basenamestem = strip_well_id(basenamestem)
-            basenamestem += args.filename_suffix
             err = r.get("error", "unknown error")
-            lines.append(f"{basenamestem}\tError ({err[:40]})")
-    report_path.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
+            lines.append(f"{basename}\tError ({err[:60]})\t\t\t\t\t")
+    crlf = "\r\n"
+    report_path.write_bytes((crlf.join(lines) + crlf).encode("ascii"))
     return report_path
+
 
 
 # ---------- CLI ----------
