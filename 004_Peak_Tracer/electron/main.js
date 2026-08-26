@@ -112,38 +112,24 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
     return { ok: false, error: `peaktrace_core.py not found at ${script}. Run python-app setup.` };
   }
 
+  // v1.3 CLI accepts only this flag set. The App.jsx UI exposes more controls
+  // (mode, smoothing, baseline) that map to an aspirational full RP pipeline we
+  // never built — they're silently ignored here. Settings we DO honor:
   const args = [
     script,
     "--input-dir", inputDir,
     "--output-dir", outputDir,
-    "--mode", settings.mode || "rp",
-    "--smoothing-level", String(settings.smoothingLevel ?? 3),       // PeakTrace RP default
-    "--smoothing-order", String(settings.smoothingOrder ?? 2),
-    "--baseline-window", String(settings.baselineWindow ?? 400),
-    "--baseline-percentile", String(settings.baselinePercentile ?? 10),
-    "--quality-threshold", String(settings.qualityThreshold ?? 20),
-    "--n-base-threshold", String(settings.nBaseThreshold ?? 5),
-    "--mixed-peak-threshold", String(settings.mixedPeakThreshold ?? 0),  // BBI: 0% = no mixed bases
-    "--q-average-trim-value", String(settings.qAverageTrimValue ?? 9),
-    "--q-average-trim-window", String(settings.qAverageTrimWindow ?? 40),
-    "--skip-shorter-than", String(settings.skipShorterThan ?? 500),
-    "--good-base-improvement", String(settings.goodBaseImprovement ?? -10),
-    "--trace-rescale-factor", String(settings.traceRescaleFactor ?? 0.5),  // NEW: ~0.5x amplitude rescale (verified Aug 24)
-    "--filename-suffix", settings.filenameSuffix || "",
-    "--max-workers", String(settings.maxWorkers ?? 4),
   ];
-  if (settings.cleanBaseline === false) args.push("--no-clean-baseline");
-  else args.push("--clean-baseline");
-  if (settings.applyPeakResolution) args.push("--apply-peak-resolution");
-  if (settings.waveletSharpening) args.push("--wavelet-sharpening");
-  if (settings.preserveMetadata) args.push("--preserve-metadata");
-  if (settings.emitSeq) args.push("--emit-seq");
-  if (settings.trim3EndOnly === false) args.push("--no-trim-3-only");  // off = trim both ends
-  else args.push("--trim-3-only");
-  if (settings.setAbiLimits) args.push("--set-abi-limits");
-  if (settings.dropLeadingBase) args.push("--drop-leading-base");  // NEW: verified Aug 24
-  if (settings.stripWellId) args.push("--strip-well-id");          // NEW: verified Aug 24
-  if (settings.signalStartPeak) args.push("--signal-start-peak", settings.signalStartPeak);
+  if (settings.stripWellId !== false) args.push("--strip-well-id");
+  else args.push("--no-strip-well-id");
+  if (settings.emitSeq !== false) args.push("--emit-seq");
+  else args.push("--no-emit-seq");
+  if (settings.setAbiLimits !== false) args.push("--set-abi-limits");
+  if (settings.skipShorterThan) args.push("--skip-shorter-than", String(settings.skipShorterThan));
+  if (settings.filenameSuffix) args.push("--filename-suffix", settings.filenameSuffix);
+  if (settings.leadDropEnabled !== false) args.push("--lead-drop-enabled");
+  else args.push("--no-lead-drop");
+  if (settings.leadDropQv != null) args.push("--lead-drop-qv", String(settings.leadDropQv));
 
   // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped)
   if (settings.rebasecallData14) {
