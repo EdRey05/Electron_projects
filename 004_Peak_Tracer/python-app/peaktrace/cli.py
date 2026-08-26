@@ -36,6 +36,7 @@ import numpy as np
 
 from .read import read_ab1, write_seq, CHANNELS
 from .write import write_ab1
+from .xlsx import XlsxWriter
 
 
 # ---------- filename handling ----------
@@ -214,47 +215,43 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
 
 
 def write_qc_report(out_dir: Path, results: list, args) -> Path:
-    """Generate 2-Report.xls (replaces 3-Rename And Report.bat's QC report).
+    """Generate 2-Report.xlsx (replaces 3-Rename And Report.bat's QC report).
 
-    Format: tab-separated values saved as .xls (matches what the .bat produced).
-    Header row + one row per file with stats the sister company can use to triage.
+    Proper Excel Open XML workbook, one sheet, header row + one row per file.
 
     Columns: basename, status, n_bases_in, n_bases_out, qv_mean, extended, lead_dropped
-
-    Status values (matches 3-Rename And Report.bat):
-      "OK" - file processed successfully
-      "Skipped" - too short
-      "Error" - read/write failure
     """
-    report_path = out_dir / "2-Report.xls"
-    lines = ["basename\tstatus\tn_bases_in\tn_bases_out\tqv_mean\textended\tlead_dropped"]
+    report_path = out_dir / "2-Report.xlsx"
+
+    w = XlsxWriter()
+    w.add_row(["basename", "status", "n_bases_in", "n_bases_out", "qv_mean", "extended", "lead_dropped"])
     for r in results:
         basename = Path(r["src"]).stem
         if args.strip_well_id:
             basename = strip_well_id(basename)
         basename += args.filename_suffix
 
+        n_in = r.get('n_bases_in', '')
+        n_out = r.get('n_bases_out', '')
+        qv = r.get('qv_mean')
+        ext = 'Y' if r.get('extended') else 'N'
+        ld = 'Y' if r.get('lead_dropped') else 'N'
+
         if r["status"] == "ok":
-            ext_info = ""
+            status = "OK"
             if r.get("extended") and r.get("ext_bases_added", 0) > 0:
-                ext_info = f" (+{r['ext_bases_added']} from raw)"
-            lines.append(
-                f"{basename}\tOK{ext_info}"
-                f"\t{r.get('n_bases_in', '')}"
-                f"\t{r.get('n_bases_out', '')}"
-                f"\t{r.get('qv_mean', 0):.1f}"
-                f"\t{'Y' if r.get('extended') else 'N'}"
-                f"\t{'Y' if r.get('lead_dropped') else 'N'}"
-            )
+                status = f"OK (+{r['ext_bases_added']} from raw)"
+            w.add_row_mixed([basename, status, n_in, n_out, f"{qv:.1f}" if qv is not None else "", ext, ld])
         elif r["status"] == "skipped":
             reason = r.get("reason", "skipped")
-            lines.append(f"{basename}\tSkipped ({reason})\t\t\t\t\t")
+            w.add_row_mixed([basename, f"Skipped ({reason})", "", "", "", "", ""])
         elif r["status"] == "error":
             err = r.get("error", "unknown error")
-            lines.append(f"{basename}\tError ({err[:60]})\t\t\t\t\t")
-    crlf = "\r\n"
-    report_path.write_bytes((crlf.join(lines) + crlf).encode("ascii"))
+            w.add_row_mixed([basename, f"Error ({err[:60]})", "", "", "", "", ""])
+
+    w.write(report_path)
     return report_path
+
 
 
 

@@ -112,8 +112,16 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
     return { ok: false, error: `peaktrace_core.py not found at ${script}. Run python-app setup.` };
   }
 
+  // Mode controls which processing runs:
+  //   "rp"   = Seq7 pass-through + lead-drop only (matches v1.1 + lead-drop). No extension.
+  //   "full" = RP + DATA1-4 re-basecalling (v1.3 extension).
+  // Default "rp". "full" enables --rebasecall-data14. The UI also exposes a separate
+  // rebasecallData14 checkbox that can force rebasecall on regardless of mode.
+  const mode = (settings.mode || "rp").toLowerCase();
+  const wantRebasecall = mode === "full" || !!settings.rebasecallData14;
+
   // v1.3 CLI accepts only this flag set. The App.jsx UI exposes more controls
-  // (mode, smoothing, baseline) that map to an aspirational full RP pipeline we
+  // (smoothing, baseline) that map to an aspirational full RP pipeline we
   // never built — they're silently ignored here. Settings we DO honor:
   const args = [
     script,
@@ -132,7 +140,7 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   if (settings.leadDropQv != null) args.push("--lead-drop-qv", String(settings.leadDropQv));
 
   // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped)
-  if (settings.rebasecallData14) {
+  if (wantRebasecall) {
     args.push("--rebasecall-data14");
     args.push("--min-rebasecall-len", String(settings.minRebasecallLen ?? 1000));
     args.push("--extend-min-snr", String(settings.extendMinSnr ?? 1.3));
