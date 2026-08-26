@@ -193,11 +193,12 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
             return {"src": str(src_ab1), "status": "error"}
 
     emit_event("file_done", src=str(src_ab1), out=str(out_ab1),
-               n_bases_out=len(pb), qv_mean=float(qv.mean()) if len(qv) else 0,
-               first_5_bases="".join(chr(int(b)) for b in pb[:5]),
-               last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
-               lead_dropped=lead_dropped, extended=extended,
-               ext_bases_added=ext_bases_added, map_r_squared=map_r2)
+                   n_bases_in=trace.n_bases, n_bases_out=len(pb),
+                   qv_mean=float(qv.mean()) if len(qv) else 0,
+                   first_5_bases="".join(chr(int(b)) for b in pb[:5]),
+                   last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
+                   lead_dropped=lead_dropped, extended=extended,
+                   ext_bases_added=ext_bases_added, map_r_squared=map_r2)
 
     return {
         "src": str(src_ab1),
@@ -246,7 +247,7 @@ def write_qc_report(out_dir: Path, results: list, args) -> Path:
             basenamestem += args.filename_suffix
             err = r.get("error", "unknown error")
             lines.append(f"{basenamestem}\tError ({err[:40]})")
-    report_path.write_text("\n".join(lines) + "\n", encoding="ascii")
+    report_path.write_bytes(("\r\n".join(lines) + "\r\n").encode("ascii"))
     return report_path
 
 

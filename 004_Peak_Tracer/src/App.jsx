@@ -177,20 +177,45 @@ export default function PeakTracer() {
           return [...prev, { name: msg.name, status: "running", message: "Processing…" }];
         });
       } else if (msg.type === "file_done") {
+        // CLI sends src (full path) and out (full output path), NOT name/ok/message/outputPath/qc
+        // Match the row by src basename since that's how file_start stored it
+        const name = (msg.src || msg.name || "").split(/[\\/]/).pop();
         setResults((prev) =>
           prev.map((r) =>
-            r.name === msg.name
+            r.name === name
               ? {
                   ...r,
-                  status: msg.ok ? "ok" : "error",
-                  message: msg.message || (msg.ok ? "OK" : "Failed"),
-                  outputPath: msg.outputPath,
-                  qc: msg.qc || null,
+                  status: msg.error ? "error" : "ok",
+                  message: msg.error ? `Error: ${msg.error}` : `OK — ${msg.n_bases_out} bases, mean QV ${(msg.qv_mean ?? 0).toFixed(1)}`,
+                  outputPath: msg.out || msg.outputPath || null,
+                  qc: { n_bases_in: msg.n_bases_in ?? null,
+                        n_bases_out: msg.n_bases_out ?? null,
+                        qv_mean: msg.qv_mean ?? null,
+                        first_5_bases: msg.first_5_bases ?? null,
+                        last_5_bases: msg.last_5_bases ?? null,
+                        lead_dropped: msg.lead_dropped ?? false,
+                        extended: msg.extended ?? false,
+                        ext_bases_added: msg.ext_bases_added ?? 0,
+                        map_r_squared: msg.map_r_squared ?? 0 },
                   extended: msg.extended ?? false,
                   extBasesAdded: msg.ext_bases_added ?? 0,
                   mapRSquared: msg.map_r_squared ?? 0,
                 }
               : r
+          )
+        );
+      } else if (msg.type === "file_skip") {
+        const name = (msg.src || "").split(/[\\/]/).pop();
+        setResults((prev) =>
+          prev.map((r) =>
+            r.name === name ? { ...r, status: "skipped", message: msg.reason || "skipped" } : r
+          )
+        );
+      } else if (msg.type === "file_error") {
+        const name = (msg.src || "").split(/[\\/]/).pop();
+        setResults((prev) =>
+          prev.map((r) =>
+            r.name === name ? { ...r, status: "error", message: msg.error || "Error" } : r
           )
         );
       } else if (msg.type === "batch_progress") {
