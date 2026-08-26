@@ -54,6 +54,11 @@ const DEFAULT_SETTINGS = {
   signalStartPeak: "auto",          // "signal start peak" — auto
   goodBaseImprovement: -10,         // "good base improvement" — -10
 
+  // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped)
+  rebasecallData14: false,          // re-call peaks from DATA1-4 full-resolution channels
+  minRebasecallLen: 1000,           // only attempt on reads >= this many bases
+  extendMinSnr: 1.3,                // min SNR for re-basecalled peaks
+
   // Output settings
   filenameSuffix: "",                   // PeakTrace RP strips well ID, doesn't add suffix (Aug 24 real-data finding)
   stripWellId: true,                    // Default ON: strip trailing _C09 etc.
@@ -181,6 +186,9 @@ export default function PeakTracer() {
                   message: msg.message || (msg.ok ? "OK" : "Failed"),
                   outputPath: msg.outputPath,
                   qc: msg.qc || null,
+                  extended: msg.extended ?? false,
+                  extBasesAdded: msg.ext_bases_added ?? 0,
+                  mapRSquared: msg.map_r_squared ?? 0,
                 }
               : r
           )
@@ -558,6 +566,32 @@ export default function PeakTracer() {
                   onChange={(v) => setSettings((s) => ({ ...s, goodBaseImprovement: v }))}
                   min={-999} max={999} step={1}
                 />
+
+                {/* v1.3: Re-basecall from raw channels — the differentiating feature */}
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={settings.rebasecallData14}
+                    onChange={(e) => setSettings((s) => ({ ...s, rebasecallData14: e.target.checked }))}
+                  />
+                  <span style={{ color: ink }}>Re-basecall from raw channels</span>
+                  <span className="text-xs" style={{ color: muted }}>(recovers late reads Seq7 missed)</span>
+                </label>
+                <NumSlider
+                  label="Min read length for re-basecall"
+                  value={settings.minRebasecallLen}
+                  onChange={(v) => setSettings((s) => ({ ...s, minRebasecallLen: v }))}
+                  min={500} max={2000} step={50}
+                  suffix="bases"
+                />
+                <NumSlider
+                  label="Re-basecall min SNR"
+                  value={settings.extendMinSnr}
+                  onChange={(v) => setSettings((s) => ({ ...s, extendMinSnr: v }))}
+                  min={1.0} max={3.0} step={0.1}
+                  decimalScale={1}
+                />
+
                 <NumSlider
                   label="Max parallel workers"
                   value={settings.maxWorkers}
@@ -726,6 +760,14 @@ export default function PeakTracer() {
                           >
                             {JSON.stringify(r.qc, null, 2)}
                           </pre>
+                        )}
+                        {(r.extended || r.extBasesAdded > 0) && (
+                          <div className="font-mono text-xs mt-2 flex items-center gap-2" style={{ color: teal }}>
+                            <span>+{r.extBasesAdded} bases from raw channels</span>
+                            {r.mapRSquared > 0 && (
+                              <span style={{ color: muted }}>r²={r.mapRSquared.toFixed(3)}</span>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

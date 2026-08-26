@@ -145,6 +145,13 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   if (settings.stripWellId) args.push("--strip-well-id");          // NEW: verified Aug 24
   if (settings.signalStartPeak) args.push("--signal-start-peak", settings.signalStartPeak);
 
+  // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped)
+  if (settings.rebasecallData14) {
+    args.push("--rebasecall-data14");
+    args.push("--min-rebasecall-len", String(settings.minRebasecallLen ?? 1000));
+    args.push("--extend-min-snr", String(settings.extendMinSnr ?? 1.3));
+  }
+
   return new Promise((resolve) => {
     const child = spawn(py, args, { windowsHide: true });
     let stdoutBuf = "";
