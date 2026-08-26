@@ -207,6 +207,9 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         "n_bases_in": trace.n_bases,
         "n_bases_out": len(pb),
         "qv_mean": float(qv.mean()) if len(qv) else 0.0,
+        "lead_dropped": lead_dropped,
+        "extended": extended,
+        "ext_bases_added": ext_bases_added,
     }
 
 
@@ -232,8 +235,11 @@ def write_qc_report(out_dir: Path, results: list, args) -> Path:
         basename += args.filename_suffix
 
         if r["status"] == "ok":
+            ext_info = ""
+            if r.get("extended") and r.get("ext_bases_added", 0) > 0:
+                ext_info = f" (+{r['ext_bases_added']} from raw)"
             lines.append(
-                f"{basename}\tOK"
+                f"{basename}\tOK{ext_info}"
                 f"\t{r.get('n_bases_in', '')}"
                 f"\t{r.get('n_bases_out', '')}"
                 f"\t{r.get('qv_mean', 0):.1f}"
