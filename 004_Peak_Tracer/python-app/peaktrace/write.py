@@ -65,10 +65,13 @@ def write_ab1(
 
     # Encode our new data
     pbas_bytes = bytes(int(b) for b in pb)
-    pcon_bytes = bytes(int(b) for b in qv)
-    # PLOC: ABI standard is element code 5 (unsigned long), 4 bytes each, big-endian.
-    # Earlier code packed as int16 which broke Geneious BioJava ("Index -1 out of bounds").
-    ploc_data = np.clip(ploc.astype(np.int64), 0, 0xFFFFFFFF).astype(">u4").tobytes()
+    pcon_bytes = bytes(int(q) for q in qv)
+    # PLOC: ABI standard is element code 4 (signed short), 2 bytes each, big-endian.
+    # This matches what PeakTrace RP / Seq7 / Biopython write, AND what Geneious
+    # and SnapGene read. Note: this was wrongly changed to (code=5, size=4) in
+    # v1.3.2 to fix a Geneious "Index -1" crash, but the real cause of that
+    # crash was missing inline-data tags (FIX #16). Switching back to int16.
+    ploc_data = np.clip(ploc.astype(np.int32), -32768, 32767).astype(">i2").tobytes()
     if p1am is not None:
         p1am_data = np.clip(p1am.astype(np.int64), 0, 0xFFFF).astype(">u2").tobytes()  # 16-bit unsigned (P1AM stays int16 per ABI convention)
     else:
@@ -143,13 +146,11 @@ def write_ab1(
         })
 
     # Step 2: add our new PBAS/PCON/PLOC
-    # PLOC element format: code=5 (unsigned long), size=4. Was wrongly written as code=4, size=2
-    # which broke Geneious (BioJava "Index -1 out of bounds" — it read PLOC2 with wrong format
-    # and got an invalid offset). PBAS/PCON stay at code=2 size=1 (char).
+    # PLOC element format: code=4 (signed short), size=2 (matches PT/Seq7).
     for tag_name, data, num, ec, es in [
         (b"PBAS", pbas_bytes, len(pbas_bytes), 2, 1),
         (b"PCON", pcon_bytes, len(pcon_bytes), 2, 1),
-        (b"PLOC", ploc_data, len(ploc), 5, 4),
+        (b"PLOC", ploc_data, len(ploc), 4, 2),
     ]:
         for tag_num in replacement_tags[tag_name]:
             data_offset = len(new_buf)
