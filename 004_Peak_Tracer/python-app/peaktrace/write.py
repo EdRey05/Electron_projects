@@ -25,6 +25,7 @@ def _read_dir_entries(buf: bytes):
         if d[0] == b"\x00\x00\x00\x00":
             break
         entries.append({
+            "pos": pos,  # bytes offset of this entry in the file (for inline-data lookup)
             "name": d[0],
             "tag_number": d[1],
             "element_code": d[2],
@@ -87,7 +88,13 @@ def write_ab1(
 
     new_entries = []
 
-    # Step 1: copy non-replaced template data blocks
+    # Step 1: copy non-replaced template data blocks.
+    #
+    # Inline-data tags (data_size <= 4) have their actual data stored INSIDE
+    # the directory entry at entry_pos + 20, not at the data_offset field
+    # (which holds garbage). For these tags we must read the bytes from
+    # the inline slot and write them at a fresh new_buf location.
+    #
     # Filter out entries whose tag names contain non-ASCII bytes (Biopython can't decode them).
     for entry in entries:
         key = (entry["name"], entry["tag_number"])
@@ -103,10 +110,21 @@ def write_ab1(
         # Use strict ASCII check (each byte must be 0x20-0x7e)
         if not all(0x20 <= b <= 0x7e for b in entry["name"]):
             continue
-        # Skip entries with invalid offsets (offset + size past EOF — likely garbage)
-        if entry["data_offset"] + entry["data_size"] > len(template_buf):
-            continue
-        data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+
+        is_inline = entry["data_size"] <= 4
+        if is_inline:
+            # Read the data from the inline slot (last 4 bytes of the 28-byte
+            # directory entry: entry_pos + 20 .. entry_pos + 20 + data_size).
+            entry_pos = entry.get("pos")
+            if entry_pos is None:
+                continue
+            data = template_buf[entry_pos + 20:entry_pos + 20 + entry["data_size"]]
+        else:
+            # Normal tag: data lives at data_offset
+            if entry["data_offset"] + entry["data_size"] > len(template_buf):
+                continue
+            data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+
         data_offset = len(new_buf)
         new_buf.extend(data)
         new_entries.append({
@@ -172,6 +190,14 @@ def write_ab1(
             })
 
     # Append directory entries
+    # Per ABI spec + Biopython's reader (AbiIO.py:502):
+    #     if data_size <= 4:
+    #         data_offset = tag_offset + 20
+    # So for inline tags, the BYTES AT tag_offset+20..tag_offset+24 (the
+    # inline slot, i.e. the "data_offset" field of the entry) MUST contain
+    # the actual data. We handle this by writing data_offset = the position
+    # of the data in new_buf, then re-writing the data into the inline slot
+    # bytes of the entry below (overwriting data_offset in-place).
     dir_offset = len(new_buf)
     for e in new_entries:
         new_buf.extend(e["name"])
@@ -182,6 +208,13 @@ def write_ab1(
         new_buf.extend(struct.pack(">I", e["data_size"]))
         new_buf.extend(struct.pack(">I", e["data_offset"]))
         new_buf.extend(b"\x00\x00\x00\x00")
+        # For inline tags, overwrite bytes 20..24 with the actual data.
+        # new_buf[-8:-4] is the data_offset field (big-endian uint32).
+        if e["data_size"] <= 4:
+            data_at_offset = bytes(new_buf[e["data_offset"]:e["data_offset"] + e["data_size"]])
+            # new_buf[-8:-8+e["data_size"]] = data_at_offset
+            start = len(new_buf) - 8
+            new_buf[start:start + e["data_size"]] = data_at_offset
 
     # Write header
     new_buf[0:4] = b"ABIF"
@@ -194,15 +227,6 @@ def write_ab1(
     new_buf[22:26] = struct.pack(">I", len(new_entries) * 28)
     new_buf[26:30] = struct.pack(">I", dir_offset)
     new_buf[30:34] = struct.pack(">I", len(new_entries))
-
-    # DEBUG: log every new_entries entry (remove after fix)
-    import logging
-    for i, e in enumerate(new_entries):
-        name_ascii = all(0x20 <= b <= 0x7e for b in e["name"])
-        logging.debug(
-            "entry %d: tag=%r tag_num=%d hex=%s ascii_safe=%s offset=%d size=%d",
-            i, e["name"], e["tag_number"], e["name"].hex(), name_ascii, e["data_offset"], e["data_size"],
-        )
 
     out_path.write_bytes(bytes(new_buf))
 
