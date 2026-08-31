@@ -527,8 +527,11 @@ def rebasecall_data14(trace: Trace,
     # Map to DATA9-12 coords
     cand_pos9 = map_to_data9(np.array(cand_pos14), map_params)
 
-    # Restrict to valid range
-    valid = (cand_pos9 >= 0) & (cand_pos9 < trace.n_scans)
+    # FIX #9: allow candidates beyond trace.n_scans (Seq7 truncation). PeakTrace
+    # extends the chromatogram to fit these; we do the same downstream.
+    # Old code filtered `cand_pos9 < trace.n_scans` which dropped all extension
+    # positions, limiting our extension to ~original Seq7 length.
+    valid = cand_pos9 >= 0
     cand_pos9 = cand_pos9[valid]
     cand_base = np.array(cand_base, dtype=np.uint8)[valid]
     cand_qv = np.array(cand_qv, dtype=np.uint8)[valid]
@@ -540,15 +543,20 @@ def rebasecall_data14(trace: Trace,
     seq7_pos = ploc.astype(np.int32)
     spacings = np.diff(seq7_pos)
     med_spacing = float(np.median(spacings)) if len(spacings) else 12.0
-    gap_centers = []  # (gap_start, gap_end) in DATA9-12 coords
+    gap_centers = []  # (gap_start, g_end) in DATA9-12 coords
     # NOTE: no leading gap — inserting bases before the first Seq7 call risks
     # primer-injection artifacts and breaks prefix integrity. Skip it.
     for i in range(len(seq7_pos) - 1):
         if spacings[i] > med_spacing * 1.5:
             gap_centers.append((int(seq7_pos[i]), int(seq7_pos[i + 1])))
-    # Trailing gap (after last Seq7 base — the classic extension region)
-    if len(seq7_pos) and trace.n_scans - seq7_pos[-1] > med_spacing * 1.5:
-        gap_centers.append((int(seq7_pos[-1]), trace.n_scans))
+    # Trailing gap (after last Seq7 base — the classic extension region).
+    # FIX #9: extend the trailing gap to include positions beyond trace.n_scans
+    # so rebasecall candidates from DATA1-4 can land there. Old code used
+    # `trace.n_scans` as g_end which capped extension at Seq7's truncation point.
+    if len(seq7_pos):
+        trailing_end = max(trace.n_scans, int(cand_pos9.max()) + 10 if len(cand_pos9) else trace.n_scans)
+        if trailing_end - seq7_pos[-1] > med_spacing * 1.5:
+            gap_centers.append((int(seq7_pos[-1]), int(trailing_end)))
 
     keep_new = np.zeros(len(cand_pos9), dtype=bool)
     for i, p in enumerate(cand_pos9):

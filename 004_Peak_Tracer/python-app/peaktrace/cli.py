@@ -108,6 +108,7 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     extended = False
     ext_bases_added = 0
     map_r2 = 0.0
+    map_params = None  # set inside the rebasecall block if applicable
     if args.rebasecall_data14 and len(pb) > 0:
         # Only attempt re-basecalling on reads where Seq7 already called a
         # substantial sequence (>= min_rebasecall_len). Short reads are already
@@ -177,7 +178,9 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
 
     # 5. Write .ab1
     try:
-        write_ab1(out_ab1, trace, pb, qv, ploc, p1am=p1am, set_abi_limits=args.set_abi_limits)
+        write_ab1(out_ab1, trace, pb, qv, ploc, p1am=p1am,
+                  set_abi_limits=args.set_abi_limits,
+                  map_params=map_params if args.rebasecall_data14 else None)
     except Exception as e:
         emit_event("file_error", src=str(src_ab1), error=f"write ab1 failed: {e}")
         return {"src": str(src_ab1), "status": "error"}

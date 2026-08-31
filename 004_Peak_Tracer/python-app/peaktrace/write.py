@@ -48,11 +48,16 @@ def write_ab1(
     p1am: np.ndarray | None = None,
     set_abi_limits: bool = True,
     clamp_max: int = 65535,
+    map_params: dict | None = None,
 ) -> None:
     """Rebuild .ab1 file from scratch, copying non-replaced tags from template.
 
     This is safer than in-place edits: any data size change doesn't shift the
     directory or corrupt neighboring tags.
+
+    If `map_params` is provided (DATA1-4 ↔ DATA9-12 linear coordinate map),
+    the chromatogram DATA9-12 is extended to fit the new PLOC grid by
+    interpolating samples from the raw DATA1-4 channels (FIX #9).
     """
     template_path = Path(trace.src_path)
     template_buf = template_path.read_bytes()
@@ -173,17 +178,54 @@ def write_ab1(
             "data_offset": data_offset,
         })
 
-    # Step 4: add DATA.9-12 from template, with PT-style per-channel rescale.
+    # Step 4: add DATA.9-12 from template, with PT-style per-channel rescale
+    # and (FIX #9) extension to fit new PLOC grid using DATA1-4 interpolation.
+    #
     # PeakTrace RP rescales so the 99th-percentile of each channel lands near 650
     # (verified across 68 sample4 files: f3 p99 mean=649, f2 p99 mean=1397,
     # mean rescale factor ~0.46). This is what makes PT chromatograms fit
     # cleanly into SnapGene/Geneious y-axes.
+    #
     # .ab1 stores chromatogram data as big-endian signed int16.
     P99_TARGET = 650
+
+    # FIX #9: extend DATA9-12 to fit max(ploc). PT does this; without it the
+    # chromatogram truncates and SnapGene shows extra "ghost" peaks at the end.
+    target_len = int(ploc.max()) + 6 if len(ploc) > 0 else 0  # +6 scans padding
     for entry in entries:
         if entry["name"] == b"DATA" and entry["tag_number"] in (9, 10, 11, 12):
             raw = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
             arr = np.frombuffer(raw, dtype=">i2")
+
+            # FIX #9: extend with values from DATA1-4 (if map available)
+            if target_len > len(arr) and map_params is not None and getattr(trace, "tags", None):
+                # DATA1-4 → DATA9-12 map: pos9 = (pos14 - b) / a
+                # So to fill pos9 in [len(arr), target_len), we need pos14 = pos9*a + b
+                a = map_params.get("slope")
+                b = map_params.get("intercept")
+                if a is not None and b is not None and np.isfinite(a):
+                    # The channel mapping: tag 9↔1, 10↔2, 11↔3, 12↔4
+                    full_ch = entry["tag_number"] - 8  # 9→1, 10→2, ...
+                    full_data = trace.tags.get(f"DATA{full_ch}")
+                    if full_data is not None:
+                        full_arr = np.asarray(full_data, dtype=np.int32)
+                        n_full = len(full_arr)
+                        new_idx9 = np.arange(len(arr), target_len)
+                        new_idx14 = np.clip(
+                            np.round(new_idx9 * a + b).astype(np.int32),
+                            0, max(n_full - 1, 0)
+                        )
+                        # Linear interpolation between consecutive DATA1-4 samples
+                        # for sub-scan precision (DATA9-12 grid is denser than DATA1-4).
+                        i0 = np.clip(new_idx14, 0, n_full - 2)
+                        frac = (new_idx14 - i0).astype(np.float64)
+                        v0 = full_arr[i0].astype(np.float64)
+                        v1 = full_arr[i0 + 1].astype(np.float64)
+                        new_samples = np.round(v0 + frac * (v1 - v0)).astype(np.int32)
+                        arr = np.concatenate([arr, new_samples.astype(">i2")])
+                        # Pad with one trailing zero so the array ends at baseline
+                        arr = np.concatenate([arr, np.array([0], dtype=">i2")])
+
             if len(arr) > 0:
                 p99 = float(np.percentile(arr, 99))
                 if p99 > 1.0:
@@ -199,8 +241,8 @@ def write_ab1(
                 "tag_number": entry["tag_number"],
                 "element_code": entry["element_code"],
                 "element_size": entry["element_size"],
-                "num_elements": entry["num_elements"],
-                "data_size": entry["data_size"],
+                "num_elements": len(arr),
+                "data_size": len(data),
                 "data_offset": data_offset,
             })
 
