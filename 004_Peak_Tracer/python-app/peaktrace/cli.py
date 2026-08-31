@@ -177,10 +177,23 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     out_seq = out_dir / (base + ".seq")
 
     # 5. Write .ab1
+    # FIX #10: for short reads (skipped rebasecall), copy input bytes verbatim
+    # instead of round-tripping through write_ab1. This guarantees byte equality
+    # with PT's behavior for reads below min_rebasecall_len (PT just passes them
+    # through). Round-tripping via write_ab1 would rescale DATA9-12 and could
+    # alter amplitudes or even base values in subtle ways.
     try:
-        write_ab1(out_ab1, trace, pb, qv, ploc, p1am=p1am,
-                  set_abi_limits=args.set_abi_limits,
-                  map_params=map_params if args.rebasecall_data14 else None)
+        if (args.rebasecall_data14
+                and len(pb) < args.min_rebasecall_len
+                and len(pb) > 0):
+            # Short read path: verbatim copy
+            out_ab1.write_bytes(src_ab1.read_bytes())
+            emit_event("file_verbatim", src=str(src_ab1),
+                       msg=f"short read ({len(pb)} bases), copied bytes verbatim")
+        else:
+            write_ab1(out_ab1, trace, pb, qv, ploc, p1am=p1am,
+                      set_abi_limits=args.set_abi_limits,
+                      map_params=map_params if args.rebasecall_data14 else None)
     except Exception as e:
         emit_event("file_error", src=str(src_ab1), error=f"write ab1 failed: {e}")
         return {"src": str(src_ab1), "status": "error"}
