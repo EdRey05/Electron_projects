@@ -173,10 +173,25 @@ def write_ab1(
             "data_offset": data_offset,
         })
 
-    # Step 4: add DATA.9-12 from template (preserve original channel data)
+    # Step 4: add DATA.9-12 from template, with PT-style per-channel rescale.
+    # PeakTrace RP rescales so the 99th-percentile of each channel lands near 650
+    # (verified across 68 sample4 files: f3 p99 mean=649, f2 p99 mean=1397,
+    # mean rescale factor ~0.46). This is what makes PT chromatograms fit
+    # cleanly into SnapGene/Geneious y-axes.
+    # .ab1 stores chromatogram data as big-endian signed int16.
+    P99_TARGET = 650
     for entry in entries:
         if entry["name"] == b"DATA" and entry["tag_number"] in (9, 10, 11, 12):
-            data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+            raw = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+            arr = np.frombuffer(raw, dtype=">i2")
+            if len(arr) > 0:
+                p99 = float(np.percentile(arr, 99))
+                if p99 > 1.0:
+                    scale = P99_TARGET / p99
+                    arr = np.clip(np.round(arr.astype(np.float64) * scale), -32768, 32767).astype(">i2")
+                data = arr.tobytes()
+            else:
+                data = raw
             data_offset = len(new_buf)
             new_buf.extend(data)
             new_entries.append({
