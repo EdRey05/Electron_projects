@@ -435,6 +435,10 @@ def rebasecall_data14(trace: Trace,
                       map_params: dict,
                       peaks14: dict,
                       min_snr: float = 1.3,
+                      min_snr_for_keep: float = 3.0,
+                      secondary_max_pct: float = 25.0,
+                      qv_floor: int = 10,
+                      stop_quiet_bases: int = 40,
                       pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
 
@@ -443,6 +447,13 @@ def rebasecall_data14(trace: Trace,
         (same base or not - trust input in the overlap region)
       - Add re-basecalls only where no Seq7 call exists within +/-6 scans
       - Every added base comes from a real detected peak with computed QV
+
+    Acceptance gate for newly-added extension bases (PT-style):
+      - Primary SNR >= min_snr_for_keep (default 3.0), OR
+      - Secondary peak amplitude / primary amplitude <= secondary_max_pct% (default 25%)
+        (catches "weak but unambiguous" peaks)
+      - QV >= qv_floor (default 10); otherwise downgrade base to 'N'
+      - Stop extension after `stop_quiet_bases` consecutive bases with QV < qv_floor
 
     Returns (pb, ploc, qv) in DATA9-12 coordinates, sorted by PLOC.
     """
@@ -456,7 +467,15 @@ def rebasecall_data14(trace: Trace,
         return pb, ploc, qv
 
     # Channel noise from DATA1-4
-    noise = {ch: max(1.0, float(np.percentile(arr, 5))) for ch, arr in full.items()}
+    # Use robust estimator: median absolute deviation (MAD) × 1.4826 ≈ std dev
+    # of normal distribution. This is what PT likely uses — robust to peak contamination.
+    noise = {}
+    for ch, arr in full.items():
+        a = arr.astype(np.float64)
+        med = float(np.median(a))
+        mad = float(np.median(np.abs(a - med)))
+        sigma = mad * 1.4826
+        noise[ch] = max(1.0, sigma)
     BASE_OF_FULL = {1: "A", 2: "C", 3: "G", 4: "T"}
 
     # Merge peaks from all channels: position -> {ch: amp}
@@ -468,17 +487,38 @@ def rebasecall_data14(trace: Trace,
                 continue
             merged.setdefault(int(p), {})[ch] = max(merged.get(int(p), {}).get(ch, 0.0), amp)
 
-    # Candidate calls in DATA1-4 coords
+    # Candidate calls in DATA1-4 coords, with PT-style acceptance gate:
+    # keep if SNR >= min_snr_for_keep OR secondary_amp/primary_amp <= secondary_max_pct/100
     cand_pos14 = []
     cand_base = []
     cand_qv = []
     for pos in sorted(merged):
         amps = merged[pos]
-        primary_ch, primary_amp = max(amps.items(), key=lambda kv: kv[1])
+        sorted_amps = sorted(amps.items(), key=lambda kv: -kv[1])
+        primary_ch, primary_amp = sorted_amps[0]
         snr = primary_amp / noise[primary_ch]
+
+        # PT-style dual criterion
+        if snr >= min_snr_for_keep:
+            keep = True
+        elif len(sorted_amps) > 1:
+            secondary_amp = sorted_amps[1][1]
+            secondary_pct = (secondary_amp / primary_amp) * 100.0 if primary_amp > 0 else 100.0
+            keep = secondary_pct <= secondary_max_pct
+        else:
+            keep = False  # no secondary peak to compare; single-channel call must clear SNR
+
+        if not keep:
+            continue
+
         qv_val = max(1, min(62, int(round(10 * np.log10(snr * 10))))) if snr >= 1.0 else 1
+        # FIX #7: downgrade low-QV extension bases to 'N' (PT behavior)
+        if qv_val < qv_floor:
+            base_char = "N"
+        else:
+            base_char = BASE_OF_FULL[primary_ch]
         cand_pos14.append(pos)
-        cand_base.append(ord(BASE_OF_FULL[primary_ch]))
+        cand_base.append(ord(base_char))
         cand_qv.append(qv_val)
 
     if not cand_pos14:
@@ -520,7 +560,43 @@ def rebasecall_data14(trace: Trace,
 
     new_pos = cand_pos9[keep_new]
     new_base = cand_base[keep_new]
-    new_qv = cand_qv[keep_new]
+    new_qv = new_qv_raw = cand_qv[keep_new]
+
+    if len(new_pos) == 0:
+        return pb, ploc, qv
+
+    # FIX #6+#7: PT stops extension after a run of low-QV bases. Apply this
+    # to the trailing gap region only (other gaps are short insertions).
+    # Find the index range that corresponds to the trailing gap (the one
+    # whose g_end == trace.n_scans).
+    trailing_mask = np.zeros(len(new_pos), dtype=bool)
+    trailing_start = -1
+    if gap_centers and gap_centers[-1][1] == trace.n_scans:
+        trailing_start = gap_centers[-1][0]
+        trailing_mask = new_pos > trailing_start
+
+    if trailing_mask.any():
+        # Truncate trailing extension at the first run of `stop_quiet_bases`
+        # consecutive bases with QV < qv_floor. We keep partial gaps.
+        # Walk forward; once we hit stop_quiet_bases quiet bases in a row,
+        # discard that base and everything after.
+        idxs = np.where(trailing_mask)[0]
+        quiet_run = 0
+        cut_at = len(new_pos)  # default: keep all
+        for j, idx in enumerate(idxs):
+            if new_qv[idx] < qv_floor:
+                quiet_run += 1
+                if quiet_run >= stop_quiet_bases:
+                    cut_at = idx  # discard this and subsequent
+                    break
+            else:
+                quiet_run = 0
+        if cut_at < len(new_pos):
+            keep_mask = np.ones(len(new_pos), dtype=bool)
+            keep_mask[cut_at:] = False
+            new_pos = new_pos[keep_mask]
+            new_base = new_base[keep_mask]
+            new_qv = new_qv[keep_mask]
 
     if len(new_pos) == 0:
         return pb, ploc, qv
