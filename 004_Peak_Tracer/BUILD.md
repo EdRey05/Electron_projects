@@ -53,26 +53,44 @@ runtime is bundled.
 
 ## Python CLI contract
 
-The Electron main process spawns `peaktrace_core.py` with these flags:
+The Electron main process spawns `peaktrace_core.py` with these flags. **Defaults match BBI's actual PeakTrace RP 6.961 configuration (captured Aug 24 2026):**
 
 ```
 python peaktrace_core.py
-  --input-dir PATH                 # required: folder of .ab1 files
-  --output-dir PATH                # required: where to write new .ab1
-  --mode {rp,full,passthrough}     # default: rp
-  --smoothing-window INT           # default: 5
-  --smoothing-order INT            # default: 2
-  --baseline-window INT            # default: 400
-  --baseline-percentile INT        # default: 10
-  --quality-threshold INT          # default: 20
-  --min-peak-snr FLOAT             # default: 3.0
-  --mixed-base-threshold FLOAT     # default: 0.25
-  --filename-suffix STR            # default: _pt
-  --max-workers INT                # default: 4
-  [--wavelet-sharpening]           # flag, off by default
-  [--preserve-metadata]            # flag, on by default
-  [--emit-seq]                     # flag, off by default
-  [--pass-through-kb-basecall]     # flag, off by default
+  --input-dir PATH                   # required: folder of .ab1 files
+  --output-dir PATH                  # required: where to write new .ab1
+
+  # Mode
+  --mode {rp,full,passthrough}       # default: rp
+
+  # Trace processing (matches PeakTrace RP defaults)
+  --smoothing-level INT              # default: 3  (PeakTrace RP "extra smoothing" level)
+  --smoothing-order INT              # default: 2
+  --baseline-window INT              # default: 400
+  --baseline-percentile INT          # default: 10
+  [--clean-baseline | --no-clean-baseline]   # default: --clean-baseline (PeakTrace RP default: ON)
+  [--apply-peak-resolution]          # default: ON (RP does light peak resolution despite the name)
+  [--wavelet-sharpening]             # default: OFF (only for full PeakTrace emulation)
+  --skip-shorter-than INT            # default: 500  (PeakTrace RP "skip short/pcr base")
+  [--set-abi-limits]                 # default: ON (clamp output values to ABI-spec uint16 range)
+  --signal-start-peak {auto,start}   # default: auto
+
+  # Basecaller (matches PeakTrace RP defaults)
+  --quality-threshold INT            # default: 20  (PeakTrace RP "good quality threshold")
+  --n-base-threshold INT             # default: 5   (PeakTrace RP "n base threshold")
+  --mixed-peak-threshold INT         # default: 0   (BBI uses 0% = NO mixed-base calls)
+  --q-average-trim-value INT         # default: 9   (PeakTrace RP "q average trim value")
+  --q-average-trim-window INT        # default: 40  (PeakTrace RP "q average trim window")
+  --good-base-improvement INT        # default: -10 (PeakTrace RP "good base improvement")
+  [--trim-3-only | --no-trim-3-only] # default: --trim-3-only (PeakTrace RP "trim 3' end only")
+
+  # Output
+  --filename-suffix STR              # default: _pt
+  [--preserve-metadata]              # default: ON
+  [--emit-seq]                       # default: OFF (PeakTrace emits .seq; BBI deletes them)
+
+  # Parallelism
+  --max-workers INT                  # default: 4
 ```
 
 Per-file progress is emitted as JSON lines on stdout (one `{"type":"..."}`
