@@ -1,0 +1,5 @@
+# peaktrace_core dependencies (BSD/MIT only — commercial-free)
+biopython>=1.81
+numpy>=1.24
+scipy>=1.11
+# abifpy>=0.1.0  # optional — clean .ab1 writer (we have a fallback)
