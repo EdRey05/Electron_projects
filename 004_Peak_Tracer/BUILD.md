@@ -90,7 +90,7 @@ python peaktrace_core.py
   [--strip-well-id]                  # default: ON (verified Aug 24 — drops _C09 etc.)
   --filename-suffix STR              # default: "" (empty; only added if strip-well-id is OFF)
   [--preserve-metadata]              # default: ON
-  [--emit-seq]                       # default: OFF (PeakTrace emits .seq; BBI deletes them)
+  [--emit-seq]                       # default: ON (Ed Aug 24 — some customers need these; do NOT delete)
 
   # Parallelism
   --max-workers INT                  # default: 4
