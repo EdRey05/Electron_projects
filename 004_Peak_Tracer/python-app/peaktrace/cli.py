@@ -18,6 +18,7 @@ from .read import read_ab1, write_seq, CHANNELS
 from .smooth import rescale_channels, smooth_channels, clean_baseline
 from .peak import (
     drop_leading_artifact, detect_all_peaks, basecall, trim_3_end,
+    extend_late_read,
 )
 from .write import write_ab1
 
@@ -76,13 +77,26 @@ def process_one(src_path: Path, out_dir: Path, args) -> dict:
                             mixed_threshold_pct=args.mixed_peak_threshold,
                             peak_min_factor=3.0)
 
-    # 8. Apply QV-based N-threshold (Q < n_base_threshold → N)
+    # 8. Late-read extension: continue basecalling past input's last base
+    #    with a relaxed SNR threshold. This is what makes us match PeakTrace RP's
+    #    late-read extension (verified Aug 24: PT extends ~409 bases on long reads).
+    if args.extend_late_read and len(ploc) > 0:
+        tail_start = int(ploc[-1]) + 1
+        pb, ploc, qv = extend_late_read(
+            trace, peak_dict, pb, ploc, qv,
+            tail_start_pos=tail_start,
+            min_peak_factor_tail=args.extend_min_peak_factor,
+            stop_quiet_scans=args.extend_stop_quiet_scans,
+            stop_min_amp=args.extend_stop_min_amp,
+        )
+
+    # 9. Apply QV-based N-threshold (Q < n_base_threshold → N)
     if args.n_base_threshold > 0:
         for i, q in enumerate(qv):
             if int(q) < args.n_base_threshold:
                 pb[i] = ord("N")
 
-    # 9. 3'-end trim
+    # 10. 3'-end trim (now cuts the noisy N-filled extension tail)
     if args.trim_3_only and args.q_average_trim_value > 0:
         pb, qv = trim_3_end(pb, qv, args.q_average_trim_value, args.q_average_trim_window)
 
@@ -113,7 +127,10 @@ def process_one(src_path: Path, out_dir: Path, args) -> dict:
         write_seq(out_seq, pb, ploc, qv)
 
     emit_event("file_done", src=str(src_path), out=str(out_ab1),
-               n_bases_out=len(pb), qv_mean=float(qv.mean()) if len(qv) else 0)
+               n_bases_out=len(pb), qv_mean=float(qv.mean()) if len(qv) else 0,
+               extension_bases=max(0, len(pb) - trace.n_bases),
+               first_5_bases="".join(chr(int(b)) for b in pb[:5]),
+               last_5_bases="".join(chr(int(b)) for b in pb[-5:]))
 
     return {
         "src": str(src_path),
@@ -164,6 +181,16 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--good-base-improvement", type=int, default=-10)
     p.add_argument("--trim-3-only", action="store_true", default=True)
     p.add_argument("--no-trim-3-only", dest="trim_3_only", action="store_false")
+
+    # Late-read extension (HIGHEST RISK for sister-company compatibility)
+    p.add_argument("--extend-late-read", action="store_true", default=True)
+    p.add_argument("--no-extend-late-read", dest="extend_late_read", action="store_false")
+    p.add_argument("--extend-min-peak-factor", type=float, default=1.3,
+                   help="Relaxed SNR threshold for tail region (default 1.3 vs 3.0 for main)")
+    p.add_argument("--extend-stop-quiet-scans", type=int, default=80,
+                   help="Stop extending if this many scans pass with no peak")
+    p.add_argument("--extend-stop-min-amp", type=int, default=15,
+                   help="Stop extending if max channel amplitude drops below this")
 
     # Output
     p.add_argument("--strip-well-id", action="store_true", default=True)

@@ -222,3 +222,138 @@ def trim_3_end(bases: np.ndarray, qvs: np.ndarray, value: int = 9, window: int =
             trim_pos = i + window
             break
     return bases[:trim_pos], qvs[:trim_pos]
+
+
+def extend_late_read(trace: Trace,
+                     peak_dict: dict,
+                     pb: np.ndarray,
+                     ploc: np.ndarray,
+                     qv: np.ndarray,
+                     tail_start_pos: int,
+                     min_peak_factor_tail: float = 1.3,
+                     stop_quiet_scans: int = 80,
+                     stop_min_amp: int = 15) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Late-read extension.
+
+    Aug 24 finding (verified): PeakTrace RP extends the basecall by ~409 bases on
+    long reads (vs ~1198 input → ~1607 PT). The extension is mostly re-basecalling
+    low-quality regions within input's existing trace data, then emitting N's +
+    low QVs into the noisy tail.
+
+    Strategy:
+      1. Starting at `tail_start_pos` (input's last PLOC), continue detecting peaks
+         with a RELAXED SNR threshold (min_peak_factor_tail).
+      2. Emit bases as long as peaks are detected.
+      3. When `stop_quiet_scans` consecutive scans pass without a qualifying peak,
+         stop and fill the remainder with N's (each N gets a low QV).
+      4. Stop early if max channel amplitude drops below `stop_min_amp`.
+
+    Returns extended (bases, ploc, qvs) appended to the existing arrays.
+    """
+    if tail_start_pos >= trace.n_scans:
+        return pb, ploc, qv
+
+    # Re-detect peaks with relaxed threshold in the tail region
+    # We use a smaller min_distance (6 scans) for the tail — at the very end, peaks
+    # may be more compressed as the run dies.
+    tail_peak_dict = {}
+    for ch in CHANNELS:
+        if ch not in trace.channels:
+            continue
+        # Find peaks in the tail region only
+        full_peaks = detect_peaks_in_channel(trace.channels[ch], min_distance=6)
+        tail_peaks = full_peaks[(full_peaks >= tail_start_pos) & (full_peaks < trace.n_scans)]
+        tail_peak_dict[ch] = tail_peaks
+
+    # Compute per-channel noise floor (more permissive than main basecaller)
+    ext_noise = {}
+    for ch in CHANNELS:
+        if ch in trace.channels:
+            arr = trace.channels[ch].astype(np.float64)
+            # Use 50th percentile (median) for the tail — more permissive
+            ext_noise[ch] = max(1.0, float(np.percentile(arr, 50)))
+
+    # Collect candidate peaks above relaxed threshold
+    candidates = []
+    for ch, peaks in tail_peak_dict.items():
+        for p in peaks:
+            amp = int(trace.channels[ch][p])
+            if amp < ext_noise[ch] * min_peak_factor_tail:
+                continue
+            candidates.append((int(p), ch, amp))
+    candidates.sort(key=lambda x: x[0])
+
+    # De-dup at same scan position (take max amplitude per channel)
+    merged = {}
+    for pos, ch, amp in candidates:
+        merged.setdefault(pos, {})[ch] = max(merged.get(pos, {}).get(ch, 0), amp)
+
+    # Walk scans and emit bases / N's
+    ext_bases = []
+    ext_plocs = []
+    ext_qvs = []
+    last_emitted_pos = tail_start_pos
+    quiet_scans = 0
+    max_scan_seen = max(ploc[-1], tail_start_pos) if len(ploc) else tail_start_pos
+
+    sorted_positions = sorted(merged.keys())
+    pos_idx = 0
+    cur_scan = tail_start_pos
+
+    # Stop conditions
+    max_ext_bases = 1000  # hard limit
+
+    while len(ext_bases) < max_ext_bases and cur_scan < trace.n_scans:
+        # Check stop: amplitude below absolute minimum?
+        cur_max_amp = 0
+        for ch in CHANNELS:
+            if ch in trace.channels and cur_scan < trace.n_scans:
+                cur_max_amp = max(cur_max_amp, int(trace.channels[ch][cur_scan]))
+        if cur_max_amp < stop_min_amp:
+            # Signal has died — stop entirely
+            break
+
+        # Do we have a peak at cur_scan?
+        if pos_idx < len(sorted_positions) and sorted_positions[pos_idx] <= cur_scan + 5:
+            pos = sorted_positions[pos_idx]
+            # Move pos_idx past any duplicate scan positions within ±5
+            while pos_idx < len(sorted_positions) and sorted_positions[pos_idx] <= pos + 5:
+                pos_idx += 1
+            # Find primary channel at this position
+            amps = merged[pos]
+            if not amps:
+                cur_scan = pos + 6
+                quiet_scans = 0
+                continue
+            sorted_amps = sorted(amps.items(), key=lambda kv: -kv[1])
+            primary_ch, primary_amp = sorted_amps[0]
+            base_char = BASE_OF_CHANNEL[primary_ch]
+            # QV: based on SNR with relaxed formula
+            snr = primary_amp / max(ext_noise[primary_ch], 1)
+            if snr < 1.0:
+                qv_val = 1
+            else:
+                qv_val = max(1, min(40, int(round(8 * np.log10(snr * 10)))))
+            ext_bases.append(ord(base_char))
+            ext_plocs.append(pos)
+            ext_qvs.append(qv_val)
+            cur_scan = pos + 6
+            quiet_scans = 0
+            last_emitted_pos = pos
+        else:
+            # No peak at cur_scan — emit N with low QV
+            ext_bases.append(ord("N"))
+            ext_plocs.append(cur_scan)
+            ext_qvs.append(2)  # very low QV
+            cur_scan += 12  # typical spacing
+            quiet_scans += 12
+
+        if quiet_scans >= stop_quiet_scans:
+            break
+
+    if not ext_bases:
+        return pb, ploc, qv
+
+    return (np.concatenate([pb, np.array(ext_bases, dtype=np.uint8)]),
+            np.concatenate([ploc, np.array(ext_plocs, dtype=np.int32)]),
+            np.concatenate([qv, np.array(ext_qvs, dtype=np.uint8)]))
