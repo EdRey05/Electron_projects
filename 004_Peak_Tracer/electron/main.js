@@ -128,7 +128,8 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
     "--q-average-trim-window", String(settings.qAverageTrimWindow ?? 40),
     "--skip-shorter-than", String(settings.skipShorterThan ?? 500),
     "--good-base-improvement", String(settings.goodBaseImprovement ?? -10),
-    "--filename-suffix", settings.filenameSuffix || "_pt",
+    "--trace-rescale-factor", String(settings.traceRescaleFactor ?? 0.5),  // NEW: ~0.5x amplitude rescale (verified Aug 24)
+    "--filename-suffix", settings.filenameSuffix || "",
     "--max-workers", String(settings.maxWorkers ?? 4),
   ];
   if (settings.cleanBaseline === false) args.push("--no-clean-baseline");
@@ -140,6 +141,8 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   if (settings.trim3EndOnly === false) args.push("--no-trim-3-only");  // off = trim both ends
   else args.push("--trim-3-only");
   if (settings.setAbiLimits) args.push("--set-abi-limits");
+  if (settings.dropLeadingBase) args.push("--drop-leading-base");  // NEW: verified Aug 24
+  if (settings.stripWellId) args.push("--strip-well-id");          // NEW: verified Aug 24
   if (settings.signalStartPeak) args.push("--signal-start-peak", settings.signalStartPeak);
 
   return new Promise((resolve) => {

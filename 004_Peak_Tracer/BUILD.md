@@ -73,6 +73,8 @@ python peaktrace_core.py
   [--wavelet-sharpening]             # default: OFF (only for full PeakTrace emulation)
   --skip-shorter-than INT            # default: 500  (PeakTrace RP "skip short/pcr base")
   [--set-abi-limits]                 # default: ON (clamp output values to ABI-spec uint16 range)
+  --trace-rescale-factor FLOAT       # default: 0.5  (verified Aug 24 — PeakTrace RP rescales to ~½ amplitude)
+  [--drop-leading-base]              # default: ON (verified Aug 24 — drops the first C-artifact base)
   --signal-start-peak {auto,start}   # default: auto
 
   # Basecaller (matches PeakTrace RP defaults)
@@ -85,7 +87,8 @@ python peaktrace_core.py
   [--trim-3-only | --no-trim-3-only] # default: --trim-3-only (PeakTrace RP "trim 3' end only")
 
   # Output
-  --filename-suffix STR              # default: _pt
+  [--strip-well-id]                  # default: ON (verified Aug 24 — drops _C09 etc.)
+  --filename-suffix STR              # default: "" (empty; only added if strip-well-id is OFF)
   [--preserve-metadata]              # default: ON
   [--emit-seq]                       # default: OFF (PeakTrace emits .seq; BBI deletes them)
 
