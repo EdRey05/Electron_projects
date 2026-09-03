@@ -161,6 +161,23 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
             except Exception as e:
                 emit_event("file_error", src=str(src_ab1), error=f"rebasecall failed: {e}")
 
+    # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to both
+    # Seq7-inherited and re-basecalled bases. Default threshold = 5 (matches
+    # PT's last-called-base QV = 6 + everything-below-becomes-N behavior, per
+    # cursor-tooltip observations in image_0010). PLOC entries kept so the
+    # emitted .ab1 still has continuous positions.
+    n_downgraded = 0
+    if args.qv_to_n_threshold > 0 and len(pb) > 0:
+        try:
+            from .peak import apply_qv_to_n_downgrade
+            pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
+            pb, ploc, qv = apply_qv_to_n_downgrade(pb, ploc, qv, threshold=args.qv_to_n_threshold)
+            pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
+            n_downgraded = pb_orig_count - pb_new_count
+        except Exception as e:
+            emit_event("file_warn", src=str(src_ab1),
+                       msg=f"qv-to-n downgrade failed: {e}")
+
     # 3. Compute P1AM (peak amplitudes) — read from input's channel data at PLOC
     p1am = np.zeros(len(pb), dtype=np.uint16)
     for i, pos in enumerate(ploc):
@@ -219,7 +236,10 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
                    first_5_bases="".join(chr(int(b)) for b in pb[:5]),
                    last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
                    lead_dropped=lead_dropped, extended=extended,
-                   ext_bases_added=ext_bases_added, map_r_squared=map_r2)
+                   ext_bases_added=ext_bases_added, map_r_squared=map_r2,
+                   n_count=int(sum(1 for b in pb if int(b) == ord('N'))),
+                   n_downgraded=n_downgraded,
+                   lowest_qv=int(qv.min()) if len(qv) else 0)
 
     return {
         "src": str(src_ab1),
@@ -231,6 +251,9 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         "lead_dropped": lead_dropped,
         "extended": extended,
         "ext_bases_added": ext_bases_added,
+        "n_count": int(sum(1 for b in pb if int(b) == ord('N'))),
+        "n_downgraded": n_downgraded,
+        "lowest_qv": int(qv.min()) if len(qv) else 0,
     }
 
 
@@ -326,6 +349,20 @@ def parse_args(argv=None) -> argparse.Namespace:
     # for regression testing against the v1.4 behavior.
     p.add_argument("--no-baseline-smooth", dest="baseline_smooth", action="store_false", default=True,
                    help="Disable DATA1-4 baseline subtraction + smoothing (v1.4 behavior, default ON in v1.5)")
+
+    # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to all
+    # basecalls (Seq7-inherited + re-basecalled).
+    #
+    # Calibration caveat (discovered during validation 2026-09-03):
+    # Seq7's QV scale is STRICTER than PT's. Same physical signal that PT
+    # rates QV=17 is rated QV=3 by Seq7. Applying threshold=5 here would
+    # downgrade Seq7's CORRECT basecalls (e.g. POS1-G12 first 5 bases are
+    # all QV ≤ 5 but are the right answers). Default threshold = 2 catches
+    # only the truly-bad calls (1.5% of all bases) without corrupting
+    # correct-but-low-QV Seq7 calls. See docs/v1.5/03_fixes_and_testing.html
+    # for full calibration analysis.
+    p.add_argument("--qv-to-n-threshold", type=int, default=2,
+                   help="QV <= threshold becomes N (default 2 = safe Seq7-scale; 0 = disabled)")
 
     return p.parse_args(argv)
 

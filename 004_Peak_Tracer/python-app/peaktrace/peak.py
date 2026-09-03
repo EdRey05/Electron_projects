@@ -505,6 +505,50 @@ def extend_late_read_interpolated(
     return final_pb, final_ploc, final_qv
 
 
+def apply_qv_to_n_downgrade(pb: np.ndarray,
+                            ploc: np.ndarray,
+                            qv: np.ndarray,
+                            threshold: int = 5) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """v1.5 FIX #19: walk all basecalls and downgrade QV <= threshold to 'N'.
+
+    Per image_0010 cursor-tooltip observations and the §02 §4 root-cause
+    analysis: v1.4 inherits Seq7's no-N policy. The only place QV-to-N
+    downgrade fires today is for newly-added gap-fill bases (peak.py:591),
+    not for inherited Seq7 calls. This leaves the noisy tail padded with
+    QV = 1, 2, 3 basecalls instead of N's — which masks the low-quality
+    region and corrupts downstream QV-based filters.
+
+    Per cursor-tooltip data: PT's last called base in the late-read has QV
+    = 6 and everything below becomes N. So PT's effective threshold is
+    QV <= 5 -> N. We match it.
+
+    PLOC entries are KEPT (matching PT's behavior of emitting N letters
+    at real scan positions, not gaps). This way downstream tools that
+    iterate over PLOC still see continuous positions.
+
+    Args:
+        pb: basecalls (uint8 ndarray, ASCII codes for A/C/G/T/N)
+        ploc: peak locations (int32 ndarray)
+        qv: per-base QV (uint8 ndarray)
+        threshold: QV <= threshold gets downgraded to N. Default 5 (PT parity).
+
+    Returns:
+        (pb_new, ploc, qv_new) — pb modified in place to have N at low-QV positions,
+        ploc unchanged, qv unchanged (we keep the QV values for diagnostic).
+    """
+    if len(pb) != len(ploc) or len(pb) != len(qv):
+        raise ValueError(f"pb/ploc/qv length mismatch: {len(pb)}/{len(ploc)}/{len(qv)}")
+
+    pb_new = pb.copy()
+    downgraded = 0
+    for i in range(len(pb_new)):
+        if int(qv[i]) <= threshold and int(pb_new[i]) != ord('N'):
+            pb_new[i] = ord('N')
+            downgraded += 1
+
+    return pb_new, ploc, qv
+
+
 def rebasecall_data14(trace: Trace,
                       map_params: dict,
                       peaks14: dict,
