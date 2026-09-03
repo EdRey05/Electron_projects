@@ -49,6 +49,7 @@ def write_ab1(
     set_abi_limits: bool = True,
     clamp_max: int = 65535,
     map_params: dict | None = None,
+    p99_target: int = 650,
 ) -> None:
     """Rebuild .ab1 file from scratch, copying non-replaced tags from template.
 
@@ -187,8 +188,22 @@ def write_ab1(
     # mean rescale factor ~0.46). This is what makes PT chromatograms fit
     # cleanly into SnapGene/Geneious y-axes.
     #
+    # v1.5 FIX #21 audit findings (Sep 03, 2026):
+    # The p99-target formula is correct in principle: per-channel scale = p99_target / p99.
+    # However, two calibration notes apply:
+    #   1. The 650 target matches PT's f3 (forward-strand) channels. PT's f2 (reverse-strand)
+    #      channels are rescales to a HIGHER p99 (~1397 per sample4). v1.5 uses the
+    #      single 650 target for ALL four channels — this is consistent with PT's output
+    #      when the user runs the standard 'F' (forward) processing mode.
+    #   2. After FIX #17 wires baseline subtraction + smoothing on DATA1-4, the p99
+    #      values shift slightly (lower because baseline is removed). Result: scale factor
+    #      increases slightly, chromatogram amplitude increases. This is the desired direction
+    #      (better signal-to-display ratio) but means FIX #17 outputs may have slightly
+    #      different y-axis appearance than v1.4 outputs. Not a correctness issue — same
+    #      peaks, same positions, just different visual amplitude.
+    #
     # .ab1 stores chromatogram data as big-endian signed int16.
-    P99_TARGET = 650
+    P99_TARGET = p99_target
 
     # FIX #9: extend DATA9-12 to fit max(ploc). PT does this; without it the
     # chromatogram truncates and SnapGene shows extra "ghost" peaks at the end.

@@ -214,7 +214,8 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         else:
             write_ab1(out_ab1, trace, pb, qv, ploc, p1am=p1am,
                       set_abi_limits=args.set_abi_limits,
-                      map_params=map_params if args.rebasecall_data14 else None)
+                      map_params=map_params if args.rebasecall_data14 else None,
+                      p99_target=args.p99_target)
     except Exception as e:
         emit_event("file_error", src=str(src_ab1), error=f"write ab1 failed: {e}")
         return {"src": str(src_ab1), "status": "error"}
@@ -381,6 +382,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     # for full calibration analysis.
     p.add_argument("--qv-to-n-threshold", type=int, default=2,
                    help="QV <= threshold becomes N (default 2 = safe Seq7-scale; 0 = disabled)")
+
+    # v1.5 FIX #21: per-channel 99th-percentile rescale target for DATA9-12 output.
+    # Default 650 matches PT's forward-strand ('F' mode) processing. For
+    # reverse-strand only runs, target should be ~1397 (PT's f2 mode).
+    p.add_argument("--p99-target", type=int, default=650,
+                   help="Rescale per-channel DATA9-12 so its 99th percentile = this value (default 650; PT uses 650 for forward, ~1397 for reverse)")
 
     return p.parse_args(argv)
 
