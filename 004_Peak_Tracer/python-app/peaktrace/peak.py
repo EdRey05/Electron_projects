@@ -22,13 +22,28 @@ Stage 6: extend_late_read_interpolated — re-basecall via trace interpolation.
           Interpolates 4 channels to ~1.25x resolution, detects peaks with
           adaptive prominence, keeps existing Seq7 calls where they match,
           adds new calls in low-SNR regions, stops when quality collapses.
+
+Stage 7 (v1.5 FIX #17): clean_baseline + smooth_channels on DATA1-4 before
+          peak detection. Returns baseline-subtracted + Savitzky-Golay
+          smoothed (window=7, order=2) versions of the raw DATA1-4 channels.
+          Applied inside get_data14_channels() so both detect_peaks_data14
+          and rebasecall_data14 see the same processed signal.
+          Default ON; disable via cli.py --no-baseline-smooth flag.
 """
 from __future__ import annotations
 import numpy as np
 from .read import Trace, CHANNELS, CHANNEL_OF_BASE
-from .smooth import clean_baseline
+from .smooth import clean_baseline, smooth_channels
 
 BASE_OF_CHANNEL = {9: "A", 10: "C", 11: "G", 12: "T"}
+
+# v1.5 FIX #17: tunable parameters for the DATA1-4 pre-processing stage.
+# Module-level so both peak.py and cli.py can read them, and so tests
+# can monkey-patch if needed.
+DATA14_BASELINE_WINDOW = 400       # rolling window size (scans)
+DATA14_BASELINE_PERCENTILE = 10    # low-percentile floor
+DATA14_SMOOTH_LEVEL = 3            # Savitzky-Golay window = 2*level + 1 = 7
+DATA14_SMOOTH_ORDER = 2            # polynomial order
 
 
 def drop_leading_artifact(trace: Trace) -> None:
@@ -229,11 +244,27 @@ def trim_3_end(bases: np.ndarray, qvs: np.ndarray, value: int = 9, window: int =
     return bases[:trim_pos], qvs[:trim_pos]
 
 
-def get_data14_channels(trace: Trace) -> dict:
+def get_data14_channels(trace: Trace, process: bool = True) -> dict:
     """Extract DATA1-4 (full-resolution processed channels) from trace.tags.
 
     Returns dict {1: ndarray, 2: ndarray, 3: ndarray, 4: ndarray} (A, C, G, T).
     Empty dict if DATA1-4 are absent.
+
+    v1.5 FIX #17: if `process=True` (default), the returned channels are
+    baseline-subtracted + Savitzky-Golay smoothed before peak detection.
+    This matches PeakTrace's published stages 2 (baseline) and 3 (smoothing)
+    and addresses Issues 1 (peak-mountain merging), 4 (quality-band
+    degradation), and partially 2 (spurious flank bases).
+
+    The original DATA1-4 values in trace.tags are NOT mutated; processing
+    happens on a local copy. This keeps the existing writer path (which
+    reads DATA1-4 for chromatogram extension) operating on raw values.
+
+    Tunable parameters (module-level, see top of file):
+      - DATA14_BASELINE_WINDOW (default 400)
+      - DATA14_BASELINE_PERCENTILE (default 10)
+      - DATA14_SMOOTH_LEVEL (default 3 -> window 7)
+      - DATA14_SMOOTH_ORDER (default 2)
     """
     full = {}
     for ch in (1, 2, 3, 4):
@@ -242,13 +273,44 @@ def get_data14_channels(trace: Trace) -> dict:
             arr = np.asarray(trace.tags[tag], dtype=np.float64)
             if len(arr) > 100:
                 full[ch] = arr
-    return full
+
+    if not process or not full:
+        return full
+
+    # v1.5 FIX #17: baseline subtraction + smoothing on local copies.
+    # Build a synthetic Trace-like object so we can reuse the existing
+    # clean_baseline() and smooth_channels() functions (which operate on
+    # trace.channels dict keyed by ABI channel IDs 9-12).
+    from .read import Trace as _Trace
+    tmp = _Trace(src_path=trace.src_path)
+    # Map DATA1->9 (A), 2->10 (C), 3->11 (G), 4->12 (T)
+    data_to_abi = {1: 9, 2: 10, 3: 11, 4: 12}
+    tmp.channels = {data_to_abi[ch]: arr.astype(np.float64) for ch, arr in full.items()}
+
+    # Stage 1: baseline subtraction (reuses clean_baseline from smooth.py)
+    clean_baseline(tmp,
+                  window=DATA14_BASELINE_WINDOW,
+                  percentile=DATA14_BASELINE_PERCENTILE)
+
+    # Stage 2: smoothing (reuses smooth_channels from smooth.py)
+    smooth_channels(tmp,
+                    level=DATA14_SMOOTH_LEVEL,
+                    order=DATA14_SMOOTH_ORDER)
+
+    # Map back to DATA1-4 keys
+    processed = {}
+    for ch in (1, 2, 3, 4):
+        abi_ch = data_to_abi[ch]
+        if abi_ch in tmp.channels:
+            processed[ch] = np.asarray(tmp.channels[abi_ch], dtype=np.float64)
+    return processed
 
 
 def detect_peaks_data14(trace: Trace,
                         min_snr: float = 1.3,
                         distance: int = 8,
-                        adaptive_fill: bool = True) -> dict:
+                        adaptive_fill: bool = True,
+                        process: bool = True) -> dict:
     """Detect peaks in DATA1-4 at PT-like density (~12.3 scans/base).
 
     Strategy:
@@ -258,11 +320,14 @@ def detect_peaks_data14(trace: Trace,
          prominence * 0.8 to pick up marginal peaks Seq7-style detectors miss
       3. Returns dict {ch: peak_positions} in DATA1-4 coordinates
 
+    v1.5 FIX #17: `process=True` (default) applies baseline subtraction +
+    Savitzky-Golay smoothing to DATA1-4 channels before peak detection.
+
     Sanity: total peaks across channels should be ~ len(DATA1) / 12.3.
     """
     from scipy.signal import find_peaks
 
-    full = get_data14_channels(trace)
+    full = get_data14_channels(trace, process=process)
     if not full:
         return {}
 
@@ -270,7 +335,16 @@ def detect_peaks_data14(trace: Trace,
     peaks = {}
     noise = {}
     for ch, arr in full.items():
-        noise[ch] = max(1.0, float(np.percentile(arr, 5)))
+        # v1.5 FIX #17: robust noise estimator (MAD * 1.4826) instead of
+        # 5th-percentile. The 5th-percentile is invalid for a baseline-subtracted
+        # signal (it sits near zero, making SNR trivially large). MAD estimates
+        # the spread of the signal around its median, robust to peak contamination,
+        # and matches what rebasecall_data14 already uses.
+        a = arr.astype(np.float64)
+        med = float(np.median(a))
+        mad = float(np.median(np.abs(a - med)))
+        sigma = mad * 1.4826
+        noise[ch] = max(1.0, sigma)
         pk, _ = find_peaks(arr, prominence=noise[ch] * min_snr, distance=distance)
         peaks[ch] = pk.astype(np.int32)
 
@@ -439,6 +513,7 @@ def rebasecall_data14(trace: Trace,
                       secondary_max_pct: float = 25.0,
                       qv_floor: int = 10,
                       stop_quiet_bases: int = 40,
+                      process: bool = True,
                       pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
 
@@ -462,7 +537,7 @@ def rebasecall_data14(trace: Trace,
     if pb is None: pb = trace.pb_in.copy()
     if ploc is None: ploc = trace.ploc_in.copy()
     if qv is None: qv = trace.qv_in.copy()
-    full = get_data14_channels(trace)
+    full = get_data14_channels(trace, process=process)
     if not full or not peaks14 or not map_params.get("ok"):
         return pb, ploc, qv
 

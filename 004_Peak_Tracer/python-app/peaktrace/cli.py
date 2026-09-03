@@ -120,12 +120,16 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
             try:
                 from .align import learn_coordinate_map
                 from .peak import detect_peaks_data14, rebasecall_data14
+                # v1.5 FIX #17: baseline subtraction + smoothing on DATA1-4
+                # before peak detection. Default ON. Disable with --no-baseline-smooth.
                 map_params = learn_coordinate_map(trace)
                 map_r2 = map_params.get("r_squared", 0.0)
                 if map_params.get("ok"):
-                    peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr)
+                    peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr,
+                                                   process=args.baseline_smooth)
                     pb_new, ploc_new, qv_new = rebasecall_data14(
                         trace, map_params, peaks14, min_snr=args.extend_min_snr,
+                        process=args.baseline_smooth,
                         pb=pb, ploc=ploc, qv=qv)
                     # Sanity: every original call must survive in the merged output
                     # (same positions, same bases). Internal gap insertions expected.
@@ -316,6 +320,12 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--min-rebasecall-len", type=int, default=1000,
                    help="Only re-basecall reads with >= this many bases (default 1000; "
                         "shorter reads are already well-trimmed and extending them adds junk)")
+
+    # v1.5 FIX #17: pre-process DATA1-4 with baseline subtraction + Savitzky-Golay
+    # smoothing before peak detection. Default ON. Disable with --no-baseline-smooth
+    # for regression testing against the v1.4 behavior.
+    p.add_argument("--no-baseline-smooth", dest="baseline_smooth", action="store_false", default=True,
+                   help="Disable DATA1-4 baseline subtraction + smoothing (v1.4 behavior, default ON in v1.5)")
 
     return p.parse_args(argv)
 
