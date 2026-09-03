@@ -678,9 +678,34 @@ def rebasecall_data14(trace: Trace,
             gap_centers.append((int(seq7_pos[-1]), int(trailing_end)))
 
     keep_new = np.zeros(len(cand_pos9), dtype=bool)
+    # v1.5 FIX #18: minimum-spacing guard for gap-fill candidates.
+    # When a strong dominant peak exists in one channel, residual baseline
+    # ripple in neighbouring channels can fake a low-SNR candidate within
+    # 8 scans of the dominant peak. Drop those: the gap-fill signal is too
+    # weak to be a real basecall. SNR threshold matches the existing
+    # min_snr_for_keep (3.0) used elsewhere in the pipeline so spurious
+    # candidates are dropped but legitimate late-read bases with moderate
+    # SNR still pass.
+    SNR_NEAR_GUARD = 3.0  # candidates within NEAR_SCAN_WINDOW of Seq7 need SNR >= this
+    NEAR_SCAN_WINDOW = 8  # scan-width window for "near" the Seq7 call
+    seq7_pos_arr = ploc.astype(np.int32)
     for i, p in enumerate(cand_pos9):
+        # Distance to nearest Seq7 position (only)
+        dist_to_seq7 = int(np.min(np.abs(seq7_pos_arr - p))) if len(seq7_pos_arr) else 9999
+        # Get candidate SNR
+        cand_pos14_i = int(np.array(cand_pos14)[i]) if i < len(cand_pos14) else None
+        cand_snr = 0.0
+        if cand_pos14_i is not None and cand_pos14_i in merged:
+            amps_i = merged[cand_pos14_i]
+            primary_ch_i, primary_amp_i = sorted(amps_i.items(), key=lambda kv: -kv[1])[0]
+            cand_snr = primary_amp_i / noise[primary_ch_i]
+        # Apply FIX #18 guard: within 8 scans of Seq7 call AND low SNR = drop.
+        # If near Seq7 and SNR is high (>= 3.0), trust the candidate.
+        if dist_to_seq7 < NEAR_SCAN_WINDOW and cand_snr < SNR_NEAR_GUARD:
+            keep_new[i] = False
+            continue
+        # Otherwise, fall through to gap_centers check
         for g_start, g_end in gap_centers:
-            # inside a gap, but not too close to the flanking Seq7 calls
             if g_start + 3 < p < g_end - 3:
                 keep_new[i] = True
                 break
