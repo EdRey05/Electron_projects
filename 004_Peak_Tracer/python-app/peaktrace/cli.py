@@ -262,12 +262,22 @@ def write_qc_report(out_dir: Path, results: list, args) -> Path:
 
     Proper Excel Open XML workbook, one sheet, header row + one row per file.
 
-    Columns: basename, status, n_bases_in, n_bases_out, qv_mean, extended, lead_dropped
+    Columns: basename, status, n_bases_in, n_bases_out, qv_mean, lowest_qv,
+             n_count, ext_bases_added, extended, lead_dropped
+
+    v1.5 FIX #22 added columns:
+      - lowest_qv: minimum PCON1 value across all basecalls (signal-quality indicator).
+        Lower = noisier read. Sister company uses this to flag suspicious files.
+      - n_count: total N's in PBAS1 after QV-to-N downgrade (FIX #19). Lower
+        = more confident basecalls.
+      - ext_bases_added: how many new bases the rebasecall added beyond Seq7's
+        original PBAS length. Positive = read was extended.
     """
     report_path = out_dir / "2-Report.xlsx"
 
     w = XlsxWriter()
-    w.add_row(["basename", "status", "n_bases_in", "n_bases_out", "qv_mean", "extended", "lead_dropped"])
+    w.add_row(["basename", "status", "n_bases_in", "n_bases_out", "qv_mean",
+               "lowest_qv", "n_count", "ext_bases_added", "extended", "lead_dropped"])
     for r in results:
         basename = Path(r["src"]).stem
         if args.strip_well_id:
@@ -277,20 +287,28 @@ def write_qc_report(out_dir: Path, results: list, args) -> Path:
         n_in = r.get('n_bases_in', '')
         n_out = r.get('n_bases_out', '')
         qv = r.get('qv_mean')
+        lowest_qv = r.get('lowest_qv')
+        n_count = r.get('n_count', '')
+        ext_added = r.get('ext_bases_added', '')
         ext = 'Y' if r.get('extended') else 'N'
         ld = 'Y' if r.get('lead_dropped') else 'N'
 
         if r["status"] == "ok":
             status = "OK"
-            if r.get("extended") and r.get("ext_bases_added", 0) > 0:
-                status = f"OK (+{r['ext_bases_added']} from raw)"
-            w.add_row_mixed([basename, status, n_in, n_out, f"{qv:.1f}" if qv is not None else "", ext, ld])
+            if r.get("extended") and ext_added:
+                status = f"OK (+{ext_added} from raw)"
+            w.add_row_mixed([basename, status, n_in, n_out,
+                             f"{qv:.1f}" if qv is not None else "",
+                             str(lowest_qv) if lowest_qv is not None else "",
+                             str(n_count) if n_count != '' else "",
+                             str(ext_added) if ext_added != '' else "",
+                             ext, ld])
         elif r["status"] == "skipped":
             reason = r.get("reason", "skipped")
-            w.add_row_mixed([basename, f"Skipped ({reason})", "", "", "", "", ""])
+            w.add_row_mixed([basename, f"Skipped ({reason})", "", "", "", "", "", "", "", ""])
         elif r["status"] == "error":
             err = r.get("error", "unknown error")
-            w.add_row_mixed([basename, f"Error ({err[:60]})", "", "", "", "", ""])
+            w.add_row_mixed([basename, f"Error ({err[:60]})", "", "", "", "", "", "", "", ""])
 
     w.write(report_path)
     return report_path
