@@ -49,6 +49,80 @@ def strip_well_id(name: str) -> str:
     return WELL_ID_RE.sub("", name)
 
 
+# ---------- v1.6: .bat preprocessing equivalents ----------
+
+def convert_seq_to_fa(seq_path: Path) -> Path | None:
+    """Convert one .seq file to .fa (.bat 1- "Remove Well Position" equivalent).
+
+    Steps (mirror the .bat):
+      1. Read the .seq file's first line (the header), strip last 8 chars
+         (the _C09 well-ID suffix), strip leading '>' if present.
+      2. Write the .fa with `>name` header + remaining lines (spaces stripped
+         from each sequence line).
+      3. Delete the original .seq.
+
+    Returns the new .fa path, or None on any failure (logged via emit_event).
+    """
+    try:
+        with seq_path.open("r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except Exception as e:
+        emit_event("preprocess_warn", src=str(seq_path), msg=f"read failed: {e}")
+        return None
+
+    if not lines:
+        emit_event("preprocess_warn", src=str(seq_path), msg="empty file, skipping")
+        return None
+
+    # First line is the header. Strip last 8 chars (well-ID like "_C09\n").
+    header_raw = lines[0]
+    header = header_raw.rstrip("\r\n")
+    if len(header) >= 8:
+        header = header[:-8]
+    header = header.strip().lstrip(">").strip()
+
+    # Remaining lines: sequence, strip spaces.
+    seq_lines = []
+    for ln in lines[1:]:
+        seq_lines.append(ln.rstrip("\r\n").replace(" ", ""))
+
+    fa_path = seq_path.with_suffix(".fa")
+    try:
+        with fa_path.open("w", encoding="utf-8") as f:
+            f.write(f">{header}\n")
+            for sl in seq_lines:
+                f.write(sl + "\n")
+        seq_path.unlink()
+        emit_event("preprocess_seq_to_fa", src=str(seq_path), out=str(fa_path),
+                   header=header, n_seq_lines=len(seq_lines))
+        return fa_path
+    except Exception as e:
+        emit_event("preprocess_warn", src=str(seq_path), msg=f"write failed: {e}")
+        return None
+
+
+def run_preprocessing(in_dir: Path, args) -> dict:
+    """Run the .bat preprocessing on the input folder. Returns counts.
+
+    v1.6 Task 4: .seq -> .fa conversion. Tasks 5 + 6 add rename + cleanup.
+    """
+    counts = {"seq_to_fa": 0, "seq_failed": 0}
+    if not getattr(args, "preprocess", True):
+        emit_event("preprocess_skipped", reason="--no-preprocess flag")
+        return counts
+
+    seq_files = sorted(in_dir.glob("*.seq"))
+    emit_event("preprocess_start", n_seq=len(seq_files))
+    for seq in seq_files:
+        result = convert_seq_to_fa(seq)
+        if result is not None:
+            counts["seq_to_fa"] += 1
+        else:
+            counts["seq_failed"] += 1
+    emit_event("preprocess_seq_done", **counts)
+    return counts
+
+
 def emit_event(event_type: str, **fields):
     """Emit a JSON-line event for the Electron renderer."""
     obj = {"type": event_type, **fields}
@@ -345,6 +419,17 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Generate 2-Report.xls (replaces .bat 3-, default ON)")
     p.add_argument("--no-write-qc-report", dest="write_qc_report", action="store_true")
 
+    # v1.6: preprocessing toggle (replaces the .bat work the Gene Synthesis
+    # team runs between Seq7 and PT). When ON (default), .seq files in the
+    # input folder are converted to .fa (strip well-ID from first line,
+    # strip spaces from sequence lines), .fa/.txt/.fasta files are renamed
+    # to drive .ab1 renames, then .txt cleanup. When OFF, only the PT
+    # pipeline runs.
+    p.add_argument("--preprocess", action="store_true", default=True,
+                   help="Run the .bat preprocessing (.seq -> .fa, rename, cleanup) before PT (default ON)")
+    p.add_argument("--no-preprocess", dest="preprocess", action="store_true",
+                   help="Skip the .bat preprocessing; run PT pipeline only")
+
     # v1.2: Leading-base drop (matches PT's behavior on 83% of long reads)
     p.add_argument("--lead-drop-enabled", action="store_true", default=True,
                    help="Drop leading base when QV < --lead-drop-qv (matches PT, default ON)")
@@ -405,6 +490,11 @@ def main(argv=None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     emit_event("run_start", input=str(in_dir), output=str(out_dir))
+
+    # v1.6: run the .bat preprocessing equivalent before the PT pipeline.
+    # Currently converts .seq -> .fa. Tasks 5 + 6 will add rename + cleanup.
+    if getattr(args, "preprocess", True):
+        run_preprocessing(in_dir, args)
 
     ab1_files = sorted(in_dir.glob("*.ab1"))
     emit_event("discovered", n_files=len(ab1_files))
