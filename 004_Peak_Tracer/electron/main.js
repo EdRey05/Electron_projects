@@ -112,22 +112,19 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
     return { ok: false, error: `peaktrace_core.py not found at ${script}. Run python-app setup.` };
   }
 
-  // Mode controls which processing runs:
-  //   "rp"   = Seq7 pass-through + lead-drop only (matches v1.1 + lead-drop). No extension.
-  //   "full" = RP + DATA1-4 re-basecalling (v1.3 extension).
-  // Default "rp". "full" enables --rebasecall-data14. The UI also exposes a separate
-  // rebasecallData14 checkbox that can force rebasecall on regardless of mode.
-  const mode = (settings.mode || "rp").toLowerCase();
-  const wantRebasecall = mode === "full" || !!settings.rebasecallData14;
+  // v1.6 single PT pipeline: always run the full v1.5 processing. No mode
+  // toggle for the PT processing itself — RP/Full/Passthrough confusion was
+  // removed in v1.6. The only mode toggle is preprocessing (with/without
+  // the .bat equivalent your team runs between Seq7 and PT).
+  const mode = (settings.mode || "with_preprocess").toLowerCase();
 
-  // v1.3 CLI accepts only this flag set. The App.jsx UI exposes more controls
-  // (smoothing, baseline) that map to an aspirational full RP pipeline we
-  // never built — they're silently ignored here. Settings we DO honor:
   const args = [
     script,
     "--input-dir", inputDir,
     "--output-dir", outputDir,
   ];
+
+  // Output toggles (what the v1.6 UI exposes)
   if (settings.stripWellId !== false) args.push("--strip-well-id");
   else args.push("--no-strip-well-id");
   if (settings.emitSeq !== false) args.push("--emit-seq");
@@ -135,16 +132,16 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   if (settings.setAbiLimits !== false) args.push("--set-abi-limits");
   if (settings.skipShorterThan) args.push("--skip-shorter-than", String(settings.skipShorterThan));
   if (settings.filenameSuffix) args.push("--filename-suffix", settings.filenameSuffix);
-  if (settings.leadDropEnabled !== false) args.push("--lead-drop-enabled");
-  else args.push("--no-lead-drop");
-  if (settings.leadDropQv != null) args.push("--lead-drop-qv", String(settings.leadDropQv));
 
-  // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped)
-  if (wantRebasecall) {
-    args.push("--rebasecall-data14");
-    args.push("--min-rebasecall-len", String(settings.minRebasecallLen ?? 1000));
-    args.push("--extend-min-snr", String(settings.extendMinSnr ?? 1.3));
-  }
+  // Preprocessing toggle (the v1.6 2-mode UI choice)
+  if (mode === "pt_only") args.push("--no-preprocess");
+  else args.push("--preprocess");
+
+  // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped).
+  // v1.6: always on — single PT pipeline, no UI toggle.
+  args.push("--rebasecall-data14");
+  args.push("--min-rebasecall-len", "1000");
+  args.push("--extend-min-snr", "1.3");
 
   return new Promise((resolve) => {
     const child = spawn(py, args, { windowsHide: true });
