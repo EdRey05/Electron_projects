@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   XCircle,
   AlertTriangle,
-  ChevronDown,
   ChevronUp,
   Settings,
   Eye,
@@ -132,10 +131,9 @@ export default function PeakTracer() {
 
   // ---- run state ----
   const [running, setRunning] = useState(false);
-  const [results, setResults] = useState([]);   // [{name, status, message, outputPath?}]
+  const [results, setResults] = useState([]);   // [{name, status, message, qc, extBasesAdded, ...}]
   const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState([]);
-  const [expanded, setExpanded] = useState(null);
 
   // ---- subscribe to streaming events ----
   useEffect(() => {
@@ -710,14 +708,21 @@ export default function PeakTracer() {
 
             <div className="rounded-lg border overflow-hidden" style={{ borderColor: border }}>
               {results.map((r, i) => {
-                const isOpen = expanded === i;
                 const color = statusColor(r.status);
+                // ---- 4-chip metadata (v1.6: always visible, no expander) ----
+                const extBasesAdded = r.extBasesAdded ?? r.qc?.ext_bases_added ?? 0;
+                const extended = r.extended || extBasesAdded > 0;
+                const qvMean = r.qc?.qv_mean;
+                const lowestQv = r.qc?.lowest_qv;
+                const nCount = r.qc?.n_count;
+                const nBasesOut = r.qc?.n_bases_out;
+                const lowestQvColor =
+                  lowestQv == null ? muted :
+                  lowestQv >= 20 ? teal :
+                  lowestQv >= 10 ? amber : coral;
                 return (
                   <div key={r.name + i} style={{ borderTop: i === 0 ? "none" : `1px solid ${border}` }}>
-                    <div
-                      className="flex items-center gap-3 px-4 py-3 cursor-pointer"
-                      onClick={() => setExpanded(isOpen ? null : i)}
-                    >
+                    <div className="flex items-center gap-3 px-4 py-3">
                       {r.status === "ok" ? (
                         <CheckCircle2 size={17} color={teal} className="shrink-0" />
                       ) : r.status === "error" ? (
@@ -731,39 +736,58 @@ export default function PeakTracer() {
                           {r.message}
                         </div>
                       </div>
-                      {r.qc && (
+                      {nBasesOut != null && (
                         <div
                           className="font-mono text-xs shrink-0 px-2 py-0.5 rounded"
                           style={{ color: muted, background: "#F0F4F8" }}
                         >
-                          {r.qc.length} bp
+                          {nBasesOut} bp
                         </div>
                       )}
-                      <ChevronDown size={16} color={muted} className={isOpen ? "rotate-180 transition-transform" : "transition-transform"} />
                     </div>
 
-                    {isOpen && (
-                      <div className="px-4 pb-4 pt-1">
-                        {r.outputPath && (
-                          <div className="text-xs font-mono mb-2" style={{ color: muted }}>
-                            → {r.outputPath}
-                          </div>
-                        )}
-                        {r.qc && (
-                          <pre
-                            className="font-mono text-[10px] leading-snug rounded-md p-3 overflow-x-auto whitespace-pre-wrap max-h-40 pt-scroll"
-                            style={{ background: panelDark, color: "#D8E2EE" }}
+                    {/* 4-chip metadata strip — always visible (v1.6) */}
+                    {r.qc && (
+                      <div className="flex flex-wrap gap-2 px-4 pb-3 -mt-1">
+                        {/* Extended chip */}
+                        <span
+                          className="font-mono text-[11px] px-2 py-0.5 rounded"
+                          style={{
+                            color: extended ? teal : muted,
+                            background: extended ? "rgba(63, 182, 168, 0.10)" : "#F0F4F8",
+                          }}
+                        >
+                          {extended ? `+${extBasesAdded} bases (extended)` : "no extension"}
+                        </span>
+                        {/* Mean QV chip */}
+                        {qvMean != null && (
+                          <span
+                            className="font-mono text-[11px] px-2 py-0.5 rounded"
+                            style={{ color: muted, background: "#F0F4F8" }}
                           >
-                            {JSON.stringify(r.qc, null, 2)}
-                          </pre>
+                            mean QV {qvMean.toFixed(1)}
+                          </span>
                         )}
-                        {(r.extended || r.extBasesAdded > 0) && (
-                          <div className="font-mono text-xs mt-2 flex items-center gap-2" style={{ color: teal }}>
-                            <span>+{r.extBasesAdded} bases from raw channels</span>
-                            {r.mapRSquared > 0 && (
-                              <span style={{ color: muted }}>r²={r.mapRSquared.toFixed(3)}</span>
-                            )}
-                          </div>
+                        {/* Lowest QV chip — color-coded */}
+                        {lowestQv != null && (
+                          <span
+                            className="font-mono text-[11px] px-2 py-0.5 rounded"
+                            style={{ color: lowestQvColor, background: `${lowestQvColor}1A` }}
+                          >
+                            min QV {lowestQv}
+                          </span>
+                        )}
+                        {/* N's chip */}
+                        {nCount != null && (
+                          <span
+                            className="font-mono text-[11px] px-2 py-0.5 rounded"
+                            style={{
+                              color: nCount > 0 ? amber : muted,
+                              background: nCount > 0 ? "rgba(224, 165, 42, 0.10)" : "#F0F4F8",
+                            }}
+                          >
+                            {nCount} {nCount === 1 ? "N" : "N's"}
+                          </span>
                         )}
                       </div>
                     )}
