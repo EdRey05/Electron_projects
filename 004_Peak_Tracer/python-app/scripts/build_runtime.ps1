@@ -1,115 +1,186 @@
 #!/usr/bin/env pwsh
-# Build python-app/runtime/ as a self-contained CPython distribution that
-# electron-builder can bundle into the portable .exe.
+# Build python-app/runtime/ as a self-contained, MINIMAL CPython distribution
+# that electron-builder can bundle into the portable .exe.
 #
-# Replaces Scenario B's failure mode (electron-builder only ships
-# Lib/site-packages/, leaving the stdlib missing) by populating runtime/
-# from uv's local CPython cache + a working venv's site-packages.
+# IMPORTANT: do NOT overlay an existing venv that has unrelated packages.
+# We saw a 5x size increase (157 MB -> 787 MB) when the source venv happened
+# to contain googleapiclient, onnxruntime, ctranslate2, av.libs, etc.
 #
-# Usage (from repo root):
-#   pwsh 004_Peak_Tracer/python-app/scripts/build_runtime.ps1
-#
-# Outputs:
-#   004_Peak_Tracer/python-app/runtime/  (gitignored, ~700 MB)
+# IMPORTANT 2: uv creates lightweight venvs that SYMLINK the stdlib to a
+# shared location. If you copy the venv as-is to python-app/runtime/, you
+# get a runtime with only site-packages/ in it (no Lib/os.py etc.) and it
+# WON'T RUN when shipped. This script MERGES uv's full stdlib from the
+# managed CPython distribution INTO the runtime's Lib/, while preserving
+# site-packages/ from the slim venv.
+
+[CmdletBinding()]
+param(
+    [switch]$Force = $false
+)
 
 $ErrorActionPreference = "Stop"
 
-# 1. Locate sources
-$uvCache = Join-Path $env:APPDATA "Roaming\uv\python"
-$cpythonDirs = Get-ChildItem -Path $uvCache -Filter "cpython-3.11*" -Directory
-if ($cpythonDirs.Count -eq 0) {
-    Write-Host "ERROR: No CPython 3.11 found in $uvCache" -ForegroundColor Red
-    Write-Host "Install with: uv python install 3.11"
-    exit 1
-}
-$srcCpy = $cpythonDirs[0].FullName
-Write-Host "CPython source: $srcCpy" -ForegroundColor Cyan
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
+$pyAppDir = Join-Path $repoRoot "python-app"
+$runtimeDir = Join-Path $pyAppDir "runtime"
+$buildVenv = Join-Path $env:TEMP "peak-tracer-build-venv-$([guid]::NewGuid())"
+$uv = (Get-Command "uv" -ErrorAction Stop).Source
 
-# Pick a working venv with biopython installed
-$venvRoot = Join-Path $env:LOCALAPPDATA "hermes\hermes-agent\venv"
-if (-not (Test-Path (Join-Path $venvRoot "Lib\site-packages\biopython-1.88.dist-info"))) {
-    Write-Host "ERROR: $venvRoot does not have biopython 1.88 installed" -ForegroundColor Red
-    Write-Host "Either install biopython there or pass -VenvRoot to a venv that has it."
-    exit 1
-}
-$venvSrc = $venvRoot
-Write-Host "Source venv:    $venvSrc" -ForegroundColor Cyan
+Write-Host "== Peak Tracer runtime builder =="
+Write-Host "Runtime target: $runtimeDir"
+Write-Host "Build venv: $buildVenv"
+Write-Host "uv: $uv"
+Write-Host ""
 
-# 2. Wipe and recreate runtime
-$runtime = Join-Path $PSScriptRoot "..\runtime"
-if (Test-Path $runtime) {
-    Write-Host "Wiping existing $runtime" -ForegroundColor Yellow
-    Remove-Item -Recurse -Force $runtime
-}
-New-Item -ItemType Directory -Path $runtime | Out-Null
+# 1. Find uv-managed CPython 3.11
+$uvPythonDir = Get-ChildItem -Path "$env:APPDATA\uv\python" -Directory |
+    Where-Object { $_.Name -like "cpython-3.11*" } |
+    Select-Object -First 1
 
-# 3. Copy stdlib + headers + libs from CPython
-foreach ($sub in @("DLLs", "include", "Lib", "libs")) {
-    $src = Join-Path $srcCpy $sub
+if (-not $uvPythonDir) {
+    throw "uv-managed CPython 3.11 not found. Run: uv python install 3.11"
+}
+$uvPython = $uvPythonDir.FullName
+$uvPythonExe = Join-Path $uvPython "python.exe"
+Write-Host "Using uv CPython: $uvPython"
+
+# 2. Create the slim build venv
+& $uv venv $buildVenv --python $uvPythonExe | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "uv venv failed" }
+
+# 3. Install ONLY the packages peak-tracer needs
+& $uv pip install --python "$buildVenv\Scripts\python.exe" `
+    -r (Join-Path $pyAppDir "requirements.txt") `
+    openpyxl
+if ($LASTEXITCODE -ne 0) { throw "uv pip install failed" }
+
+# 4. Wipe old runtime (ignore Windows file locks)
+if (Test-Path $runtimeDir) {
+    Write-Host "Removing old runtime..."
+    Remove-Item -Recurse -Force $runtimeDir -ErrorAction SilentlyContinue
+}
+if (Test-Path $runtimeDir) {
+    $oldPath = "$runtimeDir.old-$(Get-Date -Format 'yyyyMMdd-HHmmss')"
+    Rename-Item $runtimeDir $oldPath -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+}
+
+# 5. Copy build venv -> runtime
+Write-Host "Copying build venv -> runtime..."
+Copy-Item -Recurse -Force $buildVenv $runtimeDir
+
+# 6. Merge uv's full stdlib INTO runtime/Lib/ (preserving site-packages/)
+Write-Host "Merging uv stdlib into runtime/Lib/..."
+$uvLib = Join-Path $uvPython "Lib"
+$runtimeLib = Join-Path $runtimeDir "Lib"
+$copied = 0
+$skipped = 0
+Get-ChildItem -Path $uvLib | ForEach-Object {
+    $target = Join-Path $runtimeLib $_.Name
+    if (Test-Path $target) {
+        $skipped++
+        return
+    }
+    if ($_.PSIsContainer) {
+        Copy-Item -Recurse -Force $_.FullName $target
+    } else {
+        Copy-Item -Force $_.FullName $target
+    }
+    $copied++
+}
+Write-Host "  merged $copied stdlib items, skipped $skipped (site-packages preserved)"
+
+# 7. Overwrite Scripts/python.exe + DLLs with uv's versions (the slim venv's
+# python.exe is a small launcher that depends on the source CPython install)
+Write-Host "Copying uv's Scripts/python.exe, DLLs..."
+$runtimeScripts = Join-Path $runtimeDir "Scripts"
+@("python.exe", "pythonw.exe", "python3.dll", "python311.dll") | ForEach-Object {
+    $src = Join-Path $uvPython $_
     if (Test-Path $src) {
-        $dst = Join-Path $runtime $sub
-        Write-Host "Copying $sub/" -NoNewline
-        Copy-Item -Recurse -Force $src $dst
-        $count = (Get-ChildItem $dst).Count
-        Write-Host " ($count entries)"
+        Copy-Item -Force $src (Join-Path $runtimeScripts $_)
     }
 }
 
-# 4. Copy python.exe + DLLs into Scripts/
-$scripts = Join-Path $runtime "Scripts"
-New-Item -ItemType Directory -Path $scripts | Out-Null
-foreach ($fname in @("python.exe", "python3.dll", "python311.dll", "pythonw.exe",
-                     "vcruntime140.dll", "vcruntime140_1.dll")) {
-    $src = Join-Path $srcCpy $fname
+# 8. Copy uv's DLLs/ directory (Windows extension modules)
+$uvDlls = Join-Path $uvPython "DLLs"
+if (Test-Path $uvDlls) {
+    $runtimeDlls = Join-Path $runtimeDir "DLLs"
+    if (Test-Path $runtimeDlls) { Remove-Item -Recurse -Force $runtimeDlls }
+    Copy-Item -Recurse -Force $uvDlls $runtimeDlls
+}
+
+# 9. Copy vcruntime DLLs
+@("vcruntime140.dll", "vcruntime140_1.dll") | ForEach-Object {
+    $src = Join-Path $uvPython $_
     if (Test-Path $src) {
-        Copy-Item -Force $src (Join-Path $scripts $fname)
+        Copy-Item -Force $src (Join-Path $runtimeScripts $_)
     }
 }
-Write-Host "Scripts/: python.exe + DLLs copied"
 
-# 5. Overwrite Lib/site-packages with the working venv
-$dstSp = Join-Path $runtime "Lib\site-packages"
-if (Test-Path $dstSp) {
-    Remove-Item -Recurse -Force $dstSp
-}
-Write-Host "Copying site-packages/ (this takes ~30s)" -NoNewline
-Copy-Item -Recurse -Force (Join-Path $venvSrc "Lib\site-packages") $dstSp
-$spCount = (Get-ChildItem $dstSp).Count
-Write-Host " ($spCount entries)"
-
-# 6. Strip Cython sources (.pyx, .pxd) — they cause Windows file-lock
-#    failures during electron-builder packaging
+# 10. Strip Cython source files (cause Windows file-lock failures during packaging)
 $pyxCount = 0
-Get-ChildItem -Path $runtime -Recurse -Include "*.pyx", "*.pxd" -ErrorAction SilentlyContinue | ForEach-Object {
-    Remove-Item -Force $_.FullName
-    $pyxCount++
-}
-Write-Host "Stripped $pyxCount Cython source files"
+$pxdCount = 0
+Get-ChildItem -Path $runtimeDir -Recurse -Include "*.pyx","*.pxd" -ErrorAction SilentlyContinue |
+    ForEach-Object {
+        if ($_.Extension -eq ".pyx") { $pyxCount++ } else { $pxdCount++ }
+        Remove-Item -Force $_.FullName -ErrorAction SilentlyContinue
+    }
+Write-Host "Removed $pyxCount .pyx + $pxdCount .pxd files"
 
-# 7. Delete any pyvenv.cfg (uv embeds a build-host path here that breaks on
-#    target machines)
-$cfgCount = 0
-Get-ChildItem -Path $runtime -Recurse -Filter "pyvenv.cfg" -ErrorAction SilentlyContinue | ForEach-Object {
-    Remove-Item -Force $_.FullName
-    $cfgCount++
-}
-Write-Host "Stripped $cfgCount pyvenv.cfg files"
+# 11. Strip __pycache__
+$cacheCount = 0
+Get-ChildItem -Path $runtimeDir -Recurse -Directory -Filter "__pycache__" -ErrorAction SilentlyContinue |
+    ForEach-Object {
+        $cacheCount++
+        Remove-Item -Recurse -Force $_.FullName -ErrorAction SilentlyContinue
+    }
+Write-Host "Removed $cacheCount __pycache__ dirs"
 
-# 8. Verify
-Write-Host "`n=== Verification ===" -ForegroundColor Cyan
-$py = Join-Path $scripts "python.exe"
-& $py --version
-& $py -c "import sys; print('sys.prefix:', sys.prefix)"
-& $py -c "from Bio import SeqIO; import scipy; import numpy; print('biopython + scipy + numpy OK')"
+# 12. Strip dist-info for packages we don't need (keep only the 4 peak-tracer deps)
+$keep = @("numpy", "scipy", "biopython", "openpyxl")
+$removed = 0
+Get-ChildItem -Path $runtimeDir -Recurse -Filter "*.dist-info" -ErrorAction SilentlyContinue |
+    Where-Object { $keep -notcontains ($_.Name -split "-")[0].ToLower() } |
+    ForEach-Object {
+        $removed++
+        Remove-Item -Recurse -Force $_.FullName -ErrorAction SilentlyContinue
+    }
+Write-Host "Removed $removed dist-info dirs we don't need"
 
-# Check sys.prefix resolves to the runtime (NOT a temp path)
-$prefix = & $py -c "import sys; print(sys.prefix)"
-if (-not $prefix.EndsWith("\python-app\runtime")) {
-    Write-Host "WARNING: sys.prefix does not end with \python-app\runtime" -ForegroundColor Red
-    Write-Host "Python found a stray Lib/os.py somewhere up the tree. Search for them:"
-    Write-Host "  Get-ChildItem -Path .. -Recurse -Filter os.py -ErrorAction SilentlyContinue | Where-Object { $_.FullName -like '*Lib*' }"
-    exit 1
-}
+# 13. Rewrite pyvenv.cfg: home must point at the runtime itself, so sys.prefix
+# resolves to the runtime (not the temp build venv)
+@"
+home = $runtimeDir
+include-system-site-packages = false
+"@ | Set-Content -Path (Join-Path $runtimeDir "pyvenv.cfg") -Encoding ASCII
 
-Write-Host "`nRuntime built successfully at $runtime" -ForegroundColor Green
-Write-Host "Next step: npm run build && npm run package:portable"
+# 14. Verify
+Write-Host ""
+Write-Host "Verifying runtime works..."
+$testResult = & "$runtimeDir\Scripts\python.exe" -c @"
+import sys, os
+from Bio import SeqIO
+import scipy, numpy, openpyxl
+print('  py       = ' + str(sys.version_info.major) + '.' + str(sys.version_info.minor) + '.' + str(sys.version_info.micro))
+print('  biopython = ' + __import__('Bio').__version__)
+print('  numpy     = ' + numpy.__version__)
+print('  scipy     = ' + scipy.__version__)
+print('  openpyxl  = ' + openpyxl.__version__)
+print('  prefix    = ' + sys.prefix)
+print('  os.py     = ' + os.__file__)
+"@
+$testResult | ForEach-Object { Write-Host $_ }
+
+# 15. Cleanup build venv
+Remove-Item -Recurse -Force $buildVenv -ErrorAction SilentlyContinue
+
+# 16. Report size
+$size = (Get-ChildItem -Path $runtimeDir -Recurse -File | Measure-Object -Property Length -Sum).Sum / 1MB
+Write-Host ""
+Write-Host "== DONE =="
+Write-Host "Runtime: $runtimeDir"
+Write-Host ("Size: {0:N1} MB" -f $size)
+Write-Host ""
+Write-Host "Now run: npm run package:portable"
+Write-Host "(or zip release/win-unpacked/ for the portable folder deliverable)"
