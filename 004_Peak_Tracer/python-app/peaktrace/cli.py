@@ -54,15 +54,39 @@ def strip_well_id(name: str) -> str:
 def convert_seq_to_fa(seq_path: Path) -> Path | None:
     """Convert one .seq file to .fa (.bat 1- "Remove Well Position" equivalent).
 
-    Steps (mirror the .bat):
-      1. Read the .seq file's first line (the header), strip last 8 chars
-         (the _C09 well-ID suffix), strip leading '>' if present.
-      2. Write the .fa with `>name` header + remaining lines (spaces stripped
-         from each sequence line).
-      3. Delete the original .seq.
+    .bat logic (the only thing that gets the truth name right):
+      1. Take the .seq filename (e.g. ``WELL01_C09_H12.seq``).
+      2. Strip the last 8 chars (e.g. ``_H12.seq`` -> ``WELL01_C09``). The
+         stripped name becomes the FASTA header.
+      3. Write a sibling .fa with the same filename stem, header ``>WELL01_C09``
+         and the sequence lines (spaces removed).
+      4. Delete the original .seq.
+
+    NOTE: do NOT try to use the .seq file's first line as a name source. Most
+    Seq7 .seq files have no ``>header`` line — line 1 is sequence data, and
+    using it would rename the .ab1 to a 60-70 char garbage string. The .bat
+    derives the name from the FILENAME, not the content.
 
     Returns the new .fa path, or None on any failure (logged via emit_event).
     """
+    # Truth name = filename stem with last 8 chars stripped (e.g. _H12.seq).
+    # .bat: Set outname=%%f & Set outname=!outname:~0,-8!
+    fname = seq_path.name  # e.g. "WELL01_C09_H12.seq"
+    if len(fname) <= 8:
+        emit_event("preprocess_warn", src=str(seq_path),
+                   msg=f"filename too short to strip 8 chars: {fname!r}")
+        return None
+    truth_name = fname[:-8]  # e.g. "WELL01_C09_H12.seq" -> "WELL01_C09"
+    truth_name = truth_name.strip().lstrip(">").strip()
+    if not truth_name:
+        emit_event("preprocess_warn", src=str(seq_path), msg="empty truth name, skipping")
+        return None
+
+    # Sequence: read all lines after the (possibly absent) header line.
+    # .bat iterates ALL lines (skip=1 if a header line is present; the loop in
+    # the .bat has both `skip=1` AND non-skip variants commented in). To match,
+    # we skip line 1 IF it's a FASTA header (starts with '>'), otherwise we
+    # include line 1 as sequence.
     try:
         with seq_path.open("r", encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
@@ -74,27 +98,20 @@ def convert_seq_to_fa(seq_path: Path) -> Path | None:
         emit_event("preprocess_warn", src=str(seq_path), msg="empty file, skipping")
         return None
 
-    # First line is the header. Strip last 8 chars (well-ID like "_C09\n").
-    header_raw = lines[0]
-    header = header_raw.rstrip("\r\n")
-    if len(header) >= 8:
-        header = header[:-8]
-    header = header.strip().lstrip(">").strip()
+    seq_lines = lines[1:] if lines[0].lstrip().startswith(">") else lines
+    seq_lines = [ln.rstrip("\r\n").replace(" ", "") for ln in seq_lines]
+    seq_lines = [ln for ln in seq_lines if ln]  # drop blank lines
 
-    # Remaining lines: sequence, strip spaces.
-    seq_lines = []
-    for ln in lines[1:]:
-        seq_lines.append(ln.rstrip("\r\n").replace(" ", ""))
-
+    # .fa filename = same stem, just change extension .seq -> .fa.
     fa_path = seq_path.with_suffix(".fa")
     try:
         with fa_path.open("w", encoding="utf-8") as f:
-            f.write(f">{header}\n")
+            f.write(f">{truth_name}\n")
             for sl in seq_lines:
                 f.write(sl + "\n")
         seq_path.unlink()
         emit_event("preprocess_seq_to_fa", src=str(seq_path), out=str(fa_path),
-                   header=header, n_seq_lines=len(seq_lines))
+                   header=truth_name, n_seq_lines=len(seq_lines))
         return fa_path
     except Exception as e:
         emit_event("preprocess_warn", src=str(seq_path), msg=f"write failed: {e}")
