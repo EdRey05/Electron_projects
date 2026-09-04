@@ -30,58 +30,29 @@ const inputBg = "#FFFFFF";
 
 // ---------- default settings (mirrors BBI's actual PeakTrace RP 6.961 config from Aug 24 2026 screenshot) ----------
 const DEFAULT_SETTINGS = {
-  mode: "rp",                       // "rp" | "full" | "passthrough"  — RP matches PeakTrace RP
-  cleanBaseline: true,              // "clean baseline" checkbox in PeakTrace RP — ON
-  smoothingLevel: 3,                // "extra smoothing level" in PeakTrace RP — 3
-                                   // (maps to Savitzky-Golay window = 2*level+1 = 7)
-  smoothingOrder: 2,                // Savitzky-Golay polynomial order
-  baselineWindow: 400,              // rolling baseline window in scan points
-  baselinePercentile: 10,           // low-percentile floor for baseline
-  applyPeakResolution: true,        // "no peak resolution" unchecked → RP does apply some resolution
-  waveletSharpening: false,         // OFF in RP mode; ON for full PeakTrace emulation
-  skipShorterThan: 500,             // "skip short/pcr base" in PeakTrace RP
-  setAbiLimits: true,               // "set abi limits" checkbox — clamp output to uint16 range
-  traceRescaleFactor: 0.5,          // PeakTrace RP rescales channel data to ~½ input amplitude (verified Aug 24 on real data)
-  dropLeadingBase: true,            // Drop leading-base injection artifact (verified Aug 24 — seq7 starts with C, pt starts with G)
+  // v1.6: preprocessing mode toggle. "with_preprocess" runs the .bat
+  // equivalent before the v1.5 PT pipeline (Gene Synthesis team workflow).
+  // "pt_only" skips preprocessing and only runs the PT pipeline on raw .ab1.
+  mode: "with_preprocess",
 
-  // Basecaller settings
-  qualityThreshold: 20,             // "good quality threshold" — Q20 = "good" base
-  nBaseThreshold: 5,                // "n base threshold" — QV below this becomes N
-  mixedPeakThreshold: 0,            // "mixed peak threshold" — 0% = NO mixed bases (BBI uses pure single-base mode)
-  qAverageTrimValue: 9,             // "q average trim value" — 9
-  qAverageTrimWindow: 40,           // "q average trim window" — 40
-  trim3EndOnly: true,               // "trim 3' end only" — ON (critical, don't trim 5')
-  signalStartPeak: "auto",          // "signal start peak" — auto
-  goodBaseImprovement: -10,         // "good base improvement" — -10
-
-  // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped)
-  rebasecallData14: false,          // re-call peaks from DATA1-4 full-resolution channels
-  minRebasecallLen: 1000,           // only attempt on reads >= this many bases
-  extendMinSnr: 1.3,                // min SNR for re-basecalled peaks
-
-  // Output settings
+  // Output settings (the only ones the v1.6 main.js passes to the CLI)
   filenameSuffix: "",                   // PeakTrace RP strips well ID, doesn't add suffix (Aug 24 real-data finding)
   stripWellId: true,                    // Default ON: strip trailing _C09 etc.
-  preserveMetadata: true,
   emitSeq: true,                        // PeakTrace emits .seq; Ed confirmed Aug 24 some customers need them. ON by default.
-  maxWorkers: 4,
+  setAbiLimits: true,                   // "set abi limits" checkbox — clamp output to uint16 range
+  skipShorterThan: 500,                 // "skip short/pcr base" in PeakTrace RP
 };
 
 const MODES = [
   {
-    value: "rp",
-    label: "Raw Proportional (RP)",
-    desc: "Match current Nucleics behavior. Peak heights kept proportional to raw signal — best for SNP / mixed-base detection.",
+    value: "with_preprocess",
+    label: "With preprocessing (full Seq7 → PT workflow)",
+    desc: "Runs the .bat preprocessing the Gene Synthesis team runs between Seq7 and PT: strips well-ID from .seq, converts .seq → .fa, renames files. Then runs the v1.5 PT pipeline.",
   },
   {
-    value: "full",
-    label: "Full PeakTrace (with sharpening)",
-    desc: "Adds wavelet sharpening to resolve overlapping peaks past base 850. Best for maximum read length.",
-  },
-  {
-    value: "passthrough",
-    label: "Pass-through (no processing)",
-    desc: "Skip our processing. Use Seq7's KB basecall verbatim. Useful as an A/B baseline.",
+    value: "pt_only",
+    label: "PT processing only (raw .ab1 → rebasecalled .ab1)",
+    desc: "Skip the .bat preprocessing. Run the v1.5 PT pipeline on whatever .ab1 files are in the input folder. Use this if the input has already been preprocessed or if the .bat steps don't apply to your data.",
   },
 ];
 
@@ -429,7 +400,7 @@ export default function PeakTracer() {
               <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: muted }}>
                 Mode
               </label>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-2">
                 {MODES.map((m) => {
                   const selected = settings.mode === m.value;
                   return (
