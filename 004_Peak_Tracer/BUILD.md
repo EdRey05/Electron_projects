@@ -3,21 +3,73 @@
 ## Prerequisites
 
 - **Node.js 18+** and **npm**.
-- **Python 3.11+** (only needed for the local dev loop; production bundles the venv).
-- A Windows host for the `.exe` (electron-builder produces Windows artifacts
-  on Windows; cross-compiling from Linux/macOS works for some targets but is
-  not exercised here).
+- **uv** (manages Python — install from https://docs.astral.sh/uv/ if you don't have it).
+- **Python 3.11** installed via uv (`uv python install 3.11`). The build
+  script pulls a real CPython distribution from uv's local cache to populate
+  `python-app/runtime/`.
 
 ## First-time setup
 
 ```bash
 cd 004_Peak_Tracer
 npm install
-uv venv python-app/runtime-venv --python 3.11
-uv pip install --python python-app/runtime-venv/Scripts/python.exe -r python-app/requirements.txt
 ```
 
-(Or use the bundled `scripts/setup_python_app.sh` once it lands.)
+`npm install` populates `node_modules/`. The first run may print
+`npm warn install-scripts electron@... postinstall blocked` — that's the
+allowlist blocking Electron's binary download. Fix it:
+
+```bash
+node node_modules/electron/install.js
+```
+
+Then build the Python runtime (this is the v1.6 fix — without it the `.exe`
+silently fails on a clean Windows box because no Python is bundled):
+
+```bash
+# Linux/macOS: python-app/scripts/build_runtime.sh
+# Windows (PowerShell from repo root):
+python-app\scripts\build_runtime.ps1
+```
+
+The script:
+1. Locates the real CPython 3.11 distribution under
+   `%APPDATA%\Roaming\uv\python\cpython-3.11-windows-x86_64-none\`.
+2. Wipes `python-app/runtime/` if it exists.
+3. Copies `DLLs/`, `include/`, `Lib/`, `libs/` from the CPython dist into
+   `python-app/runtime/`.
+4. Copies `python.exe`, `python3.dll`, `python311.dll`, `pythonw.exe`,
+   `vcruntime140.dll`, `vcruntime140_1.dll` into `python-app/runtime/Scripts/`.
+5. OVERWRITES `Lib/site-packages/` with the contents of any working venv
+   that has biopython, numpy, scipy installed (the bare CPython has only
+   stdlib). Add `_virtualenv.pth` and `_virtualenv.py` from the same venv.
+6. ** Deletes any `.pyx` and `.pxd` files** (Cython sources — not needed
+   at runtime, but they trigger Windows file-lock failures during
+   electron-builder packaging if left in place).
+7. ** Deletes any `pyvenv.cfg`** (uv embeds a build-host path here that
+   breaks on target machines).
+
+Verify the runtime works before packaging:
+
+```bash
+PY="python-app/runtime/Scripts/python.exe"
+"$PY" --version
+# Expect: Python 3.11.16
+
+"$PY" -c "import sys; print(sys.prefix)"
+# Expect: ends with \python-app\runtime  (NOT C:\Users\... or C:\Windows\...)
+
+"$PY" -c "from Bio import SeqIO; import scipy; print('OK')"
+# Expect: OK
+```
+
+If `sys.prefix` resolves to some unrelated path (a temp directory, the
+parent of the runtime, etc.), Python found a stray `Lib/os.py` higher up
+the directory tree. Search for strays:
+
+```bash
+find . -name "os.py" -path "*/Lib/*" -print
+```
 
 ## Dev mode
 
@@ -25,8 +77,9 @@ uv pip install --python python-app/runtime-venv/Scripts/python.exe -r python-app
 npm run dev
 ```
 
-This runs the Vite dev server (port 5173) and launches Electron pointed at it.
-DevTools open in detached mode.
+This runs the Vite dev server (port 5173) and launches Electron pointed at
+it. DevTools open in detached mode. Hot reload of the renderer; restart
+Electron for main process changes.
 
 ## Production build (Windows)
 
@@ -35,66 +88,87 @@ npm run build              # bundles React into dist/
 npm run package:portable   # produces a portable .exe in release/
 ```
 
-Outputs (in `release/`):
+`npm run package:portable` takes 3-5 minutes the first time (the runtime
+is ~700 MB and electron-builder compresses it). Subsequent runs are faster
+because Electron itself is cached.
 
-| File | Description | Size |
-|---|---|---|
-| `Peak Tracer-0.0.1-x64.exe` | Portable single-exe launcher | ~TBD |
-| `win-unpacked/Peak Tracer.exe` | Portable folder launcher | ~TBD |
-| `win-unpacked/` | Self-contained portable folder | ~TBD |
+**If packaging fails with "The process cannot access the file because it
+is being used by another process":** orphaned `node` processes from a
+previous interrupted run can hold file locks. Kill them and retry:
 
-The portable build bundles the Python venv under `resources/python-app/`, so
-the target machine needs no Python install.
-
-### Distributing
-
-Ship the entire `win-unpacked/` folder plus the `.exe` launcher. The Python
-runtime is bundled.
-
-## Python CLI contract
-
-The Electron main process spawns `peaktrace_core.py` with these flags. **Defaults match BBI's actual PeakTrace RP 6.961 configuration (captured Aug 24 2026):**
-
-```
-python peaktrace_core.py
-  --input-dir PATH                   # required: folder of .ab1 files
-  --output-dir PATH                  # required: where to write new .ab1
-
-  # Mode
-  --mode {rp,full,passthrough}       # default: rp
-
-  # Trace processing (matches PeakTrace RP defaults)
-  --smoothing-level INT              # default: 3  (PeakTrace RP "extra smoothing" level)
-  --smoothing-order INT              # default: 2
-  --baseline-window INT              # default: 400
-  --baseline-percentile INT          # default: 10
-  [--clean-baseline | --no-clean-baseline]   # default: --clean-baseline (PeakTrace RP default: ON)
-  [--apply-peak-resolution]          # default: ON (RP does light peak resolution despite the name)
-  [--wavelet-sharpening]             # default: OFF (only for full PeakTrace emulation)
-  --skip-shorter-than INT            # default: 500  (PeakTrace RP "skip short/pcr base")
-  [--set-abi-limits]                 # default: ON (clamp output values to ABI-spec uint16 range)
-  --trace-rescale-factor FLOAT       # default: 0.5  (verified Aug 24 — PeakTrace RP rescales to ~½ amplitude)
-  [--drop-leading-base]              # default: ON (verified Aug 24 — drops the first C-artifact base)
-  --signal-start-peak {auto,start}   # default: auto
-
-  # Basecaller (matches PeakTrace RP defaults)
-  --quality-threshold INT            # default: 20  (PeakTrace RP "good quality threshold")
-  --n-base-threshold INT             # default: 5   (PeakTrace RP "n base threshold")
-  --mixed-peak-threshold INT         # default: 0   (BBI uses 0% = NO mixed-base calls)
-  --q-average-trim-value INT         # default: 9   (PeakTrace RP "q average trim value")
-  --q-average-trim-window INT        # default: 40  (PeakTrace RP "q average trim window")
-  --good-base-improvement INT        # default: -10 (PeakTrace RP "good base improvement")
-  [--trim-3-only | --no-trim-3-only] # default: --trim-3-only (PeakTrace RP "trim 3' end only")
-
-  # Output
-  [--strip-well-id]                  # default: ON (verified Aug 24 — drops _C09 etc.)
-  --filename-suffix STR              # default: "" (empty; only added if strip-well-id is OFF)
-  [--preserve-metadata]              # default: ON
-  [--emit-seq]                       # default: ON (Ed Aug 24 — some customers need these; do NOT delete)
-
-  # Parallelism
-  --max-workers INT                  # default: 4
+```bash
+tasklist | findstr node.exe
+taskkill /PID <pid> /F
+rm -rf release
+npm run package:portable
 ```
 
-Per-file progress is emitted as JSON lines on stdout (one `{"type":"..."}`
-object per event). Plain non-JSON lines are treated as log messages.
+**The final stage ("building target=portable") can take 10-15 minutes**
+while it compresses the entire `win-unpacked/` into the single `.exe`. If
+you only need to test the app, the **portable folder** at
+`release/win-unpacked/` is already usable — launch
+`release/win-unpacked/Peak Tracer.exe` directly.
+
+## Outputs (in `release/`)
+
+| File | Description |
+|---|---|
+| `Peak Tracer-0.0.1-x64.exe` | Self-extracting portable launcher (~700 MB compressed) |
+| `win-unpacked/Peak Tracer.exe` | Portable folder launcher (run this for testing) |
+| `win-unpacked/` | Self-contained portable folder (~1.1 GB extracted) |
+
+The portable build bundles the Python venv under
+`resources/python-app/runtime/`, so the target machine needs no Python
+install.
+
+## Distributing
+
+**Ship the entire `win-unpacked/` folder** for distribution, OR use the
+single `.exe` (slower to launch because it self-extracts every time).
+Copying only `Peak Tracer.exe` from either fails — Electron binaries
+depend on sibling DLLs.
+
+## Verifying the build is correct (sanity check)
+
+After packaging, verify the runtime is fully bundled:
+
+```bash
+ls release/win-unpacked/resources/python-app/runtime/Scripts/python.exe
+ls release/win-unpacked/resources/python-app/runtime/Lib/os.py
+ls release/win-unpacked/resources/python-app/runtime/Lib/site-packages/biopython-*.dist-info
+```
+
+All three MUST exist. If `runtime/Lib/os.py` is missing, you're in
+"Scenario B" (electron-builder only shipped site-packages/, not the full
+stdlib) — re-run `build_runtime.ps1` to fix.
+
+Verify the packaged python runs end-to-end:
+
+```bash
+release/win-unpacked/resources/python-app/runtime/Scripts/python.exe \
+  -c "import sys; from Bio import SeqIO; print(f'{sys.prefix} OK')"
+```
+
+## CLI contract (for ad-hoc invocation outside the GUI)
+
+```bash
+release/win-unpacked/resources/python-app/runtime/Scripts/python.exe \
+  python-app/peaktrace_core.py \
+  --input-dir <folder> \
+  --output-dir <folder> \
+  [--preprocess | --no-preprocess]   # default: --preprocess
+```
+
+Per-file progress is emitted as JSON lines on stdout (one
+`{"type":"..."}` object per event). Plain non-JSON lines are treated as
+log messages.
+
+## Why no longer a `package:win` target?
+
+The `nsis` installer target builds an `.msi`-style installer that requires
+admin privileges to install. The sister team and other internal teams
+don't need that — they want a portable app. `package:portable` produces
+the portable `.exe` that just runs.
+
+If a future requirement needs an installer, the `package.json` `build.win`
+config can re-add the `nsis` target.
