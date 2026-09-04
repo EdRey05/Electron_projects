@@ -8,6 +8,7 @@ import {
   XCircle,
   AlertTriangle,
   ExternalLink,
+  Settings as SettingsIcon,
 } from "lucide-react";
 
 // ---------- design tokens (mirror SequenceBindingFinder for hub consistency) ----------
@@ -58,8 +59,27 @@ export default function PeakTracer() {
   // ---- run state ----
   const [running, setRunning] = useState(false);
   const [results, setResults] = useState([]);   // [{name, status, message, qc, extBasesAdded, ...}]
-  const [progress, setProgress] = useState(0);
   const [logs, setLogs] = useState([]);
+
+  // ---- advanced parameters popup ----
+  // Placeholder: visible defaults that mirror what the CLI / PT pipeline uses,
+  // but changes are NOT propagated to the spawn args yet (planned for a later
+  // version). User can poke at them to learn what knobs exist.
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [adv, setAdv] = useState({
+    rebasecallData14: true,      // --rebasecall-data14 (default ON)
+    minRebasecallLen: 1000,      // --min-rebasecall-len (default 1000)
+    extendMinSnr: 1.3,           // --extend-min-snr (default 1.3)
+    baselineSmooth: true,        // --baseline-smooth (default ON)
+    leadDropEnabled: true,       // --lead-drop-enabled (default ON, but disabled in practice)
+    leadDropQv: 5,               // --lead-drop-qv (default 5)
+    skipShorterThan: 50,         // --skip-shorter-than (default 50)
+    setAbiLimits: true,          // --set-abi-limits (default ON)
+    stripWellId: true,           // --strip-well-id (default ON)
+    doSmooth: true,              // --do-smooth (default ON)
+    smoothWindow: 11,            // --smooth-window (default 11)
+  });
+  const setAdvField = (k, v) => setAdv((s) => ({ ...s, [k]: v }));
 
   // ---- subscribe to streaming events ----
   useEffect(() => {
@@ -113,8 +133,6 @@ export default function PeakTracer() {
             r.name === name ? { ...r, status: "error", message: msg.error || "Error" } : r
           )
         );
-      } else if (msg.type === "batch_progress") {
-        setProgress(msg.percent);
       }
     });
     const offLog = window.api.onLog((msg) => {
@@ -122,7 +140,6 @@ export default function PeakTracer() {
     });
     const offDone = window.api.onDone((msg) => {
       setRunning(false);
-      setProgress(100);
     });
     return () => {
       offProgress && offProgress();
@@ -137,7 +154,6 @@ export default function PeakTracer() {
     window.api.listAb1(inputDir).then((files) => {
       setInputFiles(files);
       setResults([]);
-      setProgress(0);
     });
   }, [inputDir]);
 
@@ -167,7 +183,6 @@ export default function PeakTracer() {
     if (!inputDir || !outputDir || inputFiles.length === 0) return;
     setRunning(true);
     setResults([]);
-    setProgress(0);
     setLogs([]);
     const res = await window.api.runBatch({
       inputDir,
@@ -182,22 +197,25 @@ export default function PeakTracer() {
 
   const onReset = useCallback(() => {
     setResults([]);
-    setProgress(0);
     setLogs([]);
-  }, []);
+    }, []);
 
   // ---- derived ----
   const runnable = !!inputDir && !!outputDir && inputFiles.length > 0 && !running;
   const okCount = results.filter((r) => r.status === "ok").length;
   const errCount = results.filter((r) => r.status === "error").length;
   const doneCount = results.length;
+  // Progress bar: derive from completed rows.
+  const progressPct = inputFiles.length > 0
+    ? Math.round((doneCount / inputFiles.length) * 100)
+    : 0;
 
   // ---- render ----
   return (
     <div style={{ background: paper, color: ink, minHeight: "100%", fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      <div className="max-w-6xl mx-auto px-6 py-10">
+      <div className="max-w-6xl mx-auto px-6 pt-4 pb-6">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-8 border-b pb-6" style={{ borderColor: border }}>
+        <div className="flex items-center gap-3 mb-5 border-b pb-4" style={{ borderColor: border }}>
           <div
             style={{ background: panelDark }}
             className="w-11 h-11 rounded-md flex items-center justify-center shrink-0"
@@ -205,7 +223,7 @@ export default function PeakTracer() {
             <Activity size={22} color="#FFFFFF" />
           </div>
           <div>
-            <h1 className="text-2xl font-semibold font-display" style={{ color: ink }}>
+            <h1 className="text-[28px] font-extrabold leading-tight font-display" style={{ color: ink }}>
               Peak Tracer
             </h1>
             <p className="text-xs mt-0.5" style={{ color: muted }}>
@@ -223,7 +241,7 @@ export default function PeakTracer() {
 
             {/* ---- 1. INPUT FOLDER ---- */}
             <section>
-              <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: muted }}>
+              <h2 className="text-base font-bold tracking-wide mb-2" style={{ color: ink }}>
                 1. Input folder
               </h2>
               <div className="rounded-lg border overflow-hidden" style={{ borderColor: border, background: inputBg }}>
@@ -247,17 +265,11 @@ export default function PeakTracer() {
                 </div>
                 {inputFiles.length > 0 && (
                   <div className="px-4 py-2 text-xs border-t" style={{ borderColor: border, background: "#FAFBFA" }}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="font-medium" style={{ color: ink }}>
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm" style={{ color: ink }}>
                         {inputFiles.length} file{inputFiles.length === 1 ? "" : "s"}
                       </span>
                       <span style={{ color: muted }}>.ab1</span>
-                    </div>
-                    <div className="font-mono truncate" style={{ color: muted }}>
-                      {inputFiles.slice(0, 4).map((f) => f.name).join(" \u00b7 ")}
-                      {inputFiles.length > 4 && (
-                        <span style={{ color: "#B5C2BD" }}>  \u00b7  +{inputFiles.length - 4} more</span>
-                      )}
                     </div>
                   </div>
                 )}
@@ -266,7 +278,7 @@ export default function PeakTracer() {
 
             {/* ---- 2. OUTPUT FOLDER ---- */}
             <section>
-              <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: muted }}>
+              <h2 className="text-base font-bold tracking-wide mb-2" style={{ color: ink }}>
                 2. Output folder
               </h2>
               <div className="rounded-lg border overflow-hidden" style={{ borderColor: border, background: inputBg }}>
@@ -302,79 +314,88 @@ export default function PeakTracer() {
               </div>
             </section>
 
-            {/* ---- 3. SETTINGS (2-mode toggle) ---- */}
+            {/* ---- 3. SETTINGS (2-mode toggle + engine button for advanced params) ---- */}
             <section>
-              <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: muted }}>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-base font-bold tracking-wide" style={{ color: ink }}>
                 3. Settings
               </h2>
-              <div className="flex flex-col gap-2">
-                <ModeCard
-                  selected={settings.mode === "with_preprocess"}
-                  onClick={() => setSettings((s) => ({ ...s, mode: "with_preprocess" }))}
-                  title="Preprocessing + PT"
-                  steps={[
-                    "Strips well-ID from .seq",
-                    "Converts .seq to .fa",
-                    "Renames files",
-                    "Runs PT",
-                  ]}
-                />
-                <ModeCard
-                  selected={settings.mode === "pt_only"}
-                  onClick={() => setSettings((s) => ({ ...s, mode: "pt_only" }))}
-                  title="PT only"
-                  steps={["Runs PT"]}
-                />
+              <button
+                type="button"
+                className="p-1.5 rounded"
+                title="Advanced processing parameters"
+                style={{ color: muted, background: inputBg, border: `1px solid ${border}` }}
+                onClick={() => setShowAdvanced(true)}
+              >
+                <SettingsIcon size={16} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-2">
+              <ModeCard
+                selected={settings.mode === "with_preprocess"}
+                onClick={() => setSettings((s) => ({ ...s, mode: "with_preprocess" }))}
+                title="Preprocessing + PT"
+                steps={[
+                  "Strips well-ID from .seq",
+                  "Converts .seq to .fa",
+                  "Renames files",
+                  "Runs PT",
+                ]}
+              />
+              <ModeCard
+                selected={settings.mode === "pt_only"}
+                onClick={() => setSettings((s) => ({ ...s, mode: "pt_only" }))}
+                title="PT only"
+                steps={["Runs PT"]}
+              />
+            </div>
+            </section>
+
+            {/* ---- 4. RUN (button + status, moved to end of col 1) ---- */}
+            <section>
+              <h2 className="text-base font-bold tracking-wide mb-2" style={{ color: ink }}>
+                4. Run
+              </h2>
+              <div className="rounded-lg border p-4" style={{ borderColor: border, background: inputBg }}>
+                <div className="text-sm mb-3" style={{ color: muted }}>
+                  {inputFiles.length === 0
+                    ? "Pick an input folder to enable."
+                    : running
+                    ? `Processing ${doneCount + 1} of ${inputFiles.length}\u2026`
+                    : doneCount > 0
+                    ? `Done \u2014 ${okCount} ok, ${errCount} failed, ${inputFiles.length - doneCount} skipped.`
+                    : `Ready \u2014 ${inputFiles.length} file${inputFiles.length === 1 ? "" : "s"} to process.`}
+                </div>
+                {(running || progressPct > 0) && (
+                  <div className="mb-3 h-1.5 rounded-full overflow-hidden" style={{ background: border }}>
+                    <div
+                      className="h-full transition-all"
+                      style={{ width: `${progressPct}%`, background: panelDark }}
+                    />
+                  </div>
+                )}
+                <button
+                  type="button"
+                  className="w-full px-5 py-2.5 rounded-md text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                  style={{ background: panelDark, color: panelDarkInk }}
+                  disabled={!runnable}
+                  onClick={onRun}
+                >
+                  <Play size={14} />
+                  {running ? "Running\u2026" : "Run Peak Tracer"}
+                </button>
               </div>
             </section>
           </div>
 
-          {/* RIGHT COL (wider): 3 of 5 = 60% \u2014 Run log + results */}
+          {/* RIGHT COL (wider): 3 of 5 = 60% — Run log only */}
           <div className="lg:col-span-3 flex flex-col gap-6">
 
-            {/* ---- 4. RUN HEADER (button + status) ---- */}
-            <section>
-              <h2 className="text-xs font-semibold uppercase tracking-wide mb-2" style={{ color: muted }}>
-                4. Run
-              </h2>
-              <div className="rounded-lg border p-4" style={{ borderColor: border, background: inputBg }}>
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <div className="text-sm" style={{ color: muted }}>
-                    {inputFiles.length === 0
-                      ? "Pick an input folder to enable."
-                      : running
-                      ? `Processing ${doneCount + 1} of ${inputFiles.length}\u2026`
-                      : doneCount > 0
-                      ? `Done \u2014 ${okCount} ok, ${errCount} failed, ${inputFiles.length - doneCount} skipped.`
-                      : `Ready \u2014 ${inputFiles.length} file${inputFiles.length === 1 ? "" : "s"} to process.`}
-                  </div>
-                  <button
-                    type="button"
-                    className="px-5 py-2.5 rounded-md text-sm font-semibold flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
-                    style={{ background: panelDark, color: panelDarkInk }}
-                    disabled={!runnable}
-                    onClick={onRun}
-                  >
-                    <Play size={14} />
-                    {running ? "Running\u2026" : "Run Peak Tracer"}
-                  </button>
-                </div>
-                {(running || progress > 0) && (
-                  <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ background: border }}>
-                    <div
-                      className="h-full transition-all"
-                      style={{ width: `${progress}%`, background: panelDark }}
-                    />
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {/* ---- 4b. RUN LOG (per-file table) ---- */}
+            {/* ---- RUN LOG (per-file table) ---- */}
             <section>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xs font-semibold uppercase tracking-wide" style={{ color: muted }}>
-                  Log
+                <h2 className="text-base font-bold tracking-wide" style={{ color: ink }}>
+                  Run Log
                 </h2>
                 {(results.length > 0 || logs.length > 0) && (
                   <button
@@ -400,12 +421,12 @@ export default function PeakTracer() {
                   className="rounded-lg border overflow-hidden"
                   style={{ borderColor: border, background: inputBg }}
                 >
-                  {/* Header row */}
+                  {/* Sticky header row */}
                   <div
-                    className="grid items-center gap-2 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide"
+                    className="grid items-center gap-2 px-3 py-2 text-xs font-bold uppercase tracking-wide sticky top-0 z-10"
                     style={{
                       gridTemplateColumns: "1fr 64px 64px 60px 60px 80px",
-                      color: muted,
+                      color: ink,
                       background: "#EEF3F1",
                       borderBottom: `1px solid ${border}`,
                     }}
@@ -418,67 +439,73 @@ export default function PeakTracer() {
                     <div className="text-right">Extended</div>
                   </div>
 
-                  {/* File rows */}
-                  {results.map((r, i) => {
-                    const extBasesAdded = r.extBasesAdded ?? r.qc?.ext_bases_added ?? 0;
-                    const extended = r.extended || extBasesAdded > 0;
-                    const qvMean = r.qc?.qv_mean;
-                    const lowestQv = r.qc?.lowest_qv;
-                    const nCount = r.qc?.n_count;
-                    const nBasesOut = r.qc?.n_bases_out;
-                    const statusIcon =
-                      r.status === "ok" ? (
-                        <CheckCircle2 size={14} color={teal} className="shrink-0" />
-                      ) : r.status === "error" ? (
-                        <XCircle size={14} color={coral} className="shrink-0" />
-                      ) : (
-                        <AlertTriangle size={14} color={muted} className="shrink-0" />
+                  {/* Scrollable body (18 rows + frozen header visible at default row height) */}
+                  <div
+                    className="overflow-y-auto"
+                    style={{ maxHeight: 625 }}
+                  >
+                    {/* File rows */}
+                    {results.map((r, i) => {
+                      const extBasesAdded = r.extBasesAdded ?? r.qc?.ext_bases_added ?? 0;
+                      const extended = r.extended || extBasesAdded > 0;
+                      const qvMean = r.qc?.qv_mean;
+                      const lowestQv = r.qc?.lowest_qv;
+                      const nCount = r.qc?.n_count;
+                      const nBasesOut = r.qc?.n_bases_out;
+                      const statusIcon =
+                        r.status === "ok" ? (
+                          <CheckCircle2 size={14} color={teal} className="shrink-0" />
+                        ) : r.status === "error" ? (
+                          <XCircle size={14} color={coral} className="shrink-0" />
+                        ) : (
+                          <AlertTriangle size={14} color={muted} className="shrink-0" />
+                        );
+                      const lqvColor = lowestQvColor(lowestQv);
+                      return (
+                        <div
+                          key={r.name + i}
+                          className="grid items-center gap-2 px-3 py-2 text-xs"
+                          style={{
+                            gridTemplateColumns: "1fr 64px 64px 60px 60px 80px",
+                            borderTop: i === 0 ? "none" : `1px solid ${border}`,
+                          }}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            {statusIcon}
+                            <span className="font-mono truncate" style={{ color: ink }} title={r.message || r.name}>
+                              {r.name}
+                            </span>
+                          </div>
+                          <div className="text-right font-mono" style={{ color: nBasesOut != null ? ink : muted }}>
+                            {nBasesOut != null ? nBasesOut : "\u2014"}
+                          </div>
+                          <div className="text-right font-mono" style={{ color: qvMean != null ? ink : muted }}>
+                            {qvMean != null ? qvMean.toFixed(1) : "\u2014"}
+                          </div>
+                          <div
+                            className="text-right font-mono font-medium"
+                            style={{ color: lqvColor }}
+                          >
+                            {lowestQv != null ? lowestQv : "\u2014"}
+                          </div>
+                          <div
+                            className="text-right font-mono"
+                            style={{ color: nCount == null ? muted : nCount > 0 ? amber : ink }}
+                          >
+                            {nCount != null ? nCount : "\u2014"}
+                          </div>
+                          <div
+                            className="text-right font-mono"
+                            style={{ color: extended ? teal : muted, fontWeight: extended ? 600 : 400 }}
+                          >
+                            {extended ? `+${extBasesAdded}` : "\u2014"}
+                          </div>
+                        </div>
                       );
-                    const lqvColor = lowestQvColor(lowestQv);
-                    return (
-                      <div
-                        key={r.name + i}
-                        className="grid items-center gap-2 px-3 py-2 text-xs"
-                        style={{
-                          gridTemplateColumns: "1fr 64px 64px 60px 60px 80px",
-                          borderTop: i === 0 ? "none" : `1px solid ${border}`,
-                        }}
-                      >
-                        <div className="flex items-center gap-2 min-w-0">
-                          {statusIcon}
-                          <span className="font-mono truncate" style={{ color: ink }} title={r.message || r.name}>
-                            {r.name}
-                          </span>
-                        </div>
-                        <div className="text-right font-mono" style={{ color: nBasesOut != null ? ink : muted }}>
-                          {nBasesOut != null ? nBasesOut : "\u2014"}
-                        </div>
-                        <div className="text-right font-mono" style={{ color: qvMean != null ? ink : muted }}>
-                          {qvMean != null ? qvMean.toFixed(1) : "\u2014"}
-                        </div>
-                        <div
-                          className="text-right font-mono font-medium"
-                          style={{ color: lqvColor }}
-                        >
-                          {lowestQv != null ? lowestQv : "\u2014"}
-                        </div>
-                        <div
-                          className="text-right font-mono"
-                          style={{ color: nCount == null ? muted : nCount > 0 ? amber : ink }}
-                        >
-                          {nCount != null ? nCount : "\u2014"}
-                        </div>
-                        <div
-                          className="text-right font-mono"
-                          style={{ color: extended ? teal : muted, fontWeight: extended ? 600 : 400 }}
-                        >
-                          {extended ? `+${extBasesAdded}` : "\u2014"}
-                        </div>
-                      </div>
-                    );
-                  })}
+                    })}
+                  </div>
 
-                  {/* Raw log lines (preprocess events, errors) \u2014 appended below the table */}
+                  {/* Raw log lines (preprocess events, errors) — appended below the table */}
                   {logs.length > 0 && (
                     <div
                       className="font-mono text-[10px] max-h-32 overflow-y-auto"
@@ -497,16 +524,192 @@ export default function PeakTracer() {
                     </div>
                   )}
                 </div>
-              )}
-            </section>
+                              )}
+                            </section>
+                          </div>
+                        </div>
+                      </div>
+
+        {showAdvanced && (
+          <AdvModal
+            adv={adv}
+            onChange={setAdvField}
+            onClose={() => setShowAdvanced(false)}
+          />
+        )}
+                    </div>
+                  );
+                }
+
+// ---------- Advanced parameters popup (modal) ----------
+function AdvModal({ adv, onChange, onClose }) {
+  // Group definitions. Each field has a key (state field name), label, type
+  // (bool/int/float), and optional hint text. The onChange handler receives
+  // (key, value) and updates the adv state in the parent.
+  const groups = [
+    {
+      title: "Re-basecall (v1.3+)",
+      fields: [
+        { key: "rebasecallData14", label: "Re-basecall from DATA1–4 channels", type: "bool" },
+        { key: "minRebasecallLen", label: "Min rebasecall length",             type: "int",   hint: "ignore traces shorter than this" },
+        { key: "extendMinSnr",     label: "Extend min SNR threshold",          type: "float", hint: "extend bases below this SNR" },
+      ],
+    },
+    {
+      title: "Signal processing",
+      fields: [
+        { key: "baselineSmooth", label: "Baseline smoothing",    type: "bool" },
+        { key: "doSmooth",       label: "Trace smoothing",       type: "bool" },
+        { key: "smoothWindow",   label: "Smoothing window (bases)", type: "int" },
+        { key: "setAbiLimits",   label: "Set ABI signal limits", type: "bool" },
+      ],
+    },
+    {
+      title: "Filenames & QC",
+      fields: [
+        { key: "stripWellId",     label: "Strip well-ID from .ab1 names", type: "bool" },
+        { key: "skipShorterThan", label: "Skip traces shorter than (bases)", type: "int" },
+      ],
+    },
+    {
+      title: "Leader-base drop",
+      fields: [
+        { key: "leadDropEnabled", label: "Drop low-QV leader bases", type: "bool", hint: "currently disabled in practice (writer bug)" },
+        { key: "leadDropQv",      label: "Leader-drop QV threshold", type: "int" },
+      ],
+    },
+  ];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(15, 26, 35, 0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 100,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: paper,
+          borderRadius: 10,
+          border: `1px solid ${border}`,
+          boxShadow: "0 20px 50px rgba(0,0,0,0.25)",
+          width: "min(560px, 92vw)",
+          maxHeight: "85vh",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          className="flex items-center justify-between px-5 py-3 border-b"
+          style={{ borderColor: border }}
+        >
+          <h3 className="text-lg font-bold" style={{ color: ink }}>
+            Advanced processing parameters
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-xl leading-none px-2"
+            style={{ color: muted }}
+          >
+            {"\u00d7"}
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-4" style={{ flex: 1 }}>
+          <div
+            className="rounded-md p-3 mb-4 text-xs"
+            style={{
+              background: "#FFF8E1",
+              color: "#7A5A00",
+              border: "1px solid #E0C36F",
+            }}
+          >
+            <strong>Placeholder.</strong> These defaults mirror what the CLI / PT pipeline uses internally.
+            Changes here are <em>not</em> wired to the run command yet — left for a future version
+            when the other team's samples may need fine-tuning.
           </div>
+
+          {groups.map((g) => (
+            <div key={g.title} className="mb-5">
+              <h4
+                className="text-sm font-semibold uppercase tracking-wide mb-2"
+                style={{ color: panelDark }}
+              >
+                {g.title}
+              </h4>
+              <div className="flex flex-col gap-2">
+                {g.fields.map((f) => (
+                  <label
+                    key={f.key}
+                    className="flex items-center justify-between gap-3 text-sm py-1"
+                    style={{ color: ink }}
+                  >
+                    <span className="flex-1">
+                      {f.label}
+                      {f.hint && (
+                        <span className="block text-[11px] mt-0.5" style={{ color: muted }}>
+                          {f.hint}
+                        </span>
+                      )}
+                    </span>
+                    {f.type === "bool" ? (
+                      <input
+                        type="checkbox"
+                        checked={!!adv[f.key]}
+                        onChange={(e) => onChange(f.key, e.target.checked)}
+                        style={{ accentColor: panelDark, width: 18, height: 18 }}
+                      />
+                    ) : (
+                      <input
+                        type="number"
+                        step={f.type === "float" ? "0.1" : "1"}
+                        value={adv[f.key]}
+                        onChange={(e) => {
+                          const v = e.target.value;
+                          const num = f.type === "float" ? parseFloat(v) : parseInt(v, 10);
+                          onChange(f.key, Number.isNaN(num) ? 0 : num);
+                        }}
+                        className="px-2 py-1 rounded border font-mono text-sm w-24 text-right"
+                        style={{ borderColor: border, color: ink, background: "#FAFBFA" }}
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <div
+          className="flex justify-end gap-2 px-5 py-3 border-t"
+          style={{ borderColor: border, background: "#FAFBFA" }}
+        >
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4 py-1.5 rounded text-sm font-medium"
+            style={{ border: `1px solid ${border}`, background: paper, color: ink }}
+          >
+            Close
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ---------- Mode card (compact mode selector) ----------
+                // ---------- Mode card (compact mode selector) ----------
 function ModeCard({ selected, onClick, title, steps }) {
   return (
     <button
