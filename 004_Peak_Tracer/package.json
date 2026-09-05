@@ -41,7 +41,8 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "python-app/Code/**/*",
+      "python-app/peaktrace/**/*",
+      "python-app/peaktrace_core.py",
       "python-app/requirements.txt",
       "package.json",
       "!**/*.map",
@@ -50,13 +51,13 @@
       "!**/{.eslintrc,.prettierrc,.editorconfig}",
       "!**/{__tests__,test,tests}/**",
       "!**/{.DS_Store,.git,.github,docs,node_modules}/**",
-      "!**/{runtime,runtime-venv}/**"
+      "!**/runtime-venv/**"
     ],
     "extraResources": [
       {
         "from": "python-app",
         "to": "python-app",
-        "filter": ["Code/**/*", "requirements.txt"]
+        "filter": ["peaktrace/**/*", "peaktrace_core.py", "requirements.txt", "runtime/**/*"]
       }
     ],
     "win": {
