@@ -86,60 +86,64 @@ def _patch_data_tag(buf: bytes, channel: int, data: np.ndarray) -> bytes:
 
 
 def _patch_bytes_tag(buf: bytes, tag_name: str, tag_num: int, data: bytes) -> bytes:
-    """Find and replace a byte-string tag entry."""
-    return _patch_array_tag(buf, tag_name, tag_num, data, element_code=18)  # 18 = byte
+    """Find and replace a byte-string tag entry.
+
+    For PBAS, the input file uses element_code=2 (char) per Biopython's _BYTEFMT.
+    The data is one byte per base (ASCII character). Single-byte endianness is
+    trivially correct.
+    """
+    return _patch_array_tag(buf, tag_name, tag_num, data, element_code=2)
 
 
 def _patch_int_array_tag(buf: bytes, tag_name: str, tag_num: int, data: np.ndarray) -> bytes:
     """Find and replace an integer-array tag entry.
 
-    The element codes used by the ABI spec are:
-      1 = byte (uint8, 1 byte each)
-      2 = char (uint8, 1 byte each)  ← used by PBAS, PCON
-      4 = ushort (uint16, 2 bytes each)  ← used by PLOC
-      5 = short (int16, 2 bytes each)
+    ABI element codes (verified by reading Biopython's AbiIO._BYTEFMT, Aug 24):
+      1 = byte (signed, 1 byte each)
+      2 = char (signed, 1 byte each)   ← PBAS, PCON use this
+      3 = word (unsigned, 2 bytes)
+      4 = short (signed, 2 bytes)      ← PLOC uses this
+      5 = long (signed, 4 bytes)
+      7 = float (4 bytes)
+     18 = pString (byte string)
 
-    For QVs we use element code 2 (char) since they're uint8 values.
-    For PLOCs we use element code 4 (ushort) but store them as int32 → 4 bytes
-    actually that's wrong. Let me match what Biopython expects.
-
-    Actually for Biopython to read PCON correctly, it must be char (element_code=2)
-    with elem_size=1. The data size = n_elem * elem_size.
+    ABI byte order is BIG-ENDIAN (Biopython uses ">" prefix when reading).
+    numpy.ndarray.tobytes() on x86 is LITTLE-ENDIAN — so we must convert to
+    big-endian explicitly via .astype(ENDIAN_DTYPE).tobytes() or via byteswap.
     """
     if tag_name == "PBAS":
-        # bytes, element_code 18 or 2 (char)
+        # char (code 2) — single bytes, ASCII characters
+        # ndarray.tobytes() preserves byte order for single bytes — OK as-is.
         if data.dtype != np.uint8:
             data = data.astype(np.uint8)
         arr_bytes = data.tobytes()
         return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=2)
-    elif tag_name in ("PCON",):
-        # uint8 array → element_code 2 (char, 1 byte each)
+    elif tag_name == "PCON":
+        # char (code 2) — single bytes
         if data.dtype != np.uint8:
             data = data.astype(np.uint8)
         arr_bytes = data.tobytes()
         return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=2)
     elif tag_name == "PLOC":
-        # int32 array → element_code 4 (ushort, 2 bytes each) — but int32 doesn't fit
-        # Actually, Biopython reads PLOC as ushort (2 bytes each). So we must
-        # encode our int32 as uint16 (truncate high bits — safe for typical scan
-        # positions under 65535).
-        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
-        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        # short (code 4) — SIGNED int16, big-endian
+        data_clipped = np.clip(data, 0, 32767).astype(">i2")
+        arr_bytes = data_clipped.tobytes()
         return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
     elif tag_name == "P1AM":
-        # uint16 amplitudes — element_code 4
-        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
-        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        # short (code 4) — SIGNED int16, big-endian
+        data_clipped = np.clip(data, 0, 32767).astype(">i2")
+        arr_bytes = data_clipped.tobytes()
         return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
     elif tag_name.startswith("DATA"):
-        # uint16 channel data — element_code 4
-        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
-        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        # Channel data — was originally code 4 (signed short, big-endian) in our input
+        # but the input file shows element_code varies. Use uint16 big-endian for safety.
+        data_clipped = np.clip(data, 0, 65535).astype(">u2")
+        arr_bytes = data_clipped.tobytes()
         return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
     else:
-        # Default: try as uint16
-        data_clipped = np.clip(data, 0, 65535).astype(np.uint16)
-        arr_bytes = np.ascontiguousarray(data_clipped).tobytes()
+        # Default: short (code 4) — SIGNED int16, big-endian
+        data_clipped = np.clip(data, 0, 32767).astype(">i2")
+        arr_bytes = data_clipped.tobytes()
         return _patch_array_tag(buf, tag_name, tag_num, arr_bytes, element_code=4)
 
 
