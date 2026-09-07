@@ -181,7 +181,7 @@ def write_ab1(
     # Write header
     new_buf[0:4] = b"ABIF"
     new_buf[4:6] = struct.pack(">H", 101)
-    new_buf[6:10] = b"etdir"
+    new_buf[6:10] = b"tdir"
     new_buf[10:14] = struct.pack(">I", 1)
     new_buf[14:16] = struct.pack(">H", 1023)
     new_buf[16:18] = struct.pack(">H", 28)
@@ -189,6 +189,15 @@ def write_ab1(
     new_buf[22:26] = struct.pack(">I", len(new_entries) * 28)
     new_buf[26:30] = struct.pack(">I", dir_offset)
     new_buf[30:34] = struct.pack(">I", len(new_entries))
+
+    # DEBUG: log every new_entries entry (remove after fix)
+    import logging
+    for i, e in enumerate(new_entries):
+        name_ascii = all(0x20 <= b <= 0x7e for b in e["name"])
+        logging.debug(
+            "entry %d: tag=%r tag_num=%d hex=%s ascii_safe=%s offset=%d size=%d",
+            i, e["name"], e["tag_number"], e["name"].hex(), name_ascii, e["data_offset"], e["data_size"],
+        )
 
     out_path.write_bytes(bytes(new_buf))
 
