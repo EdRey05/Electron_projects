@@ -184,16 +184,20 @@ export default function PeakTracer() {
     setRunning(true);
     setResults([]);
     setLogs([]);
+    // v1.7 Phase 4.2: pass adv through to the spawn call so the modal
+    // values actually flow into the CLI argv. Each adv key maps to a CLI
+    // flag name (see electron/main.js); unknown keys are dropped.
     const res = await window.api.runBatch({
       inputDir,
       outputDir,
       settings,
+      adv,
     });
     if (!res.ok) {
       setRunning(false);
       setLogs((prev) => [...prev, { level: "error", message: res.error || "Batch failed" }]);
     }
-  }, [inputDir, outputDir, inputFiles, settings]);
+  }, [inputDir, outputDir, inputFiles, settings, adv]);
 
   const onReset = useCallback(() => {
     setResults([]);
