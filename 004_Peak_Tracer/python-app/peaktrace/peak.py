@@ -648,6 +648,42 @@ def apply_qv_to_n_downgrade_zone_aware(
 ENHANCED_QV_ENABLED = False
 
 
+def refine_ploc_to_local_max(ploc_in: np.ndarray, channel: np.ndarray,
+                            window: int = 2) -> np.ndarray:
+    """v1.7 Phase 3.3: snap PLOC positions to the nearest local maximum
+    in the given channel within ±window scans.
+
+    Off by default. Wired in via cli.py: --refine-ploc. When off, this
+    function is never called from the live path. Off-by-default means
+    callers must opt in explicitly; no import-time side effect.
+
+    Rationale: Agent 2's PLOC refinement. Detected peak positions can
+    drift off the actual local maximum by a couple of scans because
+    find_peaks returns the integer sample closest to the peak. Snapping
+    to the local max within ±2 aligns PLOC with the chromatogram
+    geometry SnapGene / Geneious displays.
+    """
+    if window <= 0:
+        return ploc_in.copy()
+    ploc_out = ploc_in.copy().astype(np.int32)
+    n = len(channel)
+    for i in range(len(ploc_out)):
+        pos = int(ploc_out[i])
+        lo = max(0, pos - window)
+        hi = min(n, pos + window + 1)
+        if lo >= hi:
+            continue
+        window_arr = channel[lo:hi]
+        # np.argmax on float; ties go to the first occurrence.
+        new_pos = lo + int(np.argmax(window_arr))
+        ploc_out[i] = new_pos
+    return ploc_out
+
+
+# v1.7 Phase 3.3 module-level switch. Off by default.
+REFINE_PLOC_ENABLED = False
+
+
 def rebasecall_data14(trace: Trace,
                       map_params: dict,
                       peaks14: dict,
@@ -659,6 +695,7 @@ def rebasecall_data14(trace: Trace,
                       process: bool = True,
                       sharpen: bool = False,
                       sharpen_factor: float = 2.0,
+                      refine_ploc: bool = False,
                       pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
 
@@ -865,6 +902,36 @@ def rebasecall_data14(trace: Trace,
     all_qv = np.concatenate([qv, new_qv])
     order = np.argsort(all_pos, kind="stable")
 
-    return (all_base[order].astype(np.uint8),
-            all_pos[order].astype(np.int32),
-            all_qv[order].astype(np.uint8))
+    final_pb = all_base[order].astype(np.uint8)
+    final_ploc = all_pos[order].astype(np.int32)
+    final_qv = all_qv[order].astype(np.uint8)
+
+    # v1.7 Phase 3.3: optional PLOC refinement. Off by default. When on,
+    # snap each PLOC to the local maximum within ±2 scans on the
+    # processed DATA1-4 channel matching the called base. This realigns
+    # PLOC with the chromatogram geometry that SnapGene / Geneious draw.
+    # Done AFTER the merge so the new_pos positions (already in DATA9-12
+    # coordinates) are mapped back through map_to_data14 for refinement.
+    if refine_ploc and len(final_ploc) > 0 and full:
+        from .align import map_to_data14
+        final_ploc_14 = np.array([
+            int(map_to_data14(int(p), map_params)) for p in final_ploc
+        ], dtype=np.int32)
+        # Pick the channel matching each called base
+        BASE_OF_FULL = {1: "A", 2: "C", 3: "G", 4: "T"}
+        CH_OF_BASE = {v: k for k, v in BASE_OF_FULL.items()}
+        refined = final_ploc.copy()
+        for i, (base, pos14) in enumerate(zip(final_pb, final_ploc_14)):
+            ch_id = CH_OF_BASE.get(chr(int(base)), None)
+            if ch_id is None or ch_id not in full:
+                continue
+            arr = full[ch_id]
+            lo = max(0, pos14 - 2)
+            hi = min(len(arr), pos14 + 3)
+            if lo >= hi:
+                continue
+            local_pos14 = lo + int(np.argmax(arr[lo:hi]))
+            refined[i] = int(map_to_data9(local_pos14, map_params))
+        final_ploc = refined
+
+    return final_pb, final_ploc, final_qv

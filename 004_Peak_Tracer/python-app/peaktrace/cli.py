@@ -330,6 +330,7 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
                         process=args.baseline_smooth,
                         sharpen=args.sharpen_peaks,
                         sharpen_factor=args.sharpen_factor,
+                        refine_ploc=args.refine_ploc,
                         pb=pb, ploc=ploc, qv=qv)
                     # Sanity: every original call must survive in the merged output
                     # (same positions, same bases). Internal gap insertions expected.
@@ -616,6 +617,11 @@ def parse_args(argv=None) -> argparse.Namespace:
     # PCON values are NOT modified (R11); only the base character changes.
     p.add_argument("--enhanced-qv", action="store_true", default=False,
                    help="Use zone-aware QV-to-N downgrade (default OFF; v1.7 Phase 3.2)")
+
+    # v1.7 Phase 3.3: snap PLOC to the local maximum on the called-base channel.
+    # Off by default.
+    p.add_argument("--refine-ploc", action="store_true", default=False,
+                   help="Snap PLOC to local maximum ±2 scans on the called-base channel (default OFF; v1.7 Phase 3.3)")
 
     # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to all
     # basecalls (Seq7-inherited + re-basecalled).
