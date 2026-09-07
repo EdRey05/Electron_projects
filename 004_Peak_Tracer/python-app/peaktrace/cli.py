@@ -451,6 +451,23 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
             emit_event("file_error", src=str(src_ab1), error=f"write seq failed: {e}")
             return {"src": str(src_ab1), "status": "error"}
 
+    # v1.7 Phase 3.4: optional sidecar trace artifact.
+    # Off by default. Writes JSON with processed DATA1-4 channels into
+    # <output>/sidecar/ (NOT the main output folder — Kimi R8).
+    if getattr(args, 'write_sidecar_trace', False):
+        try:
+            from .peak import get_data14_channels
+            from .sidecar import write_sidecar_trace
+            processed = get_data14_channels(trace, process=args.baseline_smooth,
+                                            sharpen=args.sharpen_peaks,
+                                            sharpen_factor=args.sharpen_factor)
+            sidecar_path = write_sidecar_trace(out_dir, base, processed)
+            emit_event("sidecar_written", src=str(src_ab1),
+                       path=str(sidecar_path))
+        except Exception as e:
+            emit_event("file_warn", src=str(src_ab1),
+                       msg=f"sidecar write failed: {e}")
+
     emit_event("file_done", src=str(src_ab1), out=str(out_ab1),
                    n_bases_in=trace.n_bases, n_bases_out=len(pb),
                    qv_mean=float(qv.mean()) if len(qv) else 0,
@@ -622,6 +639,13 @@ def parse_args(argv=None) -> argparse.Namespace:
     # Off by default.
     p.add_argument("--refine-ploc", action="store_true", default=False,
                    help="Snap PLOC to local maximum ±2 scans on the called-base channel (default OFF; v1.7 Phase 3.3)")
+
+    # v1.7 Phase 3.4: write a sidecar trace artifact (processed channels) for
+    # offline inspection. Off by default. Sidecars go in <output>/sidecar/
+    # (Kimi R8) — not the main output folder — to avoid SnapGene file-type
+    # confusion. .ab1 ABI contract stays intact (DATA9-12 unchanged).
+    p.add_argument("--write-sidecar-trace", action="store_true", default=False,
+                   help="Write processed channels as JSON into <output>/sidecar/ (default OFF; v1.7 Phase 3.4)")
 
     # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to all
     # basecalls (Seq7-inherited + re-basecalled).
