@@ -18,10 +18,12 @@ Stage 5: trim_3_end — scan from the right, find the first window of size W
           Verified: uses rolling mean of QV over W=40 bases, trims when
           rolling mean drops below 9.
 
-Stage 6: extend_late_read_interpolated — re-basecall via trace interpolation.
-          Interpolates 4 channels to ~1.25x resolution, detects peaks with
-          adaptive prominence, keeps existing Seq7 calls where they match,
-          adds new calls in low-SNR regions, stops when quality collapses.
+Stage 6: extend_late_read_interpolated — declared late-read extension via
+          trace interpolation. v1.7 NOTE (B2): this function is dead code
+          (no caller) and does not actually interpolate despite its name.
+          Live late-read extension is rebasecall_data14 in stage 3 of
+          process_one. Kept intact with a deprecation note; see function
+          docstring for the wire-or-delete decision.
 
 Stage 7 (v1.5 FIX #17): clean_baseline + smooth_channels on DATA1-4 before
           peak detection. Returns baseline-subtracted + Savitzky-Golay
@@ -386,6 +388,18 @@ def extend_late_read_interpolated(
     stop_quiet_bases: int = 40,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall using DATA1-4 (processed, pre-truncation) instead of DATA9-12.
+
+    v1.7 NOTE (B2): this function is currently DEAD CODE — no caller exists
+    in cli.py or anywhere else in the live path. The actual late-read
+    extension is done by rebasecall_data14 (cli.py:316). The function also
+    fails to live up to its name: it declares interpolation_factor=1.25
+    but never resamples — the docstring above (Stage 6) is wrong.
+
+    v1.7 Phase 3.5 decision is wire-or-delete. Without sample4 available
+    in this session, the function is left intact with this note so future
+    work can decide. If anyone re-wires it, the interpolation_factor
+    parameter must be honoured (currently it isn't). If anyone deletes
+    it, this note goes too.
 
     Seq7 truncates DATA9-12 to ~16k scans but leaves DATA1-4 intact at ~18.7k.
     PeakTrace RP uses DATA1-4 to recover ~400 bases beyond Seq7's 3' end.
