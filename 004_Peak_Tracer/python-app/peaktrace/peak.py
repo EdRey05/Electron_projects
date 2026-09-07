@@ -577,6 +577,77 @@ def apply_qv_to_n_downgrade(pb: np.ndarray,
     return pb_new, ploc, qv
 
 
+def apply_qv_to_n_downgrade_zone_aware(
+    pb: np.ndarray,
+    ploc: np.ndarray,
+    qv: np.ndarray,
+    head_threshold: int = 5,
+    middle_threshold: int = 5,
+    tail_threshold: int = 2,
+    head_frac: float = 0.1,
+    tail_frac: float = 0.3,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """v1.7 Phase 3.2: zone-aware QV-to-N downgrade (off by default).
+
+    Split the read into three zones by PLOC position (not by base index —
+    PLOC is the scan coordinate so zone boundaries map to physical scan
+    regions, which is what PT does):
+
+      head:   first `head_frac` of the PLOC range
+      middle: between head_frac and 1-tail_frac
+      tail:   last `tail_frac` of the PLOC range
+
+    Different thresholds per zone. Defaults: head=5, middle=5, tail=2 —
+    more aggressive in the tail because the QV scale there differs from
+    PT's (PT downgrades low-quality tail positions to N; v1.5's single
+    global threshold misses them because QV=4 in our scale is still "real"
+    by our threshold but "garbage" by PT's).
+
+    Off by default. Wired in via cli.py: --enhanced-qv. When off, the
+    existing apply_qv_to_n_downgrade with a single threshold is used
+    unchanged (R11: PCON is unchanged unless the new code path runs).
+    """
+    if len(pb) != len(ploc) or len(pb) != len(qv):
+        raise ValueError(f"pb/ploc/qv length mismatch: {len(pb)}/{len(ploc)}/{len(qv)}")
+    if len(ploc) == 0:
+        return pb.copy(), ploc, qv
+
+    ploc_min = int(ploc.min())
+    ploc_max = int(ploc.max())
+    ploc_range = ploc_max - ploc_min
+    if ploc_range <= 0:
+        # Degenerate (all same position). Treat as a single zone.
+        return apply_qv_to_n_downgrade(pb, ploc, qv, threshold=middle_threshold)
+
+    head_cutoff = ploc_min + head_frac * ploc_range
+    tail_cutoff = ploc_max - tail_frac * ploc_range
+
+    pb_new = pb.copy()
+    downgraded = 0
+    for i in range(len(pb_new)):
+        if int(pb_new[i]) == ord('N'):
+            continue  # already N
+        pos = int(ploc[i])
+        if pos <= head_cutoff:
+            thr = head_threshold
+        elif pos >= tail_cutoff:
+            thr = tail_threshold
+        else:
+            thr = middle_threshold
+        if int(qv[i]) <= thr:
+            pb_new[i] = ord('N')
+            downgraded += 1
+
+    return pb_new, ploc, qv
+
+
+# v1.7 Phase 3.2 module-level switch. Off by default. When True, the
+# cli.py calls apply_qv_to_n_downgrade_zone_aware instead of
+# apply_qv_to_n_downgrade. The constant exists so tests can verify the
+# default-off state without spinning up the whole CLI.
+ENHANCED_QV_ENABLED = False
+
+
 def rebasecall_data14(trace: Trace,
                       map_params: dict,
                       peaks14: dict,

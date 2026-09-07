@@ -369,11 +369,30 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     n_downgraded = 0
     if args.qv_to_n_threshold > 0 and len(pb) > 0:
         try:
-            from .peak import apply_qv_to_n_downgrade
-            pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
-            pb, ploc, qv = apply_qv_to_n_downgrade(pb, ploc, qv, threshold=args.qv_to_n_threshold)
-            pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
-            n_downgraded = pb_orig_count - pb_new_count
+            if getattr(args, 'enhanced_qv', False):
+                # v1.7 Phase 3.2: zone-aware downgrade. Off by default.
+                # Uses zone-aware thresholds (head/middle/tail) instead of
+                # a single global threshold. PCON values are unchanged
+                # (R11); only the base character changes at low-QV positions.
+                from .peak import apply_qv_to_n_downgrade_zone_aware
+                pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
+                # Tail threshold is 3 below the global threshold so the tail
+                # is more aggressive (matches the default head/middle/tail =
+                # 5/5/2 spacing in the function signature).
+                pb, ploc, qv = apply_qv_to_n_downgrade_zone_aware(
+                    pb, ploc, qv,
+                    head_threshold=args.qv_to_n_threshold,
+                    middle_threshold=args.qv_to_n_threshold,
+                    tail_threshold=max(1, args.qv_to_n_threshold - 3),
+                )
+                pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
+                n_downgraded = pb_orig_count - pb_new_count
+            else:
+                from .peak import apply_qv_to_n_downgrade
+                pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
+                pb, ploc, qv = apply_qv_to_n_downgrade(pb, ploc, qv, threshold=args.qv_to_n_threshold)
+                pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
+                n_downgraded = pb_orig_count - pb_new_count
         except Exception as e:
             emit_event("file_warn", src=str(src_ab1),
                        msg=f"qv-to-n downgrade failed: {e}")
@@ -590,6 +609,13 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Apply Laplacian sharpening to processed DATA1-4 (default OFF; v1.7 Phase 3.1)")
     p.add_argument("--sharpen-factor", type=float, default=2.0,
                    help="Laplacian sharpening factor (default 2.0; range 1.0-5.0)")
+
+    # v1.7 Phase 3.2: zone-aware QV-to-N downgrade.
+    # Off by default. When on, applies different thresholds to head/middle/tail
+    # regions (tail more aggressive) instead of a single global threshold.
+    # PCON values are NOT modified (R11); only the base character changes.
+    p.add_argument("--enhanced-qv", action="store_true", default=False,
+                   help="Use zone-aware QV-to-N downgrade (default OFF; v1.7 Phase 3.2)")
 
     # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to all
     # basecalls (Seq7-inherited + re-basecalled).
