@@ -11,6 +11,13 @@ Stage 3: clean_baseline — rolling low-percentile subtraction. We use a 400-sca
           does something similar. v1.7 FIX #23: the floor is now computed via
           scipy.ndimage.percentile_filter (the prior rank_filter call was
           misusing rank as if it were percentile).
+
+v1.7 FIX #26: smooth_channels and clean_baseline now keep the processed
+          channels as float64 instead of clipping/rounding to int32. The
+          int32 cast was destroying negative baseline excursions and
+          inflating downstream MAD noise estimates. The legacy writer path
+          (write.py) still quantizes when serializing DATA9-12; intermediate
+          processing keeps floats.
 """
 from __future__ import annotations
 import numpy as np
@@ -35,6 +42,8 @@ def smooth_channels(trace: Trace, level: int = 3, order: int = 2) -> None:
     """Apply Savitzky-Golay smoothing to each channel.
 
     window = 2 * level + 1   (level 0 → no smoothing; level 3 → window 7)
+
+    v1.7 FIX #26: keep channels as float64 (was clipping/rounding to int32).
     """
     if level <= 0:
         return
@@ -47,7 +56,8 @@ def smooth_channels(trace: Trace, level: int = 3, order: int = 2) -> None:
         if ch in trace.channels:
             arr = trace.channels[ch].astype(np.float64)
             arr = savgol_filter(arr, window_length=window, polyorder=order)
-            trace.channels[ch] = np.clip(np.round(arr), 0, 65535).astype(np.int32)
+            # FIX #26: keep as float64, do not clip to int32 here
+            trace.channels[ch] = arr.astype(np.float64)
 
 
 def clean_baseline(trace: Trace, window: int = 400, percentile: int = 10) -> None:
@@ -58,6 +68,8 @@ def clean_baseline(trace: Trace, window: int = 400, percentile: int = 10) -> Non
 
     This is a coarse approximation of what PeakTrace RP's baseline subtraction
     does; verified to give qualitatively similar results on our sample data.
+
+    v1.7 FIX #26: keep channels as float64 (was clipping/rounding to int32).
     """
     if window <= 1:
         return
@@ -80,4 +92,5 @@ def clean_baseline(trace: Trace, window: int = 400, percentile: int = 10) -> Non
         from scipy.ndimage import percentile_filter
         baseline = percentile_filter(arr, percentile=percentile, size=window)
         arr = arr - baseline
-        trace.channels[ch] = np.clip(np.round(arr), 0, 65535).astype(np.int32)
+        # FIX #26: keep as float64, do not clip to int32 here
+        trace.channels[ch] = arr.astype(np.float64)
