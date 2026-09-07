@@ -138,8 +138,10 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   else args.push("--preprocess");
 
   // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped).
-  // v1.6: always on — single PT pipeline, no UI toggle.
-  args.push("--rebasecall-data14");
+  // v1.6: always on in the UI.
+  // v1.7: CLI default flipped to ON (matches UI); no longer need to
+  // pass --rebasecall-data14 here. --min-rebasecall-len and
+  // --extend-min-snr stay because the modal exposes them.
   args.push("--min-rebasecall-len", "1000");
   args.push("--extend-min-snr", "1.3");
 

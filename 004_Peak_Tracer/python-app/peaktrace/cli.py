@@ -603,9 +603,17 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
-    # v1.3: Re-basecall from DATA1-4 raw channels (recovers late reads)
-    p.add_argument("--rebasecall-data14", action="store_true", default=False,
-                   help="Re-basecall from DATA1-4 full-resolution channels, merged into Seq7 gaps")
+    # v1.3: Re-basecall from DATA1-4 raw channels (recovers late reads).
+    # v1.7: DEFAULT ON. The feature has been on in the UI (electron/main.js
+    # adds --rebasecall-data14 to argv unconditionally) since v1.6; the
+    # CLI default of False was a footgun (forgetting the flag silently
+    # skipped +9% base recovery). Flip the CLI default to True so UI and
+    # CLI match. Disable with --no-rebasecall-data14 for regression
+    # testing against v1.5 behavior.
+    p.add_argument("--rebasecall-data14", action="store_true", default=True,
+                   help="Re-basecall from DATA1-4 full-resolution channels, merged into Seq7 gaps (v1.7 default ON)")
+    p.add_argument("--no-rebasecall-data14", action="store_false", dest="rebasecall_data14",
+                   help="Disable re-basecall (v1.5 trust-input behavior)")
     p.add_argument("--extend-min-snr", type=float, default=1.3,
                    help="Minimum SNR for re-basecalled peaks (default 1.3)")
     p.add_argument("--extend-stop-quiet", type=int, default=40,
