@@ -229,6 +229,82 @@ def trim_3_end(bases: np.ndarray, qvs: np.ndarray, value: int = 9, window: int =
     return bases[:trim_pos], qvs[:trim_pos]
 
 
+def get_data14_channels(trace: Trace) -> dict:
+    """Extract DATA1-4 (full-resolution processed channels) from trace.tags.
+
+    Returns dict {1: ndarray, 2: ndarray, 3: ndarray, 4: ndarray} (A, C, G, T).
+    Empty dict if DATA1-4 are absent.
+    """
+    full = {}
+    for ch in (1, 2, 3, 4):
+        tag = f"DATA{ch}"
+        if tag in trace.tags:
+            arr = np.asarray(trace.tags[tag], dtype=np.float64)
+            if len(arr) > 100:
+                full[ch] = arr
+    return full
+
+
+def detect_peaks_data14(trace: Trace,
+                        min_snr: float = 1.3,
+                        distance: int = 8,
+                        adaptive_fill: bool = True) -> dict:
+    """Detect peaks in DATA1-4 at PT-like density (~12.3 scans/base).
+
+    Strategy:
+      1. Per channel, find_peaks with prominence = noise * min_snr
+      2. Adaptive fill pass: where adjacent peaks in the COMBINED signal are
+         > 1.5x the median spacing, re-run find_peaks on that gap region with
+         prominence * 0.8 to pick up marginal peaks Seq7-style detectors miss
+      3. Returns dict {ch: peak_positions} in DATA1-4 coordinates
+
+    Sanity: total peaks across channels should be ~ len(DATA1) / 12.3.
+    """
+    from scipy.signal import find_peaks
+
+    full = get_data14_channels(trace)
+    if not full:
+        return {}
+
+    n = len(next(iter(full.values())))
+    peaks = {}
+    noise = {}
+    for ch, arr in full.items():
+        noise[ch] = max(1.0, float(np.percentile(arr, 5)))
+        pk, _ = find_peaks(arr, prominence=noise[ch] * min_snr, distance=distance)
+        peaks[ch] = pk.astype(np.int32)
+
+    if not adaptive_fill:
+        return peaks
+
+    # Adaptive fill: find gaps in the combined peak train and re-scan them
+    combined_peaks = np.sort(np.concatenate([peaks[ch] for ch in peaks]))
+    if len(combined_peaks) < 20:
+        return peaks
+    spacings = np.diff(combined_peaks)
+    median_spacing = float(np.median(spacings))
+    if median_spacing <= 0:
+        return peaks
+
+    gap_threshold = median_spacing * 1.5
+    gap_idx = np.where(spacings > gap_threshold)[0]
+
+    for gi in gap_idx:
+        lo = int(combined_peaks[gi])
+        hi = int(combined_peaks[gi + 1])
+        if hi - lo < distance * 2:
+            continue
+        for ch, arr in full.items():
+            sub = arr[lo:hi]
+            # Re-scan with lower prominence
+            pk, _ = find_peaks(sub, prominence=noise[ch] * min_snr * 0.8, distance=distance)
+            if len(pk):
+                new_peaks = pk + lo
+                peaks[ch] = np.sort(np.concatenate([peaks[ch], new_peaks])).astype(np.int32)
+
+    return peaks
+
+
 def extend_late_read_interpolated(
     trace: Trace,
     interpolation_factor: float = 1.25,
@@ -353,3 +429,108 @@ def extend_late_read_interpolated(
     final_qv = np.array([c[2] for c in combined], dtype=np.uint8)
 
     return final_pb, final_ploc, final_qv
+
+
+def rebasecall_data14(trace: Trace,
+                      map_params: dict,
+                      peaks14: dict,
+                      min_snr: float = 1.3,
+                      pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
+
+    Merge rule:
+      - Keep Seq7's call where a re-basecall is within +/-2 DATA9-12 scans
+        (same base or not - trust input in the overlap region)
+      - Add re-basecalls only where no Seq7 call exists within +/-6 scans
+      - Every added base comes from a real detected peak with computed QV
+
+    Returns (pb, ploc, qv) in DATA9-12 coordinates, sorted by PLOC.
+    """
+    from .align import map_to_data9
+
+    if pb is None: pb = trace.pb_in.copy()
+    if ploc is None: ploc = trace.ploc_in.copy()
+    if qv is None: qv = trace.qv_in.copy()
+    full = get_data14_channels(trace)
+    if not full or not peaks14 or not map_params.get("ok"):
+        return pb, ploc, qv
+
+    # Channel noise from DATA1-4
+    noise = {ch: max(1.0, float(np.percentile(arr, 5))) for ch, arr in full.items()}
+    BASE_OF_FULL = {1: "A", 2: "C", 3: "G", 4: "T"}
+
+    # Merge peaks from all channels: position -> {ch: amp}
+    merged = {}
+    for ch, pks in peaks14.items():
+        for p in pks:
+            amp = float(full[ch][p])
+            if amp < noise[ch] * min_snr:
+                continue
+            merged.setdefault(int(p), {})[ch] = max(merged.get(int(p), {}).get(ch, 0.0), amp)
+
+    # Candidate calls in DATA1-4 coords
+    cand_pos14 = []
+    cand_base = []
+    cand_qv = []
+    for pos in sorted(merged):
+        amps = merged[pos]
+        primary_ch, primary_amp = max(amps.items(), key=lambda kv: kv[1])
+        snr = primary_amp / noise[primary_ch]
+        qv_val = max(1, min(62, int(round(10 * np.log10(snr * 10))))) if snr >= 1.0 else 1
+        cand_pos14.append(pos)
+        cand_base.append(ord(BASE_OF_FULL[primary_ch]))
+        cand_qv.append(qv_val)
+
+    if not cand_pos14:
+        return pb, ploc, qv
+
+    # Map to DATA9-12 coords
+    cand_pos9 = map_to_data9(np.array(cand_pos14), map_params)
+
+    # Restrict to valid range
+    valid = (cand_pos9 >= 0) & (cand_pos9 < trace.n_scans)
+    cand_pos9 = cand_pos9[valid]
+    cand_base = np.array(cand_base, dtype=np.uint8)[valid]
+    cand_qv = np.array(cand_qv, dtype=np.uint8)[valid]
+
+    # Merge with Seq7 calls
+    # Only add new bases where Seq7 has a GAP (dropped peak) — i.e., where the
+    # distance flanking Seq7 calls exceeds 1.5x median Seq7 spacing. Within
+    # normal-density regions, trust Seq7 and add nothing.
+    seq7_pos = ploc.astype(np.int32)
+    spacings = np.diff(seq7_pos)
+    med_spacing = float(np.median(spacings)) if len(spacings) else 12.0
+    gap_centers = []  # (gap_start, gap_end) in DATA9-12 coords
+    # NOTE: no leading gap — inserting bases before the first Seq7 call risks
+    # primer-injection artifacts and breaks prefix integrity. Skip it.
+    for i in range(len(seq7_pos) - 1):
+        if spacings[i] > med_spacing * 1.5:
+            gap_centers.append((int(seq7_pos[i]), int(seq7_pos[i + 1])))
+    # Trailing gap (after last Seq7 base — the classic extension region)
+    if len(seq7_pos) and trace.n_scans - seq7_pos[-1] > med_spacing * 1.5:
+        gap_centers.append((int(seq7_pos[-1]), trace.n_scans))
+
+    keep_new = np.zeros(len(cand_pos9), dtype=bool)
+    for i, p in enumerate(cand_pos9):
+        for g_start, g_end in gap_centers:
+            # inside a gap, but not too close to the flanking Seq7 calls
+            if g_start + 3 < p < g_end - 3:
+                keep_new[i] = True
+                break
+
+    new_pos = cand_pos9[keep_new]
+    new_base = cand_base[keep_new]
+    new_qv = cand_qv[keep_new]
+
+    if len(new_pos) == 0:
+        return pb, ploc, qv
+
+    # Final merge: Seq7 + new, sorted by position
+    all_pos = np.concatenate([seq7_pos, new_pos])
+    all_base = np.concatenate([pb, new_base])
+    all_qv = np.concatenate([qv, new_qv])
+    order = np.argsort(all_pos, kind="stable")
+
+    return (all_base[order].astype(np.uint8),
+            all_pos[order].astype(np.int32),
+            all_qv[order].astype(np.uint8))

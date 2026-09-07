@@ -36,6 +36,7 @@ import numpy as np
 
 from .read import read_ab1, write_seq, CHANNELS
 from .write import write_ab1
+from .xlsx import XlsxWriter
 
 
 # ---------- filename handling ----------
@@ -100,28 +101,60 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         ploc = ploc[1:]
         lead_dropped = True
 
-    # v2.0: Late-read extension via trace interpolation + re-basecalling
-    # PeakTrace RP produces ~1.2x more scan data than Seq7 (e.g. 19,831 vs 16,026).
-    # We replicate this by interpolating the trace to higher resolution, then
-    # re-basecalling with adaptive peak detection. This recovers bases that
-    # Seq7 missed because peaks were below its detection threshold.
+    # v1.3: Re-basecall from DATA1-4 full-resolution channels
+    # Seq7 truncates DATA9-12 to ~16k scans; DATA1-4 carry ~18.7k scans of the
+    # same run. Re-basecalling DATA1-4 at PT-like density (~12.3 scans/base)
+    # recovers bases Seq7 dropped, merged into Seq7's spacing gaps.
     extended = False
     ext_bases_added = 0
-    if args.extend_late_read and len(pb) > 0:
-        try:
-            from .peak import extend_late_read_interpolated
-            pb_new, ploc_new, qv_new = extend_late_read_interpolated(
-                trace,
-                interpolation_factor=args.extend_interp_factor,
-                min_snr=args.extend_min_snr,
-                stop_quiet_bases=args.extend_stop_quiet,
-            )
-            ext_bases_added = len(pb_new) - len(pb)
-            if ext_bases_added > 0:
-                pb, ploc, qv = pb_new, ploc_new, qv_new
-                extended = True
-        except Exception as e:
-            emit_event("file_error", src=str(src_ab1), error=f"extend failed: {e}")
+    map_r2 = 0.0
+    if args.rebasecall_data14 and len(pb) > 0:
+        # Only attempt re-basecalling on reads where Seq7 already called a
+        # substantial sequence (>= min_rebasecall_len). Short reads are already
+        # well-trimmed by Seq7; extending them produces junk low-QV tails.
+        if len(pb) < args.min_rebasecall_len:
+            emit_event("file_skip_rebasecall", src=str(src_ab1),
+                       reason=f"only {len(pb)} bases, below {args.min_rebasecall_len}")
+        else:
+            try:
+                from .align import learn_coordinate_map
+                from .peak import detect_peaks_data14, rebasecall_data14
+                map_params = learn_coordinate_map(trace)
+                map_r2 = map_params.get("r_squared", 0.0)
+                if map_params.get("ok"):
+                    peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr)
+                    pb_new, ploc_new, qv_new = rebasecall_data14(
+                        trace, map_params, peaks14, min_snr=args.extend_min_snr,
+                        pb=pb, ploc=ploc, qv=qv)
+                    # Sanity: every original call must survive in the merged output
+                    # (same positions, same bases). Internal gap insertions expected.
+                    orig_positions = set(int(x) for x in ploc)
+                    new_positions = set(int(x) for x in ploc_new)
+                    if orig_positions.issubset(new_positions) and len(pb_new) >= len(pb):
+                        ok = True
+                        pos_to_base = {}
+                        for pos_, b_ in zip(ploc_new, pb_new):
+                            pos_to_base.setdefault(int(pos_), int(b_))
+                        for pos_, b_ in zip(ploc, pb):
+                            if pos_to_base.get(int(pos_), -1) != int(b_):
+                                ok = False
+                                break
+                        if ok:
+                            ext_bases_added = len(pb_new) - len(pb)
+                            if ext_bases_added > 0:
+                                pb, ploc, qv = pb_new, ploc_new, qv_new
+                                extended = True
+                        else:
+                            emit_event("file_warn", src=str(src_ab1),
+                                       msg="rebasecall altered an original call; rejected")
+                    else:
+                        emit_event("file_warn", src=str(src_ab1),
+                                   msg="rebasecall lost original positions; rejected")
+                else:
+                    emit_event("file_warn", src=str(src_ab1),
+                               msg=f"coordinate map r2={map_r2:.3f} too low; trust-input")
+            except Exception as e:
+                emit_event("file_error", src=str(src_ab1), error=f"rebasecall failed: {e}")
 
     # 3. Compute P1AM (peak amplitudes) — read from input's channel data at PLOC
     p1am = np.zeros(len(pb), dtype=np.uint16)
@@ -161,10 +194,12 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
             return {"src": str(src_ab1), "status": "error"}
 
     emit_event("file_done", src=str(src_ab1), out=str(out_ab1),
-               n_bases_out=len(pb), qv_mean=float(qv.mean()) if len(qv) else 0,
-               first_5_bases="".join(chr(int(b)) for b in pb[:5]),
-               last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
-               lead_dropped=lead_dropped)
+                   n_bases_in=trace.n_bases, n_bases_out=len(pb),
+                   qv_mean=float(qv.mean()) if len(qv) else 0,
+                   first_5_bases="".join(chr(int(b)) for b in pb[:5]),
+                   last_5_bases="".join(chr(int(b)) for b in pb[-5:]),
+                   lead_dropped=lead_dropped, extended=extended,
+                   ext_bases_added=ext_bases_added, map_r_squared=map_r2)
 
     return {
         "src": str(src_ab1),
@@ -173,48 +208,51 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         "n_bases_in": trace.n_bases,
         "n_bases_out": len(pb),
         "qv_mean": float(qv.mean()) if len(qv) else 0.0,
+        "lead_dropped": lead_dropped,
+        "extended": extended,
+        "ext_bases_added": ext_bases_added,
     }
 
 
 def write_qc_report(out_dir: Path, results: list, args) -> Path:
-    """Generate 2-Report.xls (replaces 3-Rename And Report.bat's QC report).
+    """Generate 2-Report.xlsx (replaces 3-Rename And Report.bat's QC report).
 
-    Format: tab-separated values saved as .xls (matches what the .bat produced).
-    Each row: <sample_basename><TAB>"<status>"
+    Proper Excel Open XML workbook, one sheet, header row + one row per file.
 
-    Status values (matches 3-Rename And Report.bat):
-      "OK" — file processed successfully
-      "Skipped" — too short
-      "Error" — read/write failure
-
-    For v1.1 we only produce "OK" / "Skipped" / "Error" — subfolder QC
-    (High Background / Superimposed / Fail / Fail addon) is deferred to v2.0.
+    Columns: basename, status, n_bases_in, n_bases_out, qv_mean, extended, lead_dropped
     """
-    report_path = out_dir / "2-Report.xls"
-    lines = []
+    report_path = out_dir / "2-Report.xlsx"
+
+    w = XlsxWriter()
+    w.add_row(["basename", "status", "n_bases_in", "n_bases_out", "qv_mean", "extended", "lead_dropped"])
     for r in results:
+        basename = Path(r["src"]).stem
+        if args.strip_well_id:
+            basename = strip_well_id(basename)
+        basename += args.filename_suffix
+
+        n_in = r.get('n_bases_in', '')
+        n_out = r.get('n_bases_out', '')
+        qv = r.get('qv_mean')
+        ext = 'Y' if r.get('extended') else 'N'
+        ld = 'Y' if r.get('lead_dropped') else 'N'
+
         if r["status"] == "ok":
-            basenamestem = Path(r["src"]).stem
-            if args.strip_well_id:
-                basenamestem = strip_well_id(basenamestem)
-            basenamestem += args.filename_suffix
-            lines.append(f"{basenamestem}\tOK")
+            status = "OK"
+            if r.get("extended") and r.get("ext_bases_added", 0) > 0:
+                status = f"OK (+{r['ext_bases_added']} from raw)"
+            w.add_row_mixed([basename, status, n_in, n_out, f"{qv:.1f}" if qv is not None else "", ext, ld])
         elif r["status"] == "skipped":
-            basenamestem = Path(r["src"]).stem
-            if args.strip_well_id:
-                basenamestem = strip_well_id(basenamestem)
-            basenamestem += args.filename_suffix
             reason = r.get("reason", "skipped")
-            lines.append(f"{basenamestem}\tSkipped ({reason})")
+            w.add_row_mixed([basename, f"Skipped ({reason})", "", "", "", "", ""])
         elif r["status"] == "error":
-            basenamestem = Path(r["src"]).stem
-            if args.strip_well_id:
-                basenamestem = strip_well_id(basenamestem)
-            basenamestem += args.filename_suffix
             err = r.get("error", "unknown error")
-            lines.append(f"{basenamestem}\tError ({err[:40]})")
-    report_path.write_text("\n".join(lines) + "\n", encoding="ascii")
+            w.add_row_mixed([basename, f"Error ({err[:60]})", "", "", "", "", ""])
+
+    w.write(report_path)
     return report_path
+
+
 
 
 # ---------- CLI ----------
@@ -252,15 +290,16 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
-    # v2.0: Late-read extension (interpolate trace + re-basecall)
-    p.add_argument("--extend-late-read", action="store_true", default=False,
-                   help="Extend basecalling by interpolating trace + re-calling peaks")
-    p.add_argument("--extend-interp-factor", type=float, default=1.25,
-                   help="Interpolation factor (default 1.25 = PT's typical upsampling)")
+    # v1.3: Re-basecall from DATA1-4 raw channels (recovers late reads)
+    p.add_argument("--rebasecall-data14", action="store_true", default=False,
+                   help="Re-basecall from DATA1-4 full-resolution channels, merged into Seq7 gaps")
     p.add_argument("--extend-min-snr", type=float, default=1.3,
-                   help="Minimum SNR for extended peaks (default 1.3)")
+                   help="Minimum SNR for re-basecalled peaks (default 1.3)")
     p.add_argument("--extend-stop-quiet", type=int, default=40,
-                   help="Stop after N consecutive low-quality bases (default 40)")
+                   help="Reserved for future tail-stop logic (default 40)")
+    p.add_argument("--min-rebasecall-len", type=int, default=1000,
+                   help="Only re-basecall reads with >= this many bases (default 1000; "
+                        "shorter reads are already well-trimmed and extending them adds junk)")
 
     return p.parse_args(argv)
 
