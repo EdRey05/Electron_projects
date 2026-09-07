@@ -1,65 +1,93 @@
-# Peak Tracer v0
+# Peak Tracer
 
-In-house replacement for Nucleics Auto PeakTrace RP. Processes Sanger `.ab1`
-chromatograms (spectral deconvolution → baseline → smoothing → re-basecall →
-new `.ab1` output) using a fully open-source Python pipeline (Biopython +
-NumPy + SciPy + PyWavelets), wrapped in an Electron UI.
+In-house replacement for Nucleics Auto PeakTrace RP. Processes Sanger `.ab1` chromatograms (baseline subtract → Savitzky-Golay / wavelet smoothing → re-basecall → `.ab1` output) using an open-source Python pipeline (Biopython + NumPy + SciPy), wrapped in a React + Vite + Electron desktop UI.
 
-## Status
+## Features
 
-**v0 scaffold only — no Python core yet.** Electron UI is wired to spawn
-`python-app/Code/peaktrace_core.py` with all settings as CLI flags, but the
-Python script itself doesn't exist yet. The Electron app will show "script
-not found" errors until `python-app/` is populated.
+- **Batch `.ab1` Processing:** Select an input folder containing raw Sanger chromatogram files and process all files in batch.
+- **Multiple Processing Modes:**
+  - **Raw Proportional (RP):** Performs baseline cleaning, trace smoothing, and amplitude rescaling while preserving proportional peak heights.
+  - **Full PeakTrace:** Applies peak resolution and sharpening algorithms to enhance trace clarity.
+  - **Pass-through:** Converts and standardizes files without modifying trace data.
+- **Advanced Processing Controls:** Configurable baseline cleaning window, Savitzky-Golay smoothing order/level, quality score trimming thresholds, 3'-end trimming, mixed-peak thresholds, and well ID stripping.
+- **Live Execution Streaming:** IPC-based live progress streaming per file with detailed QC stats and status reports.
+- **Optional Output Files:** Can emit corresponding FASTA `.seq` text files alongside updated `.ab1` chromatograms.
+- **Multi-core Parallel Processing:** Configurable worker threads for fast batch execution on modern desktop systems.
 
-## User flow (target)
+## Prerequisites
 
-1. Pick the input folder (the `raw/` subfolder containing post-Seq7 `.ab1`
-   files). The app enumerates the `.ab1` files in it.
-2. Output folder auto-fills to the parent (matches PeakTrace RP convention).
-3. Pick a processing mode (Raw Proportional, Full PeakTrace, or Pass-through).
-4. (Optional) Show Advanced and tune smoothing / baseline / basecaller knobs.
-5. Click **Run Peak Tracer**. Per-file progress streams live; each result row
-   can be expanded to see QC stats.
-6. The new `.ab1` files land in the output folder, ready to send to the
-   sister company.
+- **Node.js:** v18 or higher with `npm`.
+- **Python:** v3.11+ (required for local development).
 
-## UI integration decision (open)
+## Installation & Setup
 
-Three possible delivery paths (tracked in agent folder's SPECS.md §9):
-- **A. Standalone Electron app** (this v0)
-- **B. Subapp inside `003_Gene_Synthesis_Hub/`** (Electron hub)
-- **C. Module inside `BBI_projects/App_hub/`** (legacy Tkinter hub)
+1. **Navigate to the application folder:**
 
-The Python core is identical in all three; only the wrapper UI changes.
-Ed hasn't decided yet.
+   ```bash
+   cd 004_Peak_Tracer
+   ```
 
-## Build
+2. **Install Node.js dependencies:**
 
-See BUILD.md. Dev loop:
+   ```bash
+   npm install
+   ```
 
-```bash
-cd 004_Peak_Tracer
-npm install
-npm run dev
-```
+3. **Set up the Python environment:**
 
-## Python side (TODO)
+   Create a Python virtual environment under `python-app/runtime` and install dependencies:
 
-The following need to land in `python-app/`:
+   ```bash
+   # Using uv (recommended):
+   uv venv python-app/runtime --python 3.11
+   uv pip install --python python-app/runtime/Scripts/python.exe -r python-app/requirements.txt
 
-- `python-app/runtime-venv/` — bundled Python venv (created from `requirements.txt` by `scripts/setup_python_app.sh`)
-- `python-app/Code/peaktrace_core.py` — CLI entry point (consumes all the CLI flags the Electron main process passes)
-- `python-app/Code/peaktrace/` — the Python package implementing the pipeline
-- `python-app/requirements.txt` — pinned: biopython, numpy, scipy, pywavelets, abifpy or rohankan/ab1-file-writer
+   # Or standard venv / pip on Windows:
+   python -m venv python-app/runtime
+   python-app\runtime\Scripts\pip.exe install -r python-app\requirements.txt
+   ```
 
-This is the next major chunk of work, separate from the UI scaffold.
+## Running the Application
+
+- **Development Mode (Vite + Electron with DevTools):**
+
+  ```bash
+  npm run dev
+  ```
+
+- **Standard Electron Launch:**
+
+  ```bash
+  npm start
+  ```
+
+## Building & Packaging
+
+- **Build Frontend Assets:**
+
+  ```bash
+  npm run build
+  ```
+
+- **Package Desktop Application:**
+
+  - **Default package (electron-builder):**
+    ```bash
+    npm run package
+    ```
+  - **Windows installer & unpacked folder:**
+    ```bash
+    npm run package:win
+    ```
+  - **Windows Portable single executable:**
+    ```bash
+    npm run package:portable
+    ```
+
+Built artifacts land in the `release/` directory. Standalone packages include the bundled Python environment under `resources/python-app/`, eliminating external Python dependencies on user machines.
 
 ## Conventions
 
-Follows the Electron_projects repo conventions (see
-`../electron-projects-repo-conventions` skill):
-- Folder name `004_Peak_Tracer/` (next sequential slot)
-- Single clean commit per version
-- Source only — no built artifacts committed
-- Per-app `.gitignore` matching `001_FileSync/`
+Follows the repository conventions:
+- Folder structure: `004_Peak_Tracer/`
+- Clean source commits only (build artifacts ignored via `.gitignore`)
