@@ -285,9 +285,11 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     qv = trace.qv_in.copy()
     ploc = trace.ploc_in.copy()
 
-    # NOTE: v1.2 leader-base-drop logic exists but is disabled by default.
-    # The current .ab1 writer has bugs that corrupt files when buffer size
-    # changes (which lead-drop causes). Re-enabled in v1.3 once writer is fixed.
+    # v1.7 FIX #27: the v1.2 "writer corrupts files when buffer size
+    # changes" comment above this block is stale — that bug class
+    # (element codes + offset) was fixed in v1.0. The trim logic
+    # itself is functional; only the --no-lead-drop argparse flag was
+    # broken (now fixed one block below in parse_args).
     lead_dropped = False
     if args.lead_drop_enabled and len(pb) > 1 and len(qv) > 0 and int(qv[0]) < args.lead_drop_qv:
         pb = pb[1:]
@@ -553,7 +555,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     # v1.2: Leading-base drop (matches PT's behavior on 83% of long reads)
     p.add_argument("--lead-drop-enabled", action="store_true", default=True,
                    help="Drop leading base when QV < --lead-drop-qv (matches PT, default ON)")
-    p.add_argument("--no-lead-drop", dest="lead_drop_enabled", action="store_true")
+    # v1.7 FIX #27: --no-lead-drop was action="store_true" which could
+    # never disable (same dest as --lead-drop-enabled, default=True).
+    # Flipped to store_false so the flag actually works.
+    p.add_argument("--no-lead-drop", dest="lead_drop_enabled", action="store_false")
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
