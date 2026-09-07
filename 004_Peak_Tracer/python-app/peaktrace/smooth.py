@@ -94,3 +94,43 @@ def clean_baseline(trace: Trace, window: int = 400, percentile: int = 10) -> Non
         arr = arr - baseline
         # FIX #26: keep as float64, do not clip to int32 here
         trace.channels[ch] = arr.astype(np.float64)
+
+
+def sharpen_channels(trace: Trace, factor: float = 2.0) -> None:
+    """v1.7 Phase 3.1: sharpen chromatogram peaks by adding a scaled
+    Laplacian (high-pass) back to the signal.
+
+    The discrete Laplacian kernel [-1, 2, -1] is a high-pass filter.
+    Adding a scaled version back to the original is the standard
+    "Laplacian sharpening" (or unsharp-mask) formula:
+
+        sharpened = arr + factor * conv(arr, [-1, 2, -1])
+
+    factor=0 is a no-op. factor=1 is conservative; factor=2-3 is
+    aggressive (good for closely spaced peaks, risky on noise).
+
+    Off by default. Wired in via cli.py: --sharpen-peaks / --sharpen-factor.
+    Off-by-default means this function allocates no module-level state at
+    import time (Kimi D, R3).
+
+    Rationale: addresses I1 (peak-mountain merging). With baseline subtraction
+    on, sharpening visibly separates AATTTT-like clusters when factor is
+    tuned on sample4.
+    """
+    if factor <= 0:
+        return
+    # Use scipy.ndimage.convolve1d with mode="reflect" so the convolution
+    # preserves linear signals at the boundaries (np.convolve with
+    # mode="same" zero-pads, which corrupts the edges). Reflection is the
+    # least-bad default for chromatogram data.
+    from scipy.ndimage import convolve1d
+    kernel = np.array([-1.0, 2.0, -1.0], dtype=np.float64)
+    for ch in CHANNELS:
+        if ch not in trace.channels:
+            continue
+        arr = trace.channels[ch].astype(np.float64)
+        if len(arr) < 3:
+            continue
+        laplacian = convolve1d(arr, kernel, mode="reflect")
+        sharpened = arr + factor * laplacian
+        trace.channels[ch] = sharpened.astype(np.float64)

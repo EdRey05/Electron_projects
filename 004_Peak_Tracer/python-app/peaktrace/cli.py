@@ -322,10 +322,14 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
                 map_r2 = map_params.get("r_squared", 0.0)
                 if map_params.get("ok"):
                     peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr,
-                                                   process=args.baseline_smooth)
+                                                   process=args.baseline_smooth,
+                                                   sharpen=args.sharpen_peaks,
+                                                   sharpen_factor=args.sharpen_factor)
                     pb_new, ploc_new, qv_new = rebasecall_data14(
                         trace, map_params, peaks14, min_snr=args.extend_min_snr,
                         process=args.baseline_smooth,
+                        sharpen=args.sharpen_peaks,
+                        sharpen_factor=args.sharpen_factor,
                         pb=pb, ploc=ploc, qv=qv)
                     # Sanity: every original call must survive in the merged output
                     # (same positions, same bases). Internal gap insertions expected.
@@ -578,6 +582,14 @@ def parse_args(argv=None) -> argparse.Namespace:
     # for regression testing against the v1.4 behavior.
     p.add_argument("--no-baseline-smooth", dest="baseline_smooth", action="store_false", default=True,
                    help="Disable DATA1-4 baseline subtraction + smoothing (v1.4 behavior, default ON in v1.5)")
+
+    # v1.7 Phase 3.1: optional Laplacian sharpening after baseline+smooth.
+    # Off by default. factor defaults to 2.0; range 1-5 typical.
+    # No module-level state allocated when flag is off (R3 / Kimi D).
+    p.add_argument("--sharpen-peaks", action="store_true", default=False,
+                   help="Apply Laplacian sharpening to processed DATA1-4 (default OFF; v1.7 Phase 3.1)")
+    p.add_argument("--sharpen-factor", type=float, default=2.0,
+                   help="Laplacian sharpening factor (default 2.0; range 1.0-5.0)")
 
     # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to all
     # basecalls (Seq7-inherited + re-basecalled).

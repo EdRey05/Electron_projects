@@ -35,7 +35,7 @@ Stage 7 (v1.5 FIX #17): clean_baseline + smooth_channels on DATA1-4 before
 from __future__ import annotations
 import numpy as np
 from .read import Trace, CHANNELS, CHANNEL_OF_BASE
-from .smooth import clean_baseline, smooth_channels
+from .smooth import clean_baseline, smooth_channels, sharpen_channels
 
 BASE_OF_CHANNEL = {9: "A", 10: "C", 11: "G", 12: "T"}
 
@@ -246,7 +246,8 @@ def trim_3_end(bases: np.ndarray, qvs: np.ndarray, value: int = 9, window: int =
     return bases[:trim_pos], qvs[:trim_pos]
 
 
-def get_data14_channels(trace: Trace, process: bool = True) -> dict:
+def get_data14_channels(trace: Trace, process: bool = True,
+                       sharpen: bool = False, sharpen_factor: float = 2.0) -> dict:
     """Extract DATA1-4 (full-resolution processed channels) from trace.tags.
 
     Returns dict {1: ndarray, 2: ndarray, 3: ndarray, 4: ndarray} (A, C, G, T).
@@ -261,6 +262,9 @@ def get_data14_channels(trace: Trace, process: bool = True) -> dict:
     The original DATA1-4 values in trace.tags are NOT mutated; processing
     happens on a local copy. This keeps the existing writer path (which
     reads DATA1-4 for chromatogram extension) operating on raw values.
+
+    v1.7 Phase 3.1: optional sharpen step (Laplacian inverse filter).
+    Off by default (sharpen=False). When on, factor defaults to 2.0.
 
     Tunable parameters (module-level, see top of file):
       - DATA14_BASELINE_WINDOW (default 400)
@@ -299,6 +303,10 @@ def get_data14_channels(trace: Trace, process: bool = True) -> dict:
                     level=DATA14_SMOOTH_LEVEL,
                     order=DATA14_SMOOTH_ORDER)
 
+    # Stage 3 (v1.7 Phase 3.1): optional sharpen. Off by default.
+    if sharpen:
+        sharpen_channels(tmp, factor=sharpen_factor)
+
     # Map back to DATA1-4 keys
     processed = {}
     for ch in (1, 2, 3, 4):
@@ -312,7 +320,9 @@ def detect_peaks_data14(trace: Trace,
                         min_snr: float = 1.3,
                         distance: int = 8,
                         adaptive_fill: bool = True,
-                        process: bool = True) -> dict:
+                        process: bool = True,
+                        sharpen: bool = False,
+                        sharpen_factor: float = 2.0) -> dict:
     """Detect peaks in DATA1-4 at PT-like density (~12.3 scans/base).
 
     Strategy:
@@ -325,11 +335,15 @@ def detect_peaks_data14(trace: Trace,
     v1.5 FIX #17: `process=True` (default) applies baseline subtraction +
     Savitzky-Golay smoothing to DATA1-4 channels before peak detection.
 
+    v1.7 Phase 3.1: `sharpen` (off by default) adds Laplacian sharpening
+    after smoothing. Threaded to get_data14_channels.
+
     Sanity: total peaks across channels should be ~ len(DATA1) / 12.3.
     """
     from scipy.signal import find_peaks
 
-    full = get_data14_channels(trace, process=process)
+    full = get_data14_channels(trace, process=process,
+                               sharpen=sharpen, sharpen_factor=sharpen_factor)
     if not full:
         return {}
 
@@ -572,6 +586,8 @@ def rebasecall_data14(trace: Trace,
                       qv_floor: int = 10,
                       stop_quiet_bases: int = 40,
                       process: bool = True,
+                      sharpen: bool = False,
+                      sharpen_factor: float = 2.0,
                       pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
 
@@ -588,6 +604,10 @@ def rebasecall_data14(trace: Trace,
       - QV >= qv_floor (default 10); otherwise downgrade base to 'N'
       - Stop extension after `stop_quiet_bases` consecutive bases with QV < qv_floor
 
+    v1.7 Phase 3.1: `sharpen` (off by default) threads through to
+    get_data14_channels. Use the same sharpen value as detect_peaks_data14
+    so the peaks14 dict is consistent with the channels used to derive QV.
+
     Returns (pb, ploc, qv) in DATA9-12 coordinates, sorted by PLOC.
     """
     from .align import map_to_data9
@@ -595,7 +615,8 @@ def rebasecall_data14(trace: Trace,
     if pb is None: pb = trace.pb_in.copy()
     if ploc is None: ploc = trace.ploc_in.copy()
     if qv is None: qv = trace.qv_in.copy()
-    full = get_data14_channels(trace, process=process)
+    full = get_data14_channels(trace, process=process,
+                               sharpen=sharpen, sharpen_factor=sharpen_factor)
     if not full or not peaks14 or not map_params.get("ok"):
         return pb, ploc, qv
 
