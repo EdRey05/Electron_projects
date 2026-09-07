@@ -468,10 +468,15 @@ export default function PeakTracer() {
                     <div className="text-right">Extended</div>
                   </div>
 
-                  {/* Scrollable body (18 rows + frozen header visible at default row height) */}
+                  {/* v1.7 Phase 4.4: 4K laptop verification.
+                      v1.6 used a fixed 625px maxHeight tuned for 1080p.
+                      On 4K (2560x1440) that looked small. Use a vh-based
+                      floor that keeps the 18-rows-visible behavior on
+                      1080p (~625px at 900vh) but scales with viewport.
+                      Ed to verify on actual 4K hardware (carry-over C4). */}
                   <div
                     className="overflow-y-auto"
-                    style={{ maxHeight: 625 }}
+                    style={{ maxHeight: "min(625px, 70vh)" }}
                   >
                     {/* File rows */}
                     {results.map((r, i) => {
