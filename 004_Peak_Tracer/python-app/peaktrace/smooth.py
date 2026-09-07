@@ -8,7 +8,9 @@ Stage 2: smooth_channels — Savitzky-Golay with window = 2*level + 1.
 
 Stage 3: clean_baseline — rolling low-percentile subtraction. We use a 400-scan
           window with 10th-percentile floor. This is approximate; PeakTrace RP
-          does something similar.
+          does something similar. v1.7 FIX #23: the floor is now computed via
+          scipy.ndimage.percentile_filter (the prior rank_filter call was
+          misusing rank as if it were percentile).
 """
 from __future__ import annotations
 import numpy as np
@@ -67,8 +69,15 @@ def clean_baseline(trace: Trace, window: int = 400, percentile: int = 10) -> Non
         n = len(arr)
         if n < window:
             continue
-        # Efficient: use scipy.ndimage.rank_filter for percentile in a window
-        from scipy.ndimage import rank_filter
-        baseline = rank_filter(arr, rank=percentile, size=window)
+        # v1.7 FIX #23: scipy.ndimage.rank_filter's `rank` parameter is the
+        # order-statistic index (0..window-1), NOT a 0..100 percentile.
+        # The previous code passed percentile=10 directly as rank=10, which
+        # in a 400-scan window returns the 10th-smallest sample (≈ 2.5th
+        # percentile) — ~4-8% lower than the intended 10th-percentile floor
+        # on typical ABI traces. That inflated every downstream SNR / QV
+        # metric (peak detection + QV-to-N downgrade).
+        # Fix: use percentile_filter which takes percentile directly.
+        from scipy.ndimage import percentile_filter
+        baseline = percentile_filter(arr, percentile=percentile, size=window)
         arr = arr - baseline
         trace.channels[ch] = np.clip(np.round(arr), 0, 65535).astype(np.int32)
