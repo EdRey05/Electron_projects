@@ -25,6 +25,7 @@ def _read_dir_entries(buf: bytes):
         if d[0] == b"\x00\x00\x00\x00":
             break
         entries.append({
+            "pos": pos,  # bytes offset of this entry in the file (for inline-data lookup)
             "name": d[0],
             "tag_number": d[1],
             "element_code": d[2],
@@ -47,11 +48,16 @@ def write_ab1(
     p1am: np.ndarray | None = None,
     set_abi_limits: bool = True,
     clamp_max: int = 65535,
+    map_params: dict | None = None,
 ) -> None:
     """Rebuild .ab1 file from scratch, copying non-replaced tags from template.
 
     This is safer than in-place edits: any data size change doesn't shift the
     directory or corrupt neighboring tags.
+
+    If `map_params` is provided (DATA1-4 ↔ DATA9-12 linear coordinate map),
+    the chromatogram DATA9-12 is extended to fit the new PLOC grid by
+    interpolating samples from the raw DATA1-4 channels (FIX #9).
     """
     template_path = Path(trace.src_path)
     template_buf = template_path.read_bytes()
@@ -59,10 +65,13 @@ def write_ab1(
 
     # Encode our new data
     pbas_bytes = bytes(int(b) for b in pb)
-    pcon_bytes = bytes(int(b) for b in qv)
-    # PLOC: ABI standard is element code 5 (unsigned long), 4 bytes each, big-endian.
-    # Earlier code packed as int16 which broke Geneious BioJava ("Index -1 out of bounds").
-    ploc_data = np.clip(ploc.astype(np.int64), 0, 0xFFFFFFFF).astype(">u4").tobytes()
+    pcon_bytes = bytes(int(q) for q in qv)
+    # PLOC: ABI standard is element code 4 (signed short), 2 bytes each, big-endian.
+    # This matches what PeakTrace RP / Seq7 / Biopython write, AND what Geneious
+    # and SnapGene read. Note: this was wrongly changed to (code=5, size=4) in
+    # v1.3.2 to fix a Geneious "Index -1" crash, but the real cause of that
+    # crash was missing inline-data tags (FIX #16). Switching back to int16.
+    ploc_data = np.clip(ploc.astype(np.int32), -32768, 32767).astype(">i2").tobytes()
     if p1am is not None:
         p1am_data = np.clip(p1am.astype(np.int64), 0, 0xFFFF).astype(">u2").tobytes()  # 16-bit unsigned (P1AM stays int16 per ABI convention)
     else:
@@ -87,7 +96,13 @@ def write_ab1(
 
     new_entries = []
 
-    # Step 1: copy non-replaced template data blocks
+    # Step 1: copy non-replaced template data blocks.
+    #
+    # Inline-data tags (data_size <= 4) have their actual data stored INSIDE
+    # the directory entry at entry_pos + 20, not at the data_offset field
+    # (which holds garbage). For these tags we must read the bytes from
+    # the inline slot and write them at a fresh new_buf location.
+    #
     # Filter out entries whose tag names contain non-ASCII bytes (Biopython can't decode them).
     for entry in entries:
         key = (entry["name"], entry["tag_number"])
@@ -103,10 +118,21 @@ def write_ab1(
         # Use strict ASCII check (each byte must be 0x20-0x7e)
         if not all(0x20 <= b <= 0x7e for b in entry["name"]):
             continue
-        # Skip entries with invalid offsets (offset + size past EOF — likely garbage)
-        if entry["data_offset"] + entry["data_size"] > len(template_buf):
-            continue
-        data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+
+        is_inline = entry["data_size"] <= 4
+        if is_inline:
+            # Read the data from the inline slot (last 4 bytes of the 28-byte
+            # directory entry: entry_pos + 20 .. entry_pos + 20 + data_size).
+            entry_pos = entry.get("pos")
+            if entry_pos is None:
+                continue
+            data = template_buf[entry_pos + 20:entry_pos + 20 + entry["data_size"]]
+        else:
+            # Normal tag: data lives at data_offset
+            if entry["data_offset"] + entry["data_size"] > len(template_buf):
+                continue
+            data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+
         data_offset = len(new_buf)
         new_buf.extend(data)
         new_entries.append({
@@ -120,13 +146,11 @@ def write_ab1(
         })
 
     # Step 2: add our new PBAS/PCON/PLOC
-    # PLOC element format: code=5 (unsigned long), size=4. Was wrongly written as code=4, size=2
-    # which broke Geneious (BioJava "Index -1 out of bounds" — it read PLOC2 with wrong format
-    # and got an invalid offset). PBAS/PCON stay at code=2 size=1 (char).
+    # PLOC element format: code=4 (signed short), size=2 (matches PT/Seq7).
     for tag_name, data, num, ec, es in [
         (b"PBAS", pbas_bytes, len(pbas_bytes), 2, 1),
         (b"PCON", pcon_bytes, len(pcon_bytes), 2, 1),
-        (b"PLOC", ploc_data, len(ploc), 5, 4),
+        (b"PLOC", ploc_data, len(ploc), 4, 2),
     ]:
         for tag_num in replacement_tags[tag_name]:
             data_offset = len(new_buf)
@@ -155,10 +179,62 @@ def write_ab1(
             "data_offset": data_offset,
         })
 
-    # Step 4: add DATA.9-12 from template (preserve original channel data)
+    # Step 4: add DATA.9-12 from template, with PT-style per-channel rescale
+    # and (FIX #9) extension to fit new PLOC grid using DATA1-4 interpolation.
+    #
+    # PeakTrace RP rescales so the 99th-percentile of each channel lands near 650
+    # (verified across 68 sample4 files: f3 p99 mean=649, f2 p99 mean=1397,
+    # mean rescale factor ~0.46). This is what makes PT chromatograms fit
+    # cleanly into SnapGene/Geneious y-axes.
+    #
+    # .ab1 stores chromatogram data as big-endian signed int16.
+    P99_TARGET = 650
+
+    # FIX #9: extend DATA9-12 to fit max(ploc). PT does this; without it the
+    # chromatogram truncates and SnapGene shows extra "ghost" peaks at the end.
+    target_len = int(ploc.max()) + 6 if len(ploc) > 0 else 0  # +6 scans padding
     for entry in entries:
         if entry["name"] == b"DATA" and entry["tag_number"] in (9, 10, 11, 12):
-            data = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+            raw = template_buf[entry["data_offset"]:entry["data_offset"] + entry["data_size"]]
+            arr = np.frombuffer(raw, dtype=">i2")
+
+            # FIX #9: extend with values from DATA1-4 (if map available)
+            if target_len > len(arr) and map_params is not None and getattr(trace, "tags", None):
+                # DATA1-4 → DATA9-12 map: pos9 = (pos14 - b) / a
+                # So to fill pos9 in [len(arr), target_len), we need pos14 = pos9*a + b
+                a = map_params.get("slope")
+                b = map_params.get("intercept")
+                if a is not None and b is not None and np.isfinite(a):
+                    # The channel mapping: tag 9↔1, 10↔2, 11↔3, 12↔4
+                    full_ch = entry["tag_number"] - 8  # 9→1, 10→2, ...
+                    full_data = trace.tags.get(f"DATA{full_ch}")
+                    if full_data is not None:
+                        full_arr = np.asarray(full_data, dtype=np.int32)
+                        n_full = len(full_arr)
+                        new_idx9 = np.arange(len(arr), target_len)
+                        new_idx14 = np.clip(
+                            np.round(new_idx9 * a + b).astype(np.int32),
+                            0, max(n_full - 1, 0)
+                        )
+                        # Linear interpolation between consecutive DATA1-4 samples
+                        # for sub-scan precision (DATA9-12 grid is denser than DATA1-4).
+                        i0 = np.clip(new_idx14, 0, n_full - 2)
+                        frac = (new_idx14 - i0).astype(np.float64)
+                        v0 = full_arr[i0].astype(np.float64)
+                        v1 = full_arr[i0 + 1].astype(np.float64)
+                        new_samples = np.round(v0 + frac * (v1 - v0)).astype(np.int32)
+                        arr = np.concatenate([arr, new_samples.astype(">i2")])
+                        # Pad with one trailing zero so the array ends at baseline
+                        arr = np.concatenate([arr, np.array([0], dtype=">i2")])
+
+            if len(arr) > 0:
+                p99 = float(np.percentile(arr, 99))
+                if p99 > 1.0:
+                    scale = P99_TARGET / p99
+                    arr = np.clip(np.round(arr.astype(np.float64) * scale), -32768, 32767).astype(">i2")
+                data = arr.tobytes()
+            else:
+                data = raw
             data_offset = len(new_buf)
             new_buf.extend(data)
             new_entries.append({
@@ -166,12 +242,20 @@ def write_ab1(
                 "tag_number": entry["tag_number"],
                 "element_code": entry["element_code"],
                 "element_size": entry["element_size"],
-                "num_elements": entry["num_elements"],
-                "data_size": entry["data_size"],
+                "num_elements": len(arr),
+                "data_size": len(data),
                 "data_offset": data_offset,
             })
 
     # Append directory entries
+    # Per ABI spec + Biopython's reader (AbiIO.py:502):
+    #     if data_size <= 4:
+    #         data_offset = tag_offset + 20
+    # So for inline tags, the BYTES AT tag_offset+20..tag_offset+24 (the
+    # inline slot, i.e. the "data_offset" field of the entry) MUST contain
+    # the actual data. We handle this by writing data_offset = the position
+    # of the data in new_buf, then re-writing the data into the inline slot
+    # bytes of the entry below (overwriting data_offset in-place).
     dir_offset = len(new_buf)
     for e in new_entries:
         new_buf.extend(e["name"])
@@ -182,6 +266,13 @@ def write_ab1(
         new_buf.extend(struct.pack(">I", e["data_size"]))
         new_buf.extend(struct.pack(">I", e["data_offset"]))
         new_buf.extend(b"\x00\x00\x00\x00")
+        # For inline tags, overwrite bytes 20..24 with the actual data.
+        # new_buf[-8:-4] is the data_offset field (big-endian uint32).
+        if e["data_size"] <= 4:
+            data_at_offset = bytes(new_buf[e["data_offset"]:e["data_offset"] + e["data_size"]])
+            # new_buf[-8:-8+e["data_size"]] = data_at_offset
+            start = len(new_buf) - 8
+            new_buf[start:start + e["data_size"]] = data_at_offset
 
     # Write header
     new_buf[0:4] = b"ABIF"
@@ -194,15 +285,6 @@ def write_ab1(
     new_buf[22:26] = struct.pack(">I", len(new_entries) * 28)
     new_buf[26:30] = struct.pack(">I", dir_offset)
     new_buf[30:34] = struct.pack(">I", len(new_entries))
-
-    # DEBUG: log every new_entries entry (remove after fix)
-    import logging
-    for i, e in enumerate(new_entries):
-        name_ascii = all(0x20 <= b <= 0x7e for b in e["name"])
-        logging.debug(
-            "entry %d: tag=%r tag_num=%d hex=%s ascii_safe=%s offset=%d size=%d",
-            i, e["name"], e["tag_number"], e["name"].hex(), name_ascii, e["data_offset"], e["data_size"],
-        )
 
     out_path.write_bytes(bytes(new_buf))
 
