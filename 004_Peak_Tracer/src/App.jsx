@@ -1,3 +1,4 @@
+import advancedDefaults from "../electron/advanced-defaults.json";
 import React, { useState, useCallback, useEffect } from "react";
 import {
   Activity,
@@ -87,23 +88,9 @@ export default function PeakTracer() {
   const [logs, setLogs] = useState([]);
 
   // ---- advanced parameters popup ----
-  // Placeholder: visible defaults that mirror what the CLI / PT pipeline uses,
-  // but changes are NOT propagated to the spawn args yet (planned for a later
-  // version). User can poke at them to learn what knobs exist.
+  // Shared defaults are validated again by the Python CLI.
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [adv, setAdv] = useState({
-    rebasecallData14: true,      // --rebasecall-data14 (default ON)
-    minRebasecallLen: 1000,      // --min-rebasecall-len (default 1000)
-    extendMinSnr: 1.3,           // --extend-min-snr (default 1.3)
-    baselineSmooth: true,        // --baseline-smooth (default ON)
-    leadDropEnabled: true,       // --lead-drop-enabled (default ON, but disabled in practice)
-    leadDropQv: 5,               // --lead-drop-qv (default 5)
-    skipShorterThan: 50,         // --skip-shorter-than (default 50)
-    setAbiLimits: true,          // --set-abi-limits (default ON)
-    stripWellId: true,           // --strip-well-id (default ON)
-    doSmooth: true,              // --do-smooth (default ON)
-    smoothWindow: 11,            // --smooth-window (default 11)
-  });
+  const [adv, setAdv] = useState(advancedDefaults);
   const setAdvField = (k, v) => setAdv((s) => ({ ...s, [k]: v }));
 
   // ---- subscribe to streaming events ----
@@ -582,11 +569,12 @@ function AdvModal({ adv, onChange, onClose }) {
   // (key, value) and updates the adv state in the parent.
   const groups = [
     {
-      title: "Re-basecall (v1.3+)",
+      title: "Peak resolution",
       fields: [
-        { key: "rebasecallData14", label: "Re-basecall from DATA1–4 channels", type: "bool" },
-        { key: "minRebasecallLen", label: "Min rebasecall length",             type: "int",   hint: "ignore traces shorter than this" },
-        { key: "extendMinSnr",     label: "Extend min SNR threshold",          type: "float", hint: "extend bases below this SNR" },
+        { key: "resolvePeaks", label: "Resolve overlapping peaks", type: "bool" },
+        { key: "resolutionStrength", label: "Resolution strength", type: "float", hint: "0 to 0.95; default 0.75" },
+        { key: "resolutionIterations", label: "Resolution iterations", type: "int" },
+        { key: "recallLowQuality", label: "Experimental low-quality substitutions", type: "bool" },
       ],
     },
     {
@@ -594,8 +582,8 @@ function AdvModal({ adv, onChange, onClose }) {
       fields: [
         { key: "baselineSmooth", label: "Baseline smoothing",    type: "bool" },
         { key: "doSmooth",       label: "Trace smoothing",       type: "bool" },
-        { key: "smoothWindow",   label: "Smoothing window (bases)", type: "int" },
-        { key: "setAbiLimits",   label: "Set ABI signal limits", type: "bool" },
+        { key: "smoothWindow",   label: "Smoothing window (samples)", type: "int" },
+        { key: "setAbiLimits",   label: "Write sequence clear range", type: "bool" },
       ],
     },
     {
@@ -608,7 +596,7 @@ function AdvModal({ adv, onChange, onClose }) {
     {
       title: "Leader-base drop",
       fields: [
-        { key: "leadDropEnabled", label: "Drop low-QV leader bases", type: "bool", hint: "currently disabled in practice (writer bug)" },
+        { key: "leadDropEnabled", label: "Drop low-QV leader bases", type: "bool", hint: "off by default; retains the original first base" },
         { key: "leadDropQv",      label: "Leader-drop QV threshold", type: "int" },
       ],
     },
@@ -669,9 +657,9 @@ function AdvModal({ adv, onChange, onClose }) {
               border: "1px solid #E0C36F",
             }}
           >
-            <strong>Placeholder.</strong> These defaults mirror what the CLI / PT pipeline uses internally.
-            Changes here are <em>not</em> wired to the run command yet — left for a future version
-            when the other team's samples may need fine-tuning.
+            These settings apply to the next run. Peak resolution changes the measured trace;
+            quality scores retain the original caller's confidence. Experimental substitutions
+            are off by default.
           </div>
 
           {groups.map((g) => (
