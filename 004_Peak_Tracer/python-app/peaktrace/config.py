@@ -43,12 +43,22 @@ def parse_args(argv=None):
     p.add_argument('--seq-format', choices=('plain','abi'), default='plain')
     p.add_argument('--seq-range', choices=('clear','full'), default='clear')
     p.add_argument('--p99-target', type=int, default=650, help='Display gain only; zero preserves gain')
+    p.add_argument('--quality-mode', choices=('retain','tracetuner'), default='retain',
+                   help='Experimental tracetuner reassesses confidence while preserving called bases and labels')
+    p.add_argument('--tracetuner-executable', type=Path)
+    p.add_argument('--tracetuner-timeout', type=float, default=60.)
     # Old numeric arguments remain parseable for callers using --no-rebasecall-data14.
     p.add_argument('--min-rebasecall-len', type=int, default=1000, help=argparse.SUPPRESS)
     p.add_argument('--extend-min-snr', type=float, default=1.3, help=argparse.SUPPRESS)
     p.add_argument('--extend-stop-quiet', type=int, default=40, help=argparse.SUPPRESS)
     p.add_argument('--sharpen-factor', type=float, default=2.0, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
+    if not math.isfinite(args.tracetuner_timeout) or args.tracetuner_timeout<=0:
+        p.error('tracetuner-timeout must be finite and positive')
+    if args.quality_mode=='tracetuner':
+        if args.tracetuner_executable is None or not args.tracetuner_executable.is_file():
+            p.error('tracetuner quality mode requires --tracetuner-executable pointing to an existing file')
+        if args.recall_low_quality:p.error('quality reassessment cannot be combined with experimental substitutions')
     if args.resolution_strength is None:args.resolution_strength=.75 if args.resolution_model=='v18' else .80
     if args.resolution_iterations is None:args.resolution_iterations=24 if args.resolution_model=='v18' else 40
     for key in ('rebasecall_data14','sharpen_peaks','enhanced_qv','refine_ploc'):

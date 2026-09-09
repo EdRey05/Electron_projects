@@ -1,4 +1,4 @@
-# Peak Tracer v1.9 development
+# Peak Tracer v2.0 development
 
 Sanger chromatogram processing for post-Seq7 AB1 files, with an Electron interface
 and a Python CLI. The current pipeline resolves measured overlapping peaks,
@@ -10,6 +10,15 @@ resolution milestone; longer high-quality basecalling comparable to PeakTrace
 remains under development.
 
 ## Run the CLI
+
+The [v2.0 plan](docs/v2.0/PLAN.md) evaluates TraceTuner quality reassessment.
+Default processing retains v1.9 signal/call behavior. An experimental CLI-only
+mode adds `--quality-mode tracetuner --tracetuner-executable 'PATH_TO_TTUNER.exe'`.
+It scores the enhanced serialized trace with the built-in 3730 POP7 BDTv3 table,
+preserves base identities and label positions, and assigns ambiguous bases Q0.
+The resulting confidence is not independently calibrated for our processing.
+Full TraceTuner recalling is an evaluation condition, not an app option.
+The executable is an external GPL engine, not bundled in this development change.
 
 Use Python with the dependencies in `python-app/requirements.txt`:
 

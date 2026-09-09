@@ -54,4 +54,9 @@ def analyze(trace,args):
         diagnostics['n_downgraded']=int(mask.sum());pb[mask]=ord('N')
     else:diagnostics['n_downgraded']=0
     diagnostics['quality_source']='KB retained; revised calls conservatively capped, not recalibrated'
+    if getattr(args,'quality_mode','retain')=='tracetuner':
+        from .quality import reassess
+        qv,quality_diagnostics=reassess(trace,channels,pb,ploc,qv,args)
+        diagnostics['quality_source']='TraceTuner reassessed (experimental; enhanced-trace calibration unvalidated)'
+        diagnostics['quality_reassessment']=quality_diagnostics
     return AnalysisResult(channels,pb,ploc,qv,clear_range(qv,args.trim_quality,args.trim_window),diagnostics)
