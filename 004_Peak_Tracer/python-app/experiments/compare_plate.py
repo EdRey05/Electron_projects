@@ -97,16 +97,21 @@ def shape_metrics(rec):
             'valley_contrast_sum':float(sum(contrasts))}
 
 
-def plots(records,out):
+def plots(records,out,baseline_label='4 - Frozen v1.7',candidate_label='5 - v1.8'):
     import matplotlib
     matplotlib.use('Agg')
     import matplotlib.pyplot as plt
     colors={'A':'#249645','C':'#2675cd','G':'#242424','T':'#d54a49','N':'#999999'}
-    labels={'input':'2 - Seq7 input','reference':'3 - PeakTrace comparator','baseline':'4 - Frozen v1.7','candidate':'5 - v1.8'}
+    labels={'input':'2 - Seq7 input','reference':'3 - PeakTrace comparator','baseline':baseline_label,'candidate':candidate_label}
     evidence={}
-    for key,(sample,motif) in {'pos1_resolution':('POS1','CGCGAATTTT'),
+    windows={'pos1_resolution':('POS1','CGCGAATTTT'),
             'pos1_insertions':('POS1','CGAGACG'),
-            'u0827_resolution':('U0827P1A8._.ZV270402._.ZV270402-F1','CTGGCGATATCAAAATT')}.items():
+            'u0827_resolution':('U0827P1A8._.ZV270402._.ZV270402-F1','CTGGCGATATCAAAATT')}
+    if 'v1.9' in candidate_label:
+        pos1=next((v for name,v in records.items() if name.startswith('POS1')),None)
+        if pos1 and len(pos1['input']['seq'])>=311:
+            windows['pos1_rounding']=('POS1',pos1['input']['seq'][299:311])
+    for key,(sample,motif) in windows.items():
         matched=next((v for name,v in records.items() if name.startswith(sample)),None)
         if matched is None:continue
         fig,axes=plt.subplots(4,1,figsize=(15,11))
@@ -142,7 +147,9 @@ def plots(records,out):
 def main():
     p=argparse.ArgumentParser();p.add_argument('--input',type=Path,required=True)
     for name in ('reference','baseline','candidate','output'):p.add_argument('--'+name,type=Path,required=True)
-    p.add_argument('--plots',action='store_true');args=p.parse_args();args.output.mkdir(parents=True,exist_ok=True)
+    p.add_argument('--plots',action='store_true')
+    p.add_argument('--baseline-label',default='4 - Frozen v1.7');p.add_argument('--candidate-label',default='5 - v1.8')
+    args=p.parse_args();args.output.mkdir(parents=True,exist_ok=True)
     records={};rows=[];summary={}
     for src in sorted(args.input.glob('*.ab1')):
         stem=re.sub(r'_[A-H]\d{2}$','',src.stem)
@@ -165,7 +172,7 @@ def main():
     with (args.output/'per_read.csv').open('w',newline='',encoding='utf-8') as f:
         w=csv.DictWriter(f,fieldnames=keys);w.writeheader();w.writerows(rows)
     (args.output/'metrics.json').write_text(json.dumps(summary,indent=2),encoding='utf-8')
-    if args.plots:plots(records,args.output)
+    if args.plots:plots(records,args.output,args.baseline_label,args.candidate_label)
     print(json.dumps(summary,indent=2))
 
 

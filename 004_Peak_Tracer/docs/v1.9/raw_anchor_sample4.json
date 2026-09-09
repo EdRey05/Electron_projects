@@ -1,0 +1,2008 @@
+{
+  "summary": {
+    "reads": 78,
+    "accepted": 75,
+    "rejected": [
+      {
+        "file": "U0827P1G8._.XP1660365._.XP1660364-F1._.U0827_H03.ab1",
+        "reason": "insufficient distinct anchors"
+      },
+      {
+        "file": "U0827P1G8._.XP1660365._.XP1660364-F2._.U0827_H04.ab1",
+        "reason": "insufficient distinct anchors"
+      },
+      {
+        "file": "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827_H05.ab1",
+        "reason": "insufficient distinct anchors"
+      }
+    ]
+  },
+  "files": [
+    {
+      "file": "POS1-G12_G12.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 730,
+      "held_out_count": 146,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.6878260869566475,
+      "p95_error_raw_samples": 10.763333333333094,
+      "analyzed_bounds": [
+        310,
+        11919
+      ],
+      "raw_bounds": [
+        2244,
+        15395
+      ],
+      "raw_peaks": 974,
+      "kb_q30_calls": 858,
+      "matched_q30_fraction": 0.8508158508158508,
+      "kb_base_bounds": [
+        21,
+        970
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "POS2-H12_H12.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 739,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.923076923077133,
+      "p95_error_raw_samples": 10.721977240397887,
+      "analyzed_bounds": [
+        171,
+        12002
+      ],
+      "raw_bounds": [
+        2111,
+        15612
+      ],
+      "raw_peaks": 967,
+      "kb_q30_calls": 867,
+      "matched_q30_fraction": 0.8523644752018454,
+      "kb_base_bounds": [
+        10,
+        974
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F3._.U0827_E01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 750,
+      "held_out_count": 150,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 10.248648648648713,
+      "analyzed_bounds": [
+        229,
+        13557
+      ],
+      "raw_bounds": [
+        2181,
+        16340
+      ],
+      "raw_peaks": 1002,
+      "kb_q30_calls": 876,
+      "matched_q30_fraction": 0.8561643835616438,
+      "kb_base_bounds": [
+        16,
+        1078
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F4._.U0827_E02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 696,
+      "held_out_count": 139,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 10.327999999999788,
+      "analyzed_bounds": [
+        383,
+        12030
+      ],
+      "raw_bounds": [
+        2115,
+        15356
+      ],
+      "raw_peaks": 952,
+      "kb_q30_calls": 855,
+      "matched_q30_fraction": 0.8140350877192982,
+      "kb_base_bounds": [
+        29,
+        981
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F5._.U0827_E03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 717,
+      "held_out_count": 143,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.5,
+      "p95_error_raw_samples": 10.663333333333233,
+      "analyzed_bounds": [
+        218,
+        11726
+      ],
+      "raw_bounds": [
+        2090,
+        14893
+      ],
+      "raw_peaks": 1007,
+      "kb_q30_calls": 854,
+      "matched_q30_fraction": 0.8395784543325527,
+      "kb_base_bounds": [
+        17,
+        962
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F6._.U0827_E04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 697,
+      "held_out_count": 139,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0434782608699606,
+      "p95_error_raw_samples": 8.463513513514044,
+      "analyzed_bounds": [
+        240,
+        11864
+      ],
+      "raw_bounds": [
+        2119,
+        14816
+      ],
+      "raw_peaks": 1027,
+      "kb_q30_calls": 827,
+      "matched_q30_fraction": 0.8428053204353083,
+      "kb_base_bounds": [
+        20,
+        972
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F7._.U0827_E05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 696,
+      "held_out_count": 139,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.5,
+      "p95_error_raw_samples": 13.214423076922902,
+      "analyzed_bounds": [
+        180,
+        11689
+      ],
+      "raw_bounds": [
+        2073,
+        15882
+      ],
+      "raw_peaks": 985,
+      "kb_q30_calls": 830,
+      "matched_q30_fraction": 0.8385542168674699,
+      "kb_base_bounds": [
+        14,
+        955
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F8._.U0827_E06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 689,
+      "held_out_count": 138,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.125,
+      "p95_error_raw_samples": 9.253999999999905,
+      "analyzed_bounds": [
+        443,
+        14212
+      ],
+      "raw_bounds": [
+        2296,
+        16607
+      ],
+      "raw_peaks": 994,
+      "kb_q30_calls": 816,
+      "matched_q30_fraction": 0.8443627450980392,
+      "kb_base_bounds": [
+        34,
+        1092
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F1._.U0827_B01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 609,
+      "held_out_count": 122,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.913043478260988,
+      "p95_error_raw_samples": 8.702916666666829,
+      "analyzed_bounds": [
+        373,
+        10374
+      ],
+      "raw_bounds": [
+        2068,
+        13268
+      ],
+      "raw_peaks": 939,
+      "kb_q30_calls": 728,
+      "matched_q30_fraction": 0.8365384615384616,
+      "kb_base_bounds": [
+        27,
+        850
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F2._.U0827_B02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 756,
+      "held_out_count": 151,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.4799999999995634,
+      "p95_error_raw_samples": 9.755102040816382,
+      "analyzed_bounds": [
+        274,
+        12320
+      ],
+      "raw_bounds": [
+        2133,
+        15345
+      ],
+      "raw_peaks": 1008,
+      "kb_q30_calls": 886,
+      "matched_q30_fraction": 0.8532731376975169,
+      "kb_base_bounds": [
+        20,
+        1001
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F3._.U0827_B03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 719,
+      "held_out_count": 144,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.9782608695650197,
+      "p95_error_raw_samples": 9.170000000000618,
+      "analyzed_bounds": [
+        358,
+        12343
+      ],
+      "raw_bounds": [
+        2228,
+        16231
+      ],
+      "raw_peaks": 1006,
+      "kb_q30_calls": 813,
+      "matched_q30_fraction": 0.8843788437884379,
+      "kb_base_bounds": [
+        25,
+        998
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F4._.U0827_B04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 745,
+      "held_out_count": 149,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 9.7760000000002,
+      "analyzed_bounds": [
+        233,
+        11934
+      ],
+      "raw_bounds": [
+        1988,
+        14935
+      ],
+      "raw_peaks": 1004,
+      "kb_q30_calls": 872,
+      "matched_q30_fraction": 0.8543577981651376,
+      "kb_base_bounds": [
+        18,
+        975
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F5._.U0827_B05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 741,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.3798076923076223,
+      "p95_error_raw_samples": 7.867478260868985,
+      "analyzed_bounds": [
+        212,
+        12434
+      ],
+      "raw_bounds": [
+        2081,
+        15358
+      ],
+      "raw_peaks": 1011,
+      "kb_q30_calls": 853,
+      "matched_q30_fraction": 0.8686987104337632,
+      "kb_base_bounds": [
+        15,
+        1010
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F6._.U0827_B06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 733,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.375,
+      "p95_error_raw_samples": 9.585227272727566,
+      "analyzed_bounds": [
+        262,
+        12406
+      ],
+      "raw_bounds": [
+        1941,
+        15135
+      ],
+      "raw_peaks": 989,
+      "kb_q30_calls": 877,
+      "matched_q30_fraction": 0.8358038768529077,
+      "kb_base_bounds": [
+        21,
+        1014
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F7._.U0827_B07.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 735,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.5,
+      "p95_error_raw_samples": 9.077085781433288,
+      "analyzed_bounds": [
+        253,
+        12281
+      ],
+      "raw_bounds": [
+        1958,
+        15403
+      ],
+      "raw_peaks": 995,
+      "kb_q30_calls": 852,
+      "matched_q30_fraction": 0.8626760563380281,
+      "kb_base_bounds": [
+        18,
+        995
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F8._.U0827_H07.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 742,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.4375000000004547,
+      "p95_error_raw_samples": 9.56837121212175,
+      "analyzed_bounds": [
+        228,
+        11676
+      ],
+      "raw_bounds": [
+        1959,
+        15043
+      ],
+      "raw_peaks": 1037,
+      "kb_q30_calls": 854,
+      "matched_q30_fraction": 0.8688524590163934,
+      "kb_base_bounds": [
+        16,
+        955
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VF._.U0827_C08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 727,
+      "held_out_count": 145,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.5416666666660603,
+      "p95_error_raw_samples": 12.90530846484914,
+      "analyzed_bounds": [
+        225,
+        11952
+      ],
+      "raw_bounds": [
+        1968,
+        15017
+      ],
+      "raw_peaks": 978,
+      "kb_q30_calls": 868,
+      "matched_q30_fraction": 0.8375576036866359,
+      "kb_base_bounds": [
+        14,
+        977
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VR._.U0827_C09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 659,
+      "held_out_count": 132,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.8695652173910275,
+      "p95_error_raw_samples": 14.14578779417677,
+      "analyzed_bounds": [
+        236,
+        14199
+      ],
+      "raw_bounds": [
+        2014,
+        16647
+      ],
+      "raw_peaks": 946,
+      "kb_q30_calls": 817,
+      "matched_q30_fraction": 0.806609547123623,
+      "kb_base_bounds": [
+        15,
+        1098
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1A9._.ZV170398._.ZV170398-F1._.U0827_C10.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 738,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.2200000000002547,
+      "p95_error_raw_samples": 12.215793103448577,
+      "analyzed_bounds": [
+        153,
+        11701
+      ],
+      "raw_bounds": [
+        1988,
+        16831
+      ],
+      "raw_peaks": 960,
+      "kb_q30_calls": 852,
+      "matched_q30_fraction": 0.8661971830985915,
+      "kb_base_bounds": [
+        9,
+        957
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1B9._.ZV170398._.pcDNA3.1+VF._.U0827_D08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 736,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0434782608699606,
+      "p95_error_raw_samples": 10.018666666666649,
+      "analyzed_bounds": [
+        239,
+        12520
+      ],
+      "raw_bounds": [
+        2014,
+        15451
+      ],
+      "raw_peaks": 992,
+      "kb_q30_calls": 876,
+      "matched_q30_fraction": 0.8401826484018264,
+      "kb_base_bounds": [
+        16,
+        1016
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1B9._.ZV170398._.pcDNA3.1+VR._.U0827_D09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 713,
+      "held_out_count": 143,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0869565217399213,
+      "p95_error_raw_samples": 10.308123569793953,
+      "analyzed_bounds": [
+        268,
+        14120
+      ],
+      "raw_bounds": [
+        1978,
+        16499
+      ],
+      "raw_peaks": 978,
+      "kb_q30_calls": 846,
+      "matched_q30_fraction": 0.8427895981087471,
+      "kb_base_bounds": [
+        18,
+        1102
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1B9._.ZV170398._.ZV170398-F1._.U0827_D10.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 747,
+      "held_out_count": 149,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.921052631578277,
+      "p95_error_raw_samples": 10.071999999999933,
+      "analyzed_bounds": [
+        152,
+        11692
+      ],
+      "raw_bounds": [
+        1971,
+        16682
+      ],
+      "raw_peaks": 962,
+      "kb_q30_calls": 855,
+      "matched_q30_fraction": 0.8736842105263158,
+      "kb_base_bounds": [
+        11,
+        958
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F3._.U0827_F01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 748,
+      "held_out_count": 150,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.9799999999995634,
+      "p95_error_raw_samples": 10.869736842105311,
+      "analyzed_bounds": [
+        227,
+        12162
+      ],
+      "raw_bounds": [
+        2189,
+        15493
+      ],
+      "raw_peaks": 1001,
+      "kb_q30_calls": 882,
+      "matched_q30_fraction": 0.8480725623582767,
+      "kb_base_bounds": [
+        15,
+        989
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F4._.U0827_F02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 712,
+      "held_out_count": 142,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.2749128919858776,
+      "p95_error_raw_samples": 10.52091346153879,
+      "analyzed_bounds": [
+        353,
+        12528
+      ],
+      "raw_bounds": [
+        2221,
+        16538
+      ],
+      "raw_peaks": 956,
+      "kb_q30_calls": 896,
+      "matched_q30_fraction": 0.7946428571428571,
+      "kb_base_bounds": [
+        27,
+        1019
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F5._.U0827_F03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 684,
+      "held_out_count": 137,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.2173913043479843,
+      "p95_error_raw_samples": 12.03319838056704,
+      "analyzed_bounds": [
+        206,
+        12434
+      ],
+      "raw_bounds": [
+        2026,
+        16154
+      ],
+      "raw_peaks": 975,
+      "kb_q30_calls": 803,
+      "matched_q30_fraction": 0.8518057285180572,
+      "kb_base_bounds": [
+        14,
+        1006
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F6._.U0827_F04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 595,
+      "held_out_count": 119,
+      "median_raw_anchor_spacing": 14.0,
+      "median_error_raw_samples": 3.2000000000007276,
+      "p95_error_raw_samples": 12.984105131413521,
+      "analyzed_bounds": [
+        244,
+        10628
+      ],
+      "raw_bounds": [
+        2179,
+        13441
+      ],
+      "raw_peaks": 916,
+      "kb_q30_calls": 721,
+      "matched_q30_fraction": 0.8252427184466019,
+      "kb_base_bounds": [
+        18,
+        879
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F7._.U0827_F05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 691,
+      "held_out_count": 138,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.264736842104867,
+      "p95_error_raw_samples": 9.3658862876247,
+      "analyzed_bounds": [
+        179,
+        11652
+      ],
+      "raw_bounds": [
+        2081,
+        14773
+      ],
+      "raw_peaks": 979,
+      "kb_q30_calls": 830,
+      "matched_q30_fraction": 0.8325301204819278,
+      "kb_base_bounds": [
+        13,
+        954
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F8._.U0827_F06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 727,
+      "held_out_count": 145,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.1739130434780236,
+      "p95_error_raw_samples": 10.799999999999983,
+      "analyzed_bounds": [
+        335,
+        13761
+      ],
+      "raw_bounds": [
+        2207,
+        16722
+      ],
+      "raw_peaks": 1003,
+      "kb_q30_calls": 847,
+      "matched_q30_fraction": 0.8583234946871311,
+      "kb_base_bounds": [
+        25,
+        1077
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.M13F-108._.U0827_C01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 602,
+      "held_out_count": 120,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.8626126126125655,
+      "p95_error_raw_samples": 13.698730158730996,
+      "analyzed_bounds": [
+        289,
+        10707
+      ],
+      "raw_bounds": [
+        2099,
+        18106
+      ],
+      "raw_peaks": 852,
+      "kb_q30_calls": 714,
+      "matched_q30_fraction": 0.8431372549019608,
+      "kb_base_bounds": [
+        20,
+        886
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.M13R+104._.U0827_C02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 745,
+      "held_out_count": 149,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.45833333333303,
+      "p95_error_raw_samples": 9.952000000000043,
+      "analyzed_bounds": [
+        169,
+        11945
+      ],
+      "raw_bounds": [
+        2109,
+        15775
+      ],
+      "raw_peaks": 1015,
+      "kb_q30_calls": 860,
+      "matched_q30_fraction": 0.8662790697674418,
+      "kb_base_bounds": [
+        11,
+        974
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F1._.U0827_C03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 738,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.3872727272726024,
+      "p95_error_raw_samples": 8.183304347826152,
+      "analyzed_bounds": [
+        190,
+        11932
+      ],
+      "raw_bounds": [
+        2072,
+        14869
+      ],
+      "raw_peaks": 967,
+      "kb_q30_calls": 851,
+      "matched_q30_fraction": 0.8672150411280846,
+      "kb_base_bounds": [
+        14,
+        971
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F2._.U0827_C04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 712,
+      "held_out_count": 142,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.900000000000091,
+      "p95_error_raw_samples": 12.897595647595466,
+      "analyzed_bounds": [
+        187,
+        11544
+      ],
+      "raw_bounds": [
+        2069,
+        14749
+      ],
+      "raw_peaks": 964,
+      "kb_q30_calls": 843,
+      "matched_q30_fraction": 0.8446026097271648,
+      "kb_base_bounds": [
+        14,
+        946
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F3._.U0827_C05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 701,
+      "held_out_count": 140,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.5516666666667334,
+      "p95_error_raw_samples": 9.763304347826304,
+      "analyzed_bounds": [
+        220,
+        11884
+      ],
+      "raw_bounds": [
+        2181,
+        16149
+      ],
+      "raw_peaks": 971,
+      "kb_q30_calls": 830,
+      "matched_q30_fraction": 0.844578313253012,
+      "kb_base_bounds": [
+        15,
+        967
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F4._.U0827_C06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 734,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.41666666666697,
+      "p95_error_raw_samples": 9.325999999999873,
+      "analyzed_bounds": [
+        220,
+        13065
+      ],
+      "raw_bounds": [
+        2109,
+        15873
+      ],
+      "raw_peaks": 985,
+      "kb_q30_calls": 876,
+      "matched_q30_fraction": 0.8378995433789954,
+      "kb_base_bounds": [
+        15,
+        1050
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F5._.U0827_C07.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 758,
+      "held_out_count": 152,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.653333333332739,
+      "p95_error_raw_samples": 10.612499999999997,
+      "analyzed_bounds": [
+        262,
+        12257
+      ],
+      "raw_bounds": [
+        1980,
+        15253
+      ],
+      "raw_peaks": 1008,
+      "kb_q30_calls": 863,
+      "matched_q30_fraction": 0.8783314020857474,
+      "kb_base_bounds": [
+        17,
+        992
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F3._.U0827_G01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 750,
+      "held_out_count": 150,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.391304347826008,
+      "p95_error_raw_samples": 9.8134146341463,
+      "analyzed_bounds": [
+        228,
+        12005
+      ],
+      "raw_bounds": [
+        2199,
+        15474
+      ],
+      "raw_peaks": 998,
+      "kb_q30_calls": 866,
+      "matched_q30_fraction": 0.8660508083140878,
+      "kb_base_bounds": [
+        15,
+        977
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F4._.U0827_G02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 727,
+      "held_out_count": 145,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.5,
+      "p95_error_raw_samples": 13.938088578088683,
+      "analyzed_bounds": [
+        347,
+        13095
+      ],
+      "raw_bounds": [
+        2220,
+        18403
+      ],
+      "raw_peaks": 963,
+      "kb_q30_calls": 879,
+      "matched_q30_fraction": 0.8270762229806599,
+      "kb_base_bounds": [
+        26,
+        1058
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F5._.U0827_G03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 697,
+      "held_out_count": 139,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.33333333333303,
+      "p95_error_raw_samples": 10.511538461538475,
+      "analyzed_bounds": [
+        221,
+        12016
+      ],
+      "raw_bounds": [
+        2063,
+        14893
+      ],
+      "raw_peaks": 976,
+      "kb_q30_calls": 821,
+      "matched_q30_fraction": 0.8489646772228989,
+      "kb_base_bounds": [
+        16,
+        973
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F6._.U0827_G04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 693,
+      "held_out_count": 139,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.45833333333303,
+      "p95_error_raw_samples": 10.522000000000023,
+      "analyzed_bounds": [
+        237,
+        13089
+      ],
+      "raw_bounds": [
+        2150,
+        15769
+      ],
+      "raw_peaks": 1007,
+      "kb_q30_calls": 823,
+      "matched_q30_fraction": 0.8420413122721749,
+      "kb_base_bounds": [
+        17,
+        1047
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F7._.U0827_G05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 708,
+      "held_out_count": 142,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.165903890159825,
+      "p95_error_raw_samples": 13.124676850764047,
+      "analyzed_bounds": [
+        179,
+        12336
+      ],
+      "raw_bounds": [
+        2098,
+        17062
+      ],
+      "raw_peaks": 974,
+      "kb_q30_calls": 834,
+      "matched_q30_fraction": 0.8489208633093526,
+      "kb_base_bounds": [
+        12,
+        999
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F8._.U0827_G06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 675,
+      "held_out_count": 135,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.4799999999995634,
+      "p95_error_raw_samples": 10.566000000000075,
+      "analyzed_bounds": [
+        241,
+        11012
+      ],
+      "raw_bounds": [
+        2085,
+        14236
+      ],
+      "raw_peaks": 994,
+      "kb_q30_calls": 805,
+      "matched_q30_fraction": 0.8385093167701864,
+      "kb_base_bounds": [
+        16,
+        899
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.M13F-108._.U0827_D01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 765,
+      "held_out_count": 153,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.5217391304349803,
+      "p95_error_raw_samples": 9.856000000000133,
+      "analyzed_bounds": [
+        247,
+        12923
+      ],
+      "raw_bounds": [
+        2012,
+        15978
+      ],
+      "raw_peaks": 968,
+      "kb_q30_calls": 901,
+      "matched_q30_fraction": 0.8490566037735849,
+      "kb_base_bounds": [
+        18,
+        1051
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.M13R+104._.U0827_D02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 745,
+      "held_out_count": 149,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.3513513513516955,
+      "p95_error_raw_samples": 9.1284324324326,
+      "analyzed_bounds": [
+        251,
+        12004
+      ],
+      "raw_bounds": [
+        2175,
+        15160
+      ],
+      "raw_peaks": 1028,
+      "kb_q30_calls": 853,
+      "matched_q30_fraction": 0.8733880422039859,
+      "kb_base_bounds": [
+        17,
+        978
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F1._.U0827_D03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 734,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 14.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 9.055999999999948,
+      "analyzed_bounds": [
+        193,
+        11981
+      ],
+      "raw_bounds": [
+        2067,
+        14840
+      ],
+      "raw_peaks": 965,
+      "kb_q30_calls": 851,
+      "matched_q30_fraction": 0.8625146886016452,
+      "kb_base_bounds": [
+        15,
+        979
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F2._.U0827_D04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 717,
+      "held_out_count": 143,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0434782608699606,
+      "p95_error_raw_samples": 9.466666666666653,
+      "analyzed_bounds": [
+        121,
+        12761
+      ],
+      "raw_bounds": [
+        1966,
+        16355
+      ],
+      "raw_peaks": 975,
+      "kb_q30_calls": 843,
+      "matched_q30_fraction": 0.8505338078291815,
+      "kb_base_bounds": [
+        8,
+        1025
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F3._.U0827_D05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 716,
+      "held_out_count": 143,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.707865168538774,
+      "p95_error_raw_samples": 14.729054054054041,
+      "analyzed_bounds": [
+        204,
+        11919
+      ],
+      "raw_bounds": [
+        2131,
+        17530
+      ],
+      "raw_peaks": 982,
+      "kb_q30_calls": 827,
+      "matched_q30_fraction": 0.8657799274486094,
+      "kb_base_bounds": [
+        15,
+        973
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F4._.U0827_D06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 723,
+      "held_out_count": 145,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.5,
+      "p95_error_raw_samples": 11.530536130535609,
+      "analyzed_bounds": [
+        297,
+        12106
+      ],
+      "raw_bounds": [
+        2161,
+        14900
+      ],
+      "raw_peaks": 972,
+      "kb_q30_calls": 861,
+      "matched_q30_fraction": 0.8397212543554007,
+      "kb_base_bounds": [
+        21,
+        984
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F5._.U0827_D07.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 753,
+      "held_out_count": 151,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.916666666666515,
+      "p95_error_raw_samples": 10.319345661450825,
+      "analyzed_bounds": [
+        262,
+        12262
+      ],
+      "raw_bounds": [
+        1963,
+        15133
+      ],
+      "raw_peaks": 1028,
+      "kb_q30_calls": 870,
+      "matched_q30_fraction": 0.8655172413793103,
+      "kb_base_bounds": [
+        18,
+        995
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E9._.ZF1680437._.M13F-108._.U0827_E08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 772,
+      "held_out_count": 154,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.431294326240959,
+      "p95_error_raw_samples": 10.383000000000106,
+      "analyzed_bounds": [
+        148,
+        13054
+      ],
+      "raw_bounds": [
+        2081,
+        16630
+      ],
+      "raw_peaks": 1025,
+      "kb_q30_calls": 894,
+      "matched_q30_fraction": 0.8635346756152126,
+      "kb_base_bounds": [
+        11,
+        1053
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1E9._.ZF1680437._.M13R+104._.U0827_E09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 724,
+      "held_out_count": 145,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.5217391304349803,
+      "p95_error_raw_samples": 9.540000000000138,
+      "analyzed_bounds": [
+        270,
+        13306
+      ],
+      "raw_bounds": [
+        2209,
+        15971
+      ],
+      "raw_peaks": 999,
+      "kb_q30_calls": 859,
+      "matched_q30_fraction": 0.8428405122235157,
+      "kb_base_bounds": [
+        21,
+        1069
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1F9._.ZF1680437._.M13F-108._.U0827_F08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 757,
+      "held_out_count": 151,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 9.700000000000045,
+      "analyzed_bounds": [
+        297,
+        12275
+      ],
+      "raw_bounds": [
+        2205,
+        15721
+      ],
+      "raw_peaks": 1012,
+      "kb_q30_calls": 881,
+      "matched_q30_fraction": 0.8592508513053349,
+      "kb_base_bounds": [
+        24,
+        1000
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1F9._.ZF1680437._.M13R+104._.U0827_F09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 741,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.9799999999995634,
+      "p95_error_raw_samples": 9.060937500000001,
+      "analyzed_bounds": [
+        246,
+        11953
+      ],
+      "raw_bounds": [
+        2069,
+        15177
+      ],
+      "raw_peaks": 992,
+      "kb_q30_calls": 876,
+      "matched_q30_fraction": 0.8458904109589042,
+      "kb_base_bounds": [
+        16,
+        979
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.M13F-108._.U0827_H01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 733,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.608695652173992,
+      "p95_error_raw_samples": 10.7003076923077,
+      "analyzed_bounds": [
+        194,
+        12162
+      ],
+      "raw_bounds": [
+        1879,
+        15720
+      ],
+      "raw_peaks": 996,
+      "kb_q30_calls": 857,
+      "matched_q30_fraction": 0.8553092182030338,
+      "kb_base_bounds": [
+        14,
+        991
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.M13R+104._.U0827_H02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 559,
+      "held_out_count": 112,
+      "median_raw_anchor_spacing": 16.0,
+      "median_error_raw_samples": 3.537777777777592,
+      "p95_error_raw_samples": 11.899676375404573,
+      "analyzed_bounds": [
+        165,
+        11203
+      ],
+      "raw_bounds": [
+        2160,
+        18547
+      ],
+      "raw_peaks": 792,
+      "kb_q30_calls": 669,
+      "matched_q30_fraction": 0.8355754857997011,
+      "kb_base_bounds": [
+        11,
+        914
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.XP1660364-F1._.U0827_H03.ab1",
+      "accepted": false,
+      "reason": "insufficient distinct anchors",
+      "raw_peaks": 1968,
+      "kb_q30_calls": 5,
+      "matched_q30_fraction": 0.0,
+      "kb_base_bounds": [],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.XP1660364-F2._.U0827_H04.ab1",
+      "accepted": false,
+      "reason": "insufficient distinct anchors",
+      "raw_peaks": 1793,
+      "kb_q30_calls": 5,
+      "matched_q30_fraction": 1.0,
+      "kb_base_bounds": [
+        603,
+        665
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827_H05.ab1",
+      "accepted": false,
+      "reason": "insufficient distinct anchors",
+      "raw_peaks": 1848,
+      "kb_q30_calls": 4,
+      "matched_q30_fraction": 0.75,
+      "kb_base_bounds": [
+        706,
+        827
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G9._.ZF1680438._.M13F-108._.U0827_G08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 719,
+      "held_out_count": 144,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 8.799999999999407,
+      "analyzed_bounds": [
+        223,
+        12365
+      ],
+      "raw_bounds": [
+        2159,
+        15411
+      ],
+      "raw_peaks": 980,
+      "kb_q30_calls": 837,
+      "matched_q30_fraction": 0.8590203106332138,
+      "kb_base_bounds": [
+        18,
+        1000
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1G9._.ZF1680438._.M13R+104._.U0827_G09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 727,
+      "held_out_count": 145,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.7391304347829646,
+      "p95_error_raw_samples": 8.705333333333593,
+      "analyzed_bounds": [
+        312,
+        12089
+      ],
+      "raw_bounds": [
+        2233,
+        15724
+      ],
+      "raw_peaks": 997,
+      "kb_q30_calls": 847,
+      "matched_q30_fraction": 0.8583234946871311,
+      "kb_base_bounds": [
+        22,
+        992
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F1._.U0827_A01.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 641,
+      "held_out_count": 128,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.3822463768119633,
+      "p95_error_raw_samples": 10.547352454494876,
+      "analyzed_bounds": [
+        308,
+        11066
+      ],
+      "raw_bounds": [
+        2258,
+        14556
+      ],
+      "raw_peaks": 933,
+      "kb_q30_calls": 780,
+      "matched_q30_fraction": 0.8217948717948718,
+      "kb_base_bounds": [
+        23,
+        905
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F2._.U0827_A02.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 422,
+      "held_out_count": 84,
+      "median_raw_anchor_spacing": 19.0,
+      "median_error_raw_samples": 3.622231337161338,
+      "p95_error_raw_samples": 16.318996415770716,
+      "analyzed_bounds": [
+        304,
+        11757
+      ],
+      "raw_bounds": [
+        2039,
+        16973
+      ],
+      "raw_peaks": 873,
+      "kb_q30_calls": 566,
+      "matched_q30_fraction": 0.7455830388692579,
+      "kb_base_bounds": [
+        19,
+        960
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F3._.U0827_A03.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 742,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.9400664251206763,
+      "p95_error_raw_samples": 8.69200000000028,
+      "analyzed_bounds": [
+        346,
+        11494
+      ],
+      "raw_bounds": [
+        2250,
+        14692
+      ],
+      "raw_peaks": 1015,
+      "kb_q30_calls": 841,
+      "matched_q30_fraction": 0.882282996432818,
+      "kb_base_bounds": [
+        24,
+        938
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F4._.U0827_A04.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 757,
+      "held_out_count": 151,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 8.75,
+      "analyzed_bounds": [
+        242,
+        11875
+      ],
+      "raw_bounds": [
+        2003,
+        15739
+      ],
+      "raw_peaks": 994,
+      "kb_q30_calls": 865,
+      "matched_q30_fraction": 0.8751445086705202,
+      "kb_base_bounds": [
+        18,
+        970
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F5._.U0827_A05.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 753,
+      "held_out_count": 151,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 10.747687326549567,
+      "analyzed_bounds": [
+        213,
+        11906
+      ],
+      "raw_bounds": [
+        2098,
+        15112
+      ],
+      "raw_peaks": 1025,
+      "kb_q30_calls": 865,
+      "matched_q30_fraction": 0.8705202312138728,
+      "kb_base_bounds": [
+        16,
+        975
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F6._.U0827_A06.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 730,
+      "held_out_count": 146,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.87409420289805,
+      "p95_error_raw_samples": 9.458333333333371,
+      "analyzed_bounds": [
+        136,
+        12380
+      ],
+      "raw_bounds": [
+        2031,
+        15430
+      ],
+      "raw_peaks": 988,
+      "kb_q30_calls": 879,
+      "matched_q30_fraction": 0.8304891922639362,
+      "kb_base_bounds": [
+        11,
+        1013
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F7._.U0827_A07.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 722,
+      "held_out_count": 144,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0810810810808107,
+      "p95_error_raw_samples": 10.613999999999825,
+      "analyzed_bounds": [
+        222,
+        13156
+      ],
+      "raw_bounds": [
+        1971,
+        16084
+      ],
+      "raw_peaks": 995,
+      "kb_q30_calls": 845,
+      "matched_q30_fraction": 0.8544378698224852,
+      "kb_base_bounds": [
+        16,
+        1050
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F8._.U0827_G07.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 721,
+      "held_out_count": 144,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.468297101449025,
+      "p95_error_raw_samples": 9.14512953367939,
+      "analyzed_bounds": [
+        194,
+        11673
+      ],
+      "raw_bounds": [
+        2092,
+        15039
+      ],
+      "raw_peaks": 1024,
+      "kb_q30_calls": 833,
+      "matched_q30_fraction": 0.865546218487395,
+      "kb_base_bounds": [
+        14,
+        955
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H8._.XP1660365._.M13F-108._.U0827_A08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 741,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 12.105743243242799,
+      "analyzed_bounds": [
+        163,
+        11958
+      ],
+      "raw_bounds": [
+        2139,
+        15594
+      ],
+      "raw_peaks": 995,
+      "kb_q30_calls": 881,
+      "matched_q30_fraction": 0.8410896708286039,
+      "kb_base_bounds": [
+        11,
+        980
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H8._.XP1660365._.M13R+104._.U0827_A09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 731,
+      "held_out_count": 146,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.060200668896641,
+      "p95_error_raw_samples": 9.424999999999955,
+      "analyzed_bounds": [
+        164,
+        12446
+      ],
+      "raw_bounds": [
+        2060,
+        15491
+      ],
+      "raw_peaks": 1021,
+      "kb_q30_calls": 870,
+      "matched_q30_fraction": 0.8402298850574713,
+      "kb_base_bounds": [
+        11,
+        1011
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H8._.XP1660365._.XP1660364-F1._.U0827_A10.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 742,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.923913043478251,
+      "p95_error_raw_samples": 9.5,
+      "analyzed_bounds": [
+        235,
+        12442
+      ],
+      "raw_bounds": [
+        2149,
+        15747
+      ],
+      "raw_peaks": 992,
+      "kb_q30_calls": 855,
+      "matched_q30_fraction": 0.8678362573099415,
+      "kb_base_bounds": [
+        16,
+        1003
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H8._.XP1660365._.XP1660364-F2._.U0827_A11.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 759,
+      "held_out_count": 152,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.018867924528422,
+      "p95_error_raw_samples": 10.02432432432397,
+      "analyzed_bounds": [
+        227,
+        12183
+      ],
+      "raw_bounds": [
+        2177,
+        15631
+      ],
+      "raw_peaks": 1003,
+      "kb_q30_calls": 873,
+      "matched_q30_fraction": 0.8694158075601375,
+      "kb_base_bounds": [
+        16,
+        991
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H8._.XP1660365._.XP1660365-F3._.U0827_A12.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 739,
+      "held_out_count": 148,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.7173913043479843,
+      "p95_error_raw_samples": 12.127499999999948,
+      "analyzed_bounds": [
+        215,
+        12551
+      ],
+      "raw_bounds": [
+        2060,
+        15849
+      ],
+      "raw_peaks": 989,
+      "kb_q30_calls": 875,
+      "matched_q30_fraction": 0.8445714285714285,
+      "kb_base_bounds": [
+        14,
+        1008
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H9._.ZF1680438._.M13F-108._.U0827_H08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 746,
+      "held_out_count": 149,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.0,
+      "p95_error_raw_samples": 11.127999999999519,
+      "analyzed_bounds": [
+        239,
+        12405
+      ],
+      "raw_bounds": [
+        2183,
+        17744
+      ],
+      "raw_peaks": 973,
+      "kb_q30_calls": 876,
+      "matched_q30_fraction": 0.8515981735159818,
+      "kb_base_bounds": [
+        19,
+        1010
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827P1H9._.ZF1680438._.M13R+104._.U0827_H09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 736,
+      "held_out_count": 147,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.9600000000000364,
+      "p95_error_raw_samples": 9.365217391304304,
+      "analyzed_bounds": [
+        145,
+        11808
+      ],
+      "raw_bounds": [
+        2115,
+        15335
+      ],
+      "raw_peaks": 989,
+      "kb_q30_calls": 857,
+      "matched_q30_fraction": 0.8588098016336057,
+      "kb_base_bounds": [
+        10,
+        968
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827PFr1A1._.ZV2650311Frag._.pMON452113-VF._.U0827_B08.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 616,
+      "held_out_count": 123,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.75,
+      "p95_error_raw_samples": 9.721217391303798,
+      "analyzed_bounds": [
+        241,
+        10503
+      ],
+      "raw_bounds": [
+        2195,
+        15936
+      ],
+      "raw_peaks": 920,
+      "kb_q30_calls": 669,
+      "matched_q30_fraction": 0.9207772795216741,
+      "kb_base_bounds": [
+        20,
+        873
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827PFr1A1._.ZV2650311Frag._.ZV2650310-F1._.U0827_B09.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 752,
+      "held_out_count": 150,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.4256756756758477,
+      "p95_error_raw_samples": 10.201644736842066,
+      "analyzed_bounds": [
+        283,
+        12142
+      ],
+      "raw_bounds": [
+        2160,
+        15294
+      ],
+      "raw_peaks": 926,
+      "kb_q30_calls": 861,
+      "matched_q30_fraction": 0.8734030197444832,
+      "kb_base_bounds": [
+        22,
+        989
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827PFr1A1._.ZV2650311Frag._.ZV2650310-F2._.U0827_B11.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 775,
+      "held_out_count": 155,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 3.695652173913004,
+      "p95_error_raw_samples": 9.871826086956384,
+      "analyzed_bounds": [
+        310,
+        14336
+      ],
+      "raw_bounds": [
+        2206,
+        17913
+      ],
+      "raw_peaks": 1150,
+      "kb_q30_calls": 839,
+      "matched_q30_fraction": 0.9237187127532777,
+      "kb_base_bounds": [
+        25,
+        1123
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    },
+    {
+      "file": "U0827PFr1A1._.ZV2650311Frag._.ZV2650310-R1._.U0827_B10.ab1",
+      "accepted": true,
+      "reason": "held-out interpolation passed",
+      "anchor_count": 632,
+      "held_out_count": 126,
+      "median_raw_anchor_spacing": 15.0,
+      "median_error_raw_samples": 2.9182608695650742,
+      "p95_error_raw_samples": 10.759423897581769,
+      "analyzed_bounds": [
+        235,
+        12059
+      ],
+      "raw_bounds": [
+        2127,
+        15266
+      ],
+      "raw_peaks": 1080,
+      "kb_q30_calls": 728,
+      "matched_q30_fraction": 0.8681318681318682,
+      "kb_base_bounds": [
+        20,
+        989
+      ],
+      "interpretation": "Coordinate correspondence only; not a basecaller or calibrated confidence"
+    }
+  ]
+}

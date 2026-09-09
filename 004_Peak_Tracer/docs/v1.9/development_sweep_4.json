@@ -1,0 +1,1512 @@
+{
+  "sweep": 4,
+  "variants": [
+    [
+      "v18",
+      0.75,
+      24,
+      0.0,
+      0.0
+    ],
+    [
+      "adaptive24_global",
+      0.8,
+      40,
+      0.24,
+      1.0
+    ],
+    [
+      "adaptive24_local",
+      0.8,
+      40,
+      0.24,
+      1.0
+    ]
+  ],
+  "files": [
+    "POS1-G12_G12.ab1",
+    "U0827P1A8._.ZV270402._.ZV270402-F1._.U0827_B01.ab1",
+    "U0827P1A9._.ZV170398._.pcDNA3.1+VF._.U0827_C08.ab1",
+    "U0827P1C11._.XP2670383._.XP2670383-F5._.U0827_F03.ab1",
+    "U0827P1D7._.ZP170400._.ZP170400-F3._.U0827_C05.ab1",
+    "U0827P1E11._.XP2670383._.XP2670383-F8._.U0827_G06.ab1",
+    "U0827P1E9._.ZF1680437._.M13F-108._.U0827_E08.ab1",
+    "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827_H05.ab1",
+    "U0827P1H7._.ZV270402._.ZV270402-F6._.U0827_A06.ab1",
+    "U0827P1H9._.ZF1680438._.M13F-108._.U0827_H08.ab1"
+  ],
+  "summary": {
+    "v18": {
+      "q3_9": {
+        "pairs": 368,
+        "separated": 121,
+        "contrast_sum": 91.55629022717325,
+        "crest_width_sum": 850.9456600615056,
+        "crests": 803
+      },
+      "q10_19": {
+        "pairs": 382,
+        "separated": 188,
+        "contrast_sum": 149.50029763002442,
+        "crest_width_sum": 505.98743469895373,
+        "crests": 855
+      },
+      "q20_39": {
+        "pairs": 505,
+        "separated": 256,
+        "contrast_sum": 114.4192299416685,
+        "crest_width_sum": 618.9249778870116,
+        "crests": 1317
+      },
+      "q40_plus": {
+        "pairs": 1586,
+        "separated": 1528,
+        "contrast_sum": 1314.5478522539697,
+        "crest_width_sum": 799.1600510600503,
+        "crests": 3379
+      }
+    },
+    "adaptive24_global": {
+      "q3_9": {
+        "pairs": 368,
+        "separated": 126,
+        "contrast_sum": 84.03274402543188,
+        "crest_width_sum": 779.4491207786656,
+        "crests": 803
+      },
+      "q10_19": {
+        "pairs": 382,
+        "separated": 200,
+        "contrast_sum": 137.3207155575678,
+        "crest_width_sum": 491.4099568360472,
+        "crests": 855
+      },
+      "q20_39": {
+        "pairs": 505,
+        "separated": 283,
+        "contrast_sum": 126.15443253218824,
+        "crest_width_sum": 576.6461610253016,
+        "crests": 1317
+      },
+      "q40_plus": {
+        "pairs": 1586,
+        "separated": 1533,
+        "contrast_sum": 1105.3909441369876,
+        "crest_width_sum": 1045.7125652125621,
+        "crests": 3379
+      }
+    },
+    "adaptive24_local": {
+      "q3_9": {
+        "pairs": 368,
+        "separated": 126,
+        "contrast_sum": 84.04266662667499,
+        "crest_width_sum": 779.282454111999,
+        "crests": 803
+      },
+      "q10_19": {
+        "pairs": 382,
+        "separated": 200,
+        "contrast_sum": 137.3349231260938,
+        "crest_width_sum": 491.4099568360472,
+        "crests": 855
+      },
+      "q20_39": {
+        "pairs": 505,
+        "separated": 283,
+        "contrast_sum": 126.15474787019792,
+        "crest_width_sum": 576.6461610253016,
+        "crests": 1317
+      },
+      "q40_plus": {
+        "pairs": 1586,
+        "separated": 1533,
+        "contrast_sum": 1105.3909441369876,
+        "crest_width_sum": 1045.7125652125621,
+        "crests": 3379
+      }
+    }
+  },
+  "rows": [
+    {
+      "file": "POS1-G12_G12.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 32,
+          "separated": 1,
+          "contrast_sum": 0.7242009794437998,
+          "crest_width_sum": 66.4725759070152,
+          "crests": 55
+        },
+        "q10_19": {
+          "pairs": 29,
+          "separated": 4,
+          "contrast_sum": 3.9607501620677157,
+          "crest_width_sum": 33.07577493866411,
+          "crests": 51
+        },
+        "q20_39": {
+          "pairs": 65,
+          "separated": 43,
+          "contrast_sum": 17.88591274725071,
+          "crest_width_sum": 70.93135491959016,
+          "crests": 142
+        },
+        "q40_plus": {
+          "pairs": 204,
+          "separated": 198,
+          "contrast_sum": 168.12936800324286,
+          "crest_width_sum": 81.8512765012765,
+          "crests": 362
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 408,
+        "median_kernel_sigma_base": 0.24847914134991217,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "POS1-G12_G12.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 32,
+          "separated": 2,
+          "contrast_sum": 0.6886729222317912,
+          "crest_width_sum": 55.890023008046654,
+          "crests": 55
+        },
+        "q10_19": {
+          "pairs": 29,
+          "separated": 7,
+          "contrast_sum": 3.7366883371410498,
+          "crest_width_sum": 30.55041668237479,
+          "crests": 51
+        },
+        "q20_39": {
+          "pairs": 65,
+          "separated": 44,
+          "contrast_sum": 19.66615259445325,
+          "crest_width_sum": 65.99208128472831,
+          "crests": 142
+        },
+        "q40_plus": {
+          "pairs": 204,
+          "separated": 201,
+          "contrast_sum": 141.78601159940456,
+          "crest_width_sum": 111.09701409701378,
+          "crests": 362
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 408,
+        "median_kernel_sigma_base": 0.2650444174399063,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.49420000000000613,
+        "median_local_noise": 0.49420000000000613,
+        "median_rounding_sigma_base": 0.13448120478701345,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "POS1-G12_G12.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 32,
+          "separated": 2,
+          "contrast_sum": 0.6886729222317912,
+          "crest_width_sum": 55.890023008046654,
+          "crests": 55
+        },
+        "q10_19": {
+          "pairs": 29,
+          "separated": 7,
+          "contrast_sum": 3.7366883371410498,
+          "crest_width_sum": 30.55041668237479,
+          "crests": 51
+        },
+        "q20_39": {
+          "pairs": 65,
+          "separated": 44,
+          "contrast_sum": 19.66615259445325,
+          "crest_width_sum": 65.99208128472831,
+          "crests": 142
+        },
+        "q40_plus": {
+          "pairs": 204,
+          "separated": 201,
+          "contrast_sum": 141.78601159940456,
+          "crest_width_sum": 111.09701409701378,
+          "crests": 362
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 408,
+        "median_kernel_sigma_base": 0.2650444174399063,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.49420000000000613,
+        "median_local_noise": 0.4942000000000002,
+        "median_rounding_sigma_base": 0.13448120478701345,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F1._.U0827_B01.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 33,
+          "separated": 5,
+          "contrast_sum": 1.5442831579000733,
+          "crest_width_sum": 144.9630339286887,
+          "crests": 91
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 2,
+          "contrast_sum": 1.3761719202187654,
+          "crest_width_sum": 67.19541626449887,
+          "crests": 74
+        },
+        "q20_39": {
+          "pairs": 41,
+          "separated": 22,
+          "contrast_sum": 11.430865445847973,
+          "crest_width_sum": 75.07028665778664,
+          "crests": 155
+        },
+        "q40_plus": {
+          "pairs": 128,
+          "separated": 125,
+          "contrast_sum": 102.60693449618906,
+          "crest_width_sum": 76.86543456543447,
+          "crests": 359
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 455,
+        "median_kernel_sigma_base": 0.30265096389900525,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F1._.U0827_B01.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 33,
+          "separated": 6,
+          "contrast_sum": 2.505243405215749,
+          "crest_width_sum": 127.85178575563087,
+          "crests": 91
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 3,
+          "contrast_sum": 1.8768929911064907,
+          "crest_width_sum": 56.697109297845685,
+          "crests": 74
+        },
+        "q20_39": {
+          "pairs": 41,
+          "separated": 24,
+          "contrast_sum": 11.705277555466164,
+          "crest_width_sum": 69.83877891114732,
+          "crests": 155
+        },
+        "q40_plus": {
+          "pairs": 128,
+          "separated": 125,
+          "contrast_sum": 88.97913773009559,
+          "crest_width_sum": 105.14590409590382,
+          "crests": 359
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 455,
+        "median_kernel_sigma_base": 0.32282769482560564,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.7060000000000185,
+        "median_local_noise": 0.7060000000000185,
+        "median_rounding_sigma_base": 0.04,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F1._.U0827_B01.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 33,
+          "separated": 6,
+          "contrast_sum": 2.505243405215749,
+          "crest_width_sum": 127.85178575563087,
+          "crests": 91
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 3,
+          "contrast_sum": 1.8768929911064907,
+          "crest_width_sum": 56.697109297845685,
+          "crests": 74
+        },
+        "q20_39": {
+          "pairs": 41,
+          "separated": 24,
+          "contrast_sum": 11.705277555466164,
+          "crest_width_sum": 69.83877891114732,
+          "crests": 155
+        },
+        "q40_plus": {
+          "pairs": 128,
+          "separated": 125,
+          "contrast_sum": 88.97913773009559,
+          "crest_width_sum": 105.14590409590382,
+          "crests": 359
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 455,
+        "median_kernel_sigma_base": 0.32282769482560564,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.7060000000000185,
+        "median_local_noise": 0.7060000000003589,
+        "median_rounding_sigma_base": 0.04,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VF._.U0827_C08.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 26,
+          "separated": 1,
+          "contrast_sum": 0.9520173116905768,
+          "crest_width_sum": 88.20142602709886,
+          "crests": 67
+        },
+        "q10_19": {
+          "pairs": 31,
+          "separated": 3,
+          "contrast_sum": 1.5153171815378546,
+          "crest_width_sum": 61.337831445305525,
+          "crests": 68
+        },
+        "q20_39": {
+          "pairs": 61,
+          "separated": 32,
+          "contrast_sum": 15.578587280518152,
+          "crest_width_sum": 61.52524113313588,
+          "crests": 126
+        },
+        "q40_plus": {
+          "pairs": 178,
+          "separated": 172,
+          "contrast_sum": 153.3534818064207,
+          "crest_width_sum": 100.41401376401353,
+          "crests": 398
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 497,
+        "median_kernel_sigma_base": 0.2494523986597103,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VF._.U0827_C08.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 26,
+          "separated": 2,
+          "contrast_sum": 1.2099200494977598,
+          "crest_width_sum": 76.66649436774023,
+          "crests": 67
+        },
+        "q10_19": {
+          "pairs": 31,
+          "separated": 4,
+          "contrast_sum": 1.963356174215424,
+          "crest_width_sum": 55.46792246014888,
+          "crests": 68
+        },
+        "q20_39": {
+          "pairs": 61,
+          "separated": 33,
+          "contrast_sum": 15.8601380213664,
+          "crest_width_sum": 57.01669273708748,
+          "crests": 126
+        },
+        "q40_plus": {
+          "pairs": 178,
+          "separated": 172,
+          "contrast_sum": 127.65987385529174,
+          "crest_width_sum": 129.6377733377728,
+          "crests": 398
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 497,
+        "median_kernel_sigma_base": 0.2660825585703577,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.4942000000000028,
+        "median_local_noise": 0.4942000000000028,
+        "median_rounding_sigma_base": 0.13332306819851872,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VF._.U0827_C08.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 26,
+          "separated": 2,
+          "contrast_sum": 1.2099200494977598,
+          "crest_width_sum": 76.66649436774023,
+          "crests": 67
+        },
+        "q10_19": {
+          "pairs": 31,
+          "separated": 4,
+          "contrast_sum": 1.963356174215424,
+          "crest_width_sum": 55.46792246014888,
+          "crests": 68
+        },
+        "q20_39": {
+          "pairs": 61,
+          "separated": 33,
+          "contrast_sum": 15.8601380213664,
+          "crest_width_sum": 57.01669273708748,
+          "crests": 126
+        },
+        "q40_plus": {
+          "pairs": 178,
+          "separated": 172,
+          "contrast_sum": 127.65987385529174,
+          "crest_width_sum": 129.6377733377728,
+          "crests": 398
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 497,
+        "median_kernel_sigma_base": 0.2660825585703577,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.4942000000000028,
+        "median_local_noise": 0.5647999999999769,
+        "median_rounding_sigma_base": 0.13332306819851872,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F5._.U0827_F03.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 28,
+          "separated": 5,
+          "contrast_sum": 1.5460223065169756,
+          "crest_width_sum": 115.90188471418939,
+          "crests": 80
+        },
+        "q10_19": {
+          "pairs": 26,
+          "separated": 6,
+          "contrast_sum": 2.4801310573484,
+          "crest_width_sum": 37.22850158472076,
+          "crests": 54
+        },
+        "q20_39": {
+          "pairs": 50,
+          "separated": 24,
+          "contrast_sum": 9.774420050864867,
+          "crest_width_sum": 90.81115611068158,
+          "crests": 187
+        },
+        "q40_plus": {
+          "pairs": 162,
+          "separated": 160,
+          "contrast_sum": 130.826143384934,
+          "crest_width_sum": 80.87077922077931,
+          "crests": 353
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 508,
+        "median_kernel_sigma_base": 0.29934223223958467,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F5._.U0827_F03.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 28,
+          "separated": 6,
+          "contrast_sum": 1.9792113814623993,
+          "crest_width_sum": 102.86002498963556,
+          "crests": 80
+        },
+        "q10_19": {
+          "pairs": 26,
+          "separated": 9,
+          "contrast_sum": 3.516345210510724,
+          "crest_width_sum": 34.56761713903061,
+          "crests": 54
+        },
+        "q20_39": {
+          "pairs": 50,
+          "separated": 29,
+          "contrast_sum": 11.670004068816567,
+          "crest_width_sum": 83.2746160455509,
+          "crests": 187
+        },
+        "q40_plus": {
+          "pairs": 162,
+          "separated": 160,
+          "contrast_sum": 111.66237995422063,
+          "crest_width_sum": 104.7801698301696,
+          "crests": 353
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 508,
+        "median_kernel_sigma_base": 0.31929838105555697,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.5647999999999137,
+        "median_local_noise": 0.5647999999999137,
+        "median_rounding_sigma_base": 0.04,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F5._.U0827_F03.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 28,
+          "separated": 6,
+          "contrast_sum": 1.9792113814623993,
+          "crest_width_sum": 102.86002498963556,
+          "crests": 80
+        },
+        "q10_19": {
+          "pairs": 26,
+          "separated": 9,
+          "contrast_sum": 3.516345210510724,
+          "crest_width_sum": 34.56761713903061,
+          "crests": 54
+        },
+        "q20_39": {
+          "pairs": 50,
+          "separated": 29,
+          "contrast_sum": 11.670004068816567,
+          "crest_width_sum": 83.2746160455509,
+          "crests": 187
+        },
+        "q40_plus": {
+          "pairs": 162,
+          "separated": 160,
+          "contrast_sum": 111.66237995422063,
+          "crest_width_sum": 104.7801698301696,
+          "crests": 353
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 508,
+        "median_kernel_sigma_base": 0.31929838105555697,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.5647999999999137,
+        "median_local_noise": 0.4942000000001365,
+        "median_rounding_sigma_base": 0.04,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F3._.U0827_C05.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 25,
+          "separated": 2,
+          "contrast_sum": 0.8682168641853452,
+          "crest_width_sum": 61.19165489720915,
+          "crests": 69
+        },
+        "q10_19": {
+          "pairs": 21,
+          "separated": 4,
+          "contrast_sum": 2.213504589539899,
+          "crest_width_sum": 47.14939546311165,
+          "crests": 69
+        },
+        "q20_39": {
+          "pairs": 58,
+          "separated": 20,
+          "contrast_sum": 9.432447199791294,
+          "crest_width_sum": 57.10582571023749,
+          "crests": 122
+        },
+        "q40_plus": {
+          "pairs": 176,
+          "separated": 175,
+          "contrast_sum": 154.86669697944598,
+          "crest_width_sum": 97.9054001554,
+          "crests": 381
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 545,
+        "median_kernel_sigma_base": 0.2607750381428158,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F3._.U0827_C05.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 25,
+          "separated": 2,
+          "contrast_sum": 1.3661053366989058,
+          "crest_width_sum": 53.75572297515816,
+          "crests": 69
+        },
+        "q10_19": {
+          "pairs": 21,
+          "separated": 5,
+          "contrast_sum": 2.6667082550543237,
+          "crest_width_sum": 43.57345555598788,
+          "crests": 69
+        },
+        "q20_39": {
+          "pairs": 58,
+          "separated": 23,
+          "contrast_sum": 10.912321088983589,
+          "crest_width_sum": 52.42371174577056,
+          "crests": 122
+        },
+        "q40_plus": {
+          "pairs": 176,
+          "separated": 175,
+          "contrast_sum": 128.51965306114292,
+          "crest_width_sum": 123.24917304917263,
+          "crests": 381
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 545,
+        "median_kernel_sigma_base": 0.2781600406856702,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.4942000000001404,
+        "median_local_noise": 0.4942000000001404,
+        "median_rounding_sigma_base": 0.11864938347495825,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F3._.U0827_C05.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 25,
+          "separated": 2,
+          "contrast_sum": 1.3661053366989058,
+          "crest_width_sum": 53.75572297515816,
+          "crests": 69
+        },
+        "q10_19": {
+          "pairs": 21,
+          "separated": 5,
+          "contrast_sum": 2.6667082550543237,
+          "crest_width_sum": 43.57345555598788,
+          "crests": 69
+        },
+        "q20_39": {
+          "pairs": 58,
+          "separated": 23,
+          "contrast_sum": 10.912321088983589,
+          "crest_width_sum": 52.42371174577056,
+          "crests": 122
+        },
+        "q40_plus": {
+          "pairs": 176,
+          "separated": 175,
+          "contrast_sum": 128.51965306114292,
+          "crest_width_sum": 123.24917304917263,
+          "crests": 381
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 545,
+        "median_kernel_sigma_base": 0.2781600406856702,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.4942000000001404,
+        "median_local_noise": 0.5647999999999677,
+        "median_rounding_sigma_base": 0.11864938347495825,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F8._.U0827_G06.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 23,
+          "separated": 1,
+          "contrast_sum": 0.63349455035818,
+          "crest_width_sum": 65.88569822814725,
+          "crests": 86
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 5,
+          "contrast_sum": 2.8020347132568832,
+          "crest_width_sum": 47.40531841272351,
+          "crests": 76
+        },
+        "q20_39": {
+          "pairs": 46,
+          "separated": 32,
+          "contrast_sum": 11.419408009776111,
+          "crest_width_sum": 60.56482194489228,
+          "crests": 141
+        },
+        "q40_plus": {
+          "pairs": 174,
+          "separated": 170,
+          "contrast_sum": 142.10642041966295,
+          "crest_width_sum": 82.82237762237769,
+          "crests": 352
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 473,
+        "median_kernel_sigma_base": 0.25567532264097864,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F8._.U0827_G06.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 23,
+          "separated": 2,
+          "contrast_sum": 0.9861871957198985,
+          "crest_width_sum": 62.16373472611126,
+          "crests": 86
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 8,
+          "contrast_sum": 3.039205073143075,
+          "crest_width_sum": 44.24822788046373,
+          "crests": 76
+        },
+        "q20_39": {
+          "pairs": 46,
+          "separated": 35,
+          "contrast_sum": 13.673253062713563,
+          "crest_width_sum": 57.574357819645535,
+          "crests": 141
+        },
+        "q40_plus": {
+          "pairs": 174,
+          "separated": 170,
+          "contrast_sum": 118.44483214786216,
+          "crest_width_sum": 108.99017649017621,
+          "crests": 352
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 473,
+        "median_kernel_sigma_base": 0.2727203441503772,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.4942000000000456,
+        "median_local_noise": 0.4942000000000456,
+        "median_rounding_sigma_base": 0.12555191281360933,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F8._.U0827_G06.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 23,
+          "separated": 2,
+          "contrast_sum": 0.9861871957198985,
+          "crest_width_sum": 62.16373472611126,
+          "crests": 86
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 8,
+          "contrast_sum": 3.039205073143075,
+          "crest_width_sum": 44.24822788046373,
+          "crests": 76
+        },
+        "q20_39": {
+          "pairs": 46,
+          "separated": 35,
+          "contrast_sum": 13.673253062713563,
+          "crest_width_sum": 57.574357819645535,
+          "crests": 141
+        },
+        "q40_plus": {
+          "pairs": 174,
+          "separated": 170,
+          "contrast_sum": 118.44483214786216,
+          "crest_width_sum": 108.99017649017621,
+          "crests": 352
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 473,
+        "median_kernel_sigma_base": 0.2727203441503772,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.4942000000000456,
+        "median_local_noise": 0.4942000000005618,
+        "median_rounding_sigma_base": 0.12555191281360933,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1E9._.ZF1680437._.M13F-108._.U0827_E08.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 29,
+          "separated": 1,
+          "contrast_sum": 0.8073955013198552,
+          "crest_width_sum": 72.17121007354838,
+          "crests": 73
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 1,
+          "contrast_sum": 1.450530254268936,
+          "crest_width_sum": 46.124606545377425,
+          "crests": 53
+        },
+        "q20_39": {
+          "pairs": 50,
+          "separated": 17,
+          "contrast_sum": 8.352971687280508,
+          "crest_width_sum": 69.88400676121263,
+          "crests": 148
+        },
+        "q40_plus": {
+          "pairs": 185,
+          "separated": 176,
+          "contrast_sum": 157.82207285078664,
+          "crest_width_sum": 105.05815850815819,
+          "crests": 411
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 523,
+        "median_kernel_sigma_base": 0.25724431453326246,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1E9._.ZF1680437._.M13F-108._.U0827_E08.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 29,
+          "separated": 3,
+          "contrast_sum": 1.0968847364682344,
+          "crest_width_sum": 65.90291065895795,
+          "crests": 73
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 2,
+          "contrast_sum": 1.6951682822466299,
+          "crest_width_sum": 42.77759439753469,
+          "crests": 53
+        },
+        "q20_39": {
+          "pairs": 50,
+          "separated": 20,
+          "contrast_sum": 9.676952728778328,
+          "crest_width_sum": 65.31619124339713,
+          "crests": 148
+        },
+        "q40_plus": {
+          "pairs": 185,
+          "separated": 176,
+          "contrast_sum": 130.82165512022868,
+          "crest_width_sum": 131.5996836496832,
+          "crests": 411
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 523,
+        "median_kernel_sigma_base": 0.2743939355021467,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.49420000000000036,
+        "median_local_noise": 0.49420000000000036,
+        "median_rounding_sigma_base": 0.12348373208564617,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1E9._.ZF1680437._.M13F-108._.U0827_E08.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 29,
+          "separated": 3,
+          "contrast_sum": 1.0968847364682344,
+          "crest_width_sum": 65.90291065895795,
+          "crests": 73
+        },
+        "q10_19": {
+          "pairs": 25,
+          "separated": 2,
+          "contrast_sum": 1.6951682822466299,
+          "crest_width_sum": 42.77759439753469,
+          "crests": 53
+        },
+        "q20_39": {
+          "pairs": 50,
+          "separated": 20,
+          "contrast_sum": 9.676952728778328,
+          "crest_width_sum": 65.31619124339713,
+          "crests": 148
+        },
+        "q40_plus": {
+          "pairs": 185,
+          "separated": 176,
+          "contrast_sum": 130.82165512022868,
+          "crest_width_sum": 131.5996836496832,
+          "crests": 411
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 523,
+        "median_kernel_sigma_base": 0.2743939355021467,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.49420000000000036,
+        "median_local_noise": 0.5647999999999717,
+        "median_rounding_sigma_base": 0.12348373208564617,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827_H05.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 113,
+          "separated": 105,
+          "contrast_sum": 82.74803881869558,
+          "crest_width_sum": 43.78548516327156,
+          "crests": 131
+        },
+        "q10_19": {
+          "pairs": 161,
+          "separated": 158,
+          "contrast_sum": 130.69395771353416,
+          "crest_width_sum": 76.74127534402305,
+          "crests": 300
+        },
+        "q20_39": {
+          "pairs": 3,
+          "separated": 3,
+          "contrast_sum": 1.9597989176451982,
+          "crest_width_sum": 6.636785436785437,
+          "crests": 21
+        },
+        "q40_plus": {
+          "pairs": 0,
+          "separated": 0,
+          "contrast_sum": 0.0,
+          "crest_width_sum": 0.0,
+          "crests": 0
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 60,
+        "median_kernel_sigma_base": 0.2578173132790263,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827_H05.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 113,
+          "separated": 100,
+          "contrast_sum": 72.1420133440508,
+          "crest_width_sum": 64.30668012328229,
+          "crests": 131
+        },
+        "q10_19": {
+          "pairs": 161,
+          "separated": 155,
+          "contrast_sum": 115.0218965041493,
+          "crest_width_sum": 99.071322133319,
+          "crests": 300
+        },
+        "q20_39": {
+          "pairs": 3,
+          "separated": 3,
+          "contrast_sum": 1.80640953809842,
+          "crest_width_sum": 8.407437007437007,
+          "crests": 21
+        },
+        "q40_plus": {
+          "pairs": 0,
+          "separated": 0,
+          "contrast_sum": 0.0,
+          "crest_width_sum": 0.0,
+          "crests": 0
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 60,
+        "median_kernel_sigma_base": 0.27500513416429473,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 6.812900000002904,
+        "median_local_noise": 6.812900000002904,
+        "median_rounding_sigma_base": 0.1227165396476532,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827_H05.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 113,
+          "separated": 100,
+          "contrast_sum": 72.1519359452939,
+          "crest_width_sum": 64.14001345661563,
+          "crests": 131
+        },
+        "q10_19": {
+          "pairs": 161,
+          "separated": 155,
+          "contrast_sum": 115.03610407267527,
+          "crest_width_sum": 99.071322133319,
+          "crests": 300
+        },
+        "q20_39": {
+          "pairs": 3,
+          "separated": 3,
+          "contrast_sum": 1.80672487610811,
+          "crest_width_sum": 8.407437007437007,
+          "crests": 21
+        },
+        "q40_plus": {
+          "pairs": 0,
+          "separated": 0,
+          "contrast_sum": 0.0,
+          "crest_width_sum": 0.0,
+          "crests": 0
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 60,
+        "median_kernel_sigma_base": 0.27500513416429473,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 6.812900000002904,
+        "median_local_noise": 6.495200000000304,
+        "median_rounding_sigma_base": 0.1227165396476532,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F6._.U0827_A06.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 25,
+          "separated": 0,
+          "contrast_sum": 0.6010137501690104,
+          "crest_width_sum": 100.4193252950402,
+          "crests": 82
+        },
+        "q10_19": {
+          "pairs": 16,
+          "separated": 2,
+          "contrast_sum": 1.1130179684758328,
+          "crest_width_sum": 38.55230088903351,
+          "crests": 56
+        },
+        "q20_39": {
+          "pairs": 65,
+          "separated": 41,
+          "contrast_sum": 15.327724628307877,
+          "crest_width_sum": 68.53398278793786,
+          "crests": 147
+        },
+        "q40_plus": {
+          "pairs": 180,
+          "separated": 165,
+          "contrast_sum": 142.12229848190358,
+          "crest_width_sum": 89.97410922410916,
+          "crests": 393
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 471,
+        "median_kernel_sigma_base": 0.2612597622333318,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F6._.U0827_A06.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 25,
+          "separated": 0,
+          "contrast_sum": 0.6618437478198412,
+          "crest_width_sum": 94.90904725527106,
+          "crests": 82
+        },
+        "q10_19": {
+          "pairs": 16,
+          "separated": 3,
+          "contrast_sum": 1.354139536634162,
+          "crest_width_sum": 36.755399993675105,
+          "crests": 56
+        },
+        "q20_39": {
+          "pairs": 65,
+          "separated": 45,
+          "contrast_sum": 17.302094263346657,
+          "crest_width_sum": 63.126775141782865,
+          "crests": 147
+        },
+        "q40_plus": {
+          "pairs": 180,
+          "separated": 165,
+          "contrast_sum": 120.12954094713541,
+          "crest_width_sum": 119.21380286380243,
+          "crests": 393
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 471,
+        "median_kernel_sigma_base": 0.27867707971555394,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.564800000000293,
+        "median_local_noise": 0.564800000000293,
+        "median_rounding_sigma_base": 0.11796497551468862,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F6._.U0827_A06.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 25,
+          "separated": 0,
+          "contrast_sum": 0.6618437478198412,
+          "crest_width_sum": 94.90904725527106,
+          "crests": 82
+        },
+        "q10_19": {
+          "pairs": 16,
+          "separated": 3,
+          "contrast_sum": 1.354139536634162,
+          "crest_width_sum": 36.755399993675105,
+          "crests": 56
+        },
+        "q20_39": {
+          "pairs": 65,
+          "separated": 45,
+          "contrast_sum": 17.302094263346657,
+          "crest_width_sum": 63.126775141782865,
+          "crests": 147
+        },
+        "q40_plus": {
+          "pairs": 180,
+          "separated": 165,
+          "contrast_sum": 120.12954094713541,
+          "crest_width_sum": 119.21380286380243,
+          "crests": 393
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 471,
+        "median_kernel_sigma_base": 0.27867707971555394,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.564800000000293,
+        "median_local_noise": 0.5648000000000137,
+        "median_rounding_sigma_base": 0.11796497551468862,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1H9._.ZF1680438._.M13F-108._.U0827_H08.ab1",
+      "variant": "v18",
+      "metrics": {
+        "q3_9": {
+          "pairs": 34,
+          "separated": 0,
+          "contrast_sum": 1.1316069868938503,
+          "crest_width_sum": 91.95336582729689,
+          "crests": 69
+        },
+        "q10_19": {
+          "pairs": 23,
+          "separated": 3,
+          "contrast_sum": 1.8948820697759625,
+          "crest_width_sum": 51.17701381149524,
+          "crests": 54
+        },
+        "q20_39": {
+          "pairs": 66,
+          "separated": 22,
+          "contrast_sum": 13.257093974385823,
+          "crest_width_sum": 57.86151642475171,
+          "crests": 128
+        },
+        "q40_plus": {
+          "pairs": 199,
+          "separated": 187,
+          "contrast_sum": 162.71443583138398,
+          "crest_width_sum": 83.39850149850147,
+          "crests": 370
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "local-width regularized Richardson-Lucy",
+        "width_anchors": 447,
+        "median_kernel_sigma_base": 0.25708103036331637,
+        "strength": 0.75,
+        "iterations": 24
+      }
+    },
+    {
+      "file": "U0827P1H9._.ZF1680438._.M13F-108._.U0827_H08.ab1",
+      "variant": "adaptive24_global",
+      "metrics": {
+        "q3_9": {
+          "pairs": 34,
+          "separated": 3,
+          "contrast_sum": 1.3966619062665062,
+          "crest_width_sum": 75.14269691883158,
+          "crests": 69
+        },
+        "q10_19": {
+          "pairs": 23,
+          "separated": 4,
+          "contrast_sum": 2.4503151933666425,
+          "crest_width_sum": 47.70089129566684,
+          "crests": 54
+        },
+        "q20_39": {
+          "pairs": 66,
+          "separated": 27,
+          "contrast_sum": 13.88182961016528,
+          "crest_width_sum": 53.67551908875437,
+          "crests": 128
+        },
+        "q40_plus": {
+          "pairs": 199,
+          "separated": 189,
+          "contrast_sum": 137.38785972160608,
+          "crest_width_sum": 111.99886779886751,
+          "crests": 370
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 447,
+        "median_kernel_sigma_base": 0.2742197657208708,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.49419999999999986,
+        "median_local_noise": 0.49419999999999986,
+        "median_rounding_sigma_base": 0.12370117238528826,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    },
+    {
+      "file": "U0827P1H9._.ZF1680438._.M13F-108._.U0827_H08.ab1",
+      "variant": "adaptive24_local",
+      "metrics": {
+        "q3_9": {
+          "pairs": 34,
+          "separated": 3,
+          "contrast_sum": 1.3966619062665062,
+          "crest_width_sum": 75.14269691883158,
+          "crests": 69
+        },
+        "q10_19": {
+          "pairs": 23,
+          "separated": 4,
+          "contrast_sum": 2.4503151933666425,
+          "crest_width_sum": 47.70089129566684,
+          "crests": 54
+        },
+        "q20_39": {
+          "pairs": 66,
+          "separated": 27,
+          "contrast_sum": 13.88182961016528,
+          "crest_width_sum": 53.67551908875437,
+          "crests": 128
+        },
+        "q40_plus": {
+          "pairs": 199,
+          "separated": 189,
+          "contrast_sum": 137.38785972160608,
+          "crest_width_sum": 111.99886779886751,
+          "crests": 370
+        }
+      },
+      "diagnostics": {
+        "resolved": true,
+        "method": "noise-regularized inverse with finite-width reconvolution",
+        "width_anchors": 447,
+        "median_kernel_sigma_base": 0.2742197657208708,
+        "strength": 0.8,
+        "iterations": 40,
+        "target_peak_sigma_base": 0.24,
+        "measured_noise_floor": 0.49419999999999986,
+        "median_local_noise": 0.49420000000005615,
+        "median_rounding_sigma_base": 0.12370117238528826,
+        "noise_regularization": 1.0,
+        "model": "v19"
+      }
+    }
+  ]
+}

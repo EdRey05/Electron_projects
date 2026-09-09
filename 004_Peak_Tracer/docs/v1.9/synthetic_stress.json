@@ -1,0 +1,1654 @@
+{
+  "summary": [
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1384,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1426,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1433,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1385,
+        "unmatched_peaks": 3,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1425,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1435,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1399,
+        "unmatched_peaks": 60,
+        "multiple_crests": 1
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1428,
+        "unmatched_peaks": 3,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1434,
+        "unmatched_peaks": 2,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1444,
+        "unmatched_peaks": 2778,
+        "multiple_crests": 243
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1435,
+        "unmatched_peaks": 204,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1441,
+        "unmatched_peaks": 112,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1384,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1427,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1433,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1385,
+        "unmatched_peaks": 3,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1426,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1433,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1399,
+        "unmatched_peaks": 60,
+        "multiple_crests": 1
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1428,
+        "unmatched_peaks": 3,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1433,
+        "unmatched_peaks": 2,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1444,
+        "unmatched_peaks": 2778,
+        "multiple_crests": 243
+      },
+      "v18": {
+        "true_peaks": 1472,
+        "matched_peaks": 1435,
+        "unmatched_peaks": 218,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 1472,
+        "matched_peaks": 1438,
+        "unmatched_peaks": 122,
+        "multiple_crests": 0
+      }
+    }
+  ],
+  "trials": [
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 175,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 0.0,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 0.0,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 175,
+        "unmatched_peaks": 5,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 12,
+        "multiple_crests": 1
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 9,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 6,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 2,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 13,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 8,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 0.0,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 5,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 360,
+        "multiple_crests": 24
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 30,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 14,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 344,
+        "multiple_crests": 31
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 23,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 16,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 321,
+        "multiple_crests": 24
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 17,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 11,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 335,
+        "multiple_crests": 36
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 17,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 9,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 354,
+        "multiple_crests": 32
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 30,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 15,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 392,
+        "multiple_crests": 35
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 31,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 16,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 343,
+        "multiple_crests": 37
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 24,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 12,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 0.0,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 329,
+        "multiple_crests": 24
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 32,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 19,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 175,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.0,
+      "anchor_error": 1.5,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.02,
+      "anchor_error": 1.5,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 175,
+        "unmatched_peaks": 5,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 12,
+        "multiple_crests": 1
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 9,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 6,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 2,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 13,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 8,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.05,
+      "anchor_error": 1.5,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 5,
+        "multiple_crests": 0
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 0,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 360,
+        "multiple_crests": 24
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 33,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 19,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 1,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 344,
+        "multiple_crests": 31
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 28,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 17,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 2,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 321,
+        "multiple_crests": 24
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 16,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 11,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 3,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 335,
+        "multiple_crests": 36
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 21,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 11,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 4,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 354,
+        "multiple_crests": 32
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 32,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 16,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 5,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 392,
+        "multiple_crests": 35
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 33,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 20,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 6,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 343,
+        "multiple_crests": 37
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 25,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 11,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise": 0.1,
+      "anchor_error": 1.5,
+      "seed": 7,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 329,
+        "multiple_crests": 24
+      },
+      "v18": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 30,
+        "multiple_crests": 0
+      },
+      "v19": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 17,
+        "multiple_crests": 0
+      }
+    }
+  ]
+}

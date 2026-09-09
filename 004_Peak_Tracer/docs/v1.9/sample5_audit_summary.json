@@ -1,0 +1,14 @@
+{
+  "reads": 68,
+  "processor_source_sha256": "a3263ba80c06ba4b32d1ac75a9c964ab5f3dbd7c5e61a2f5411edd6763e6452e",
+  "all_checks_pass": true,
+  "failures": [],
+  "frozen_input_hashes_match": null,
+  "paired_homopolymers": 17703,
+  "newly_separated": 2642,
+  "lost_separation": 1,
+  "reads_with_net_separation_gain": 68,
+  "reads_with_net_separation_loss": 0,
+  "ablation_pairs": 0,
+  "ablation_separated": 0
+}
