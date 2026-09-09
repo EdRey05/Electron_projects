@@ -1,0 +1,648 @@
+{
+  "method": "Known synthetic centers; 15% noiseless p99 prominence; 4-sample matching tolerance",
+  "parameters": {
+    "preprocess": true,
+    "strip_well_id": true,
+    "emit_seq": true,
+    "write_qc_report": false,
+    "set_abi_limits": true,
+    "lead_drop_enabled": false,
+    "baseline_smooth": true,
+    "do_smooth": true,
+    "resolve_peaks": true,
+    "recall_low_quality": false,
+    "write_sidecar_trace": false,
+    "rebasecall_data14": false,
+    "sharpen_peaks": false,
+    "enhanced_qv": false,
+    "refine_ploc": false,
+    "filename_suffix": "",
+    "skip_shorter_than": 0,
+    "lead_drop_qv": 5,
+    "qv_to_n_threshold": 2,
+    "smooth_window": 7,
+    "resolution_strength": 0.75,
+    "resolution_iterations": 24,
+    "trim_quality": 9,
+    "trim_window": 40,
+    "seq_format": "plain",
+    "seq_range": "clear",
+    "p99_target": 650,
+    "min_rebasecall_len": 1000,
+    "extend_min_snr": 1.3,
+    "extend_stop_quiet": 40,
+    "sharpen_factor": 2.0
+  },
+  "summary": [
+    {
+      "noise_fraction": 0.0,
+      "traces": 8,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1384,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 1472,
+        "matched_peaks": 1426,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "traces": 8,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1385,
+        "unmatched_peaks": 3,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 1472,
+        "matched_peaks": 1425,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "traces": 8,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1399,
+        "unmatched_peaks": 60,
+        "multiple_crests": 1
+      },
+      "candidate": {
+        "true_peaks": 1472,
+        "matched_peaks": 1428,
+        "unmatched_peaks": 3,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "traces": 8,
+      "input": {
+        "true_peaks": 1472,
+        "matched_peaks": 1444,
+        "unmatched_peaks": 2778,
+        "multiple_crests": 243
+      },
+      "candidate": {
+        "true_peaks": 1472,
+        "matched_peaks": 1435,
+        "unmatched_peaks": 204,
+        "multiple_crests": 0
+      }
+    }
+  ],
+  "trials": [
+    {
+      "noise_fraction": 0.0,
+      "seed": 0,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 175,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 1,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 2,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 3,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 4,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 5,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 6,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.0,
+      "seed": 7,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 0,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 1,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 2,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 3,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 4,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 5,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 172,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 6,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.02,
+      "seed": 7,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 0,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 175,
+        "unmatched_peaks": 5,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 1,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 12,
+        "multiple_crests": 1
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 2,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 9,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 3,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 173,
+        "unmatched_peaks": 6,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 1,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 4,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 2,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 5,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 13,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 176,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 6,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 174,
+        "unmatched_peaks": 8,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.05,
+      "seed": 7,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 5,
+        "multiple_crests": 0
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 0,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 0,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 360,
+        "multiple_crests": 24
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 30,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 1,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 344,
+        "multiple_crests": 31
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 23,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 2,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 321,
+        "multiple_crests": 24
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 178,
+        "unmatched_peaks": 17,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 3,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 335,
+        "multiple_crests": 36
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 17,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 4,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 354,
+        "multiple_crests": 32
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 30,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 5,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 179,
+        "unmatched_peaks": 392,
+        "multiple_crests": 35
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 177,
+        "unmatched_peaks": 31,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 6,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 182,
+        "unmatched_peaks": 343,
+        "multiple_crests": 37
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 180,
+        "unmatched_peaks": 24,
+        "multiple_crests": 0
+      }
+    },
+    {
+      "noise_fraction": 0.1,
+      "seed": 7,
+      "resolved": true,
+      "input": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 329,
+        "multiple_crests": 24
+      },
+      "candidate": {
+        "true_peaks": 184,
+        "matched_peaks": 181,
+        "unmatched_peaks": 32,
+        "multiple_crests": 0
+      }
+    }
+  ]
+}
