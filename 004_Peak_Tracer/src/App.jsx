@@ -572,8 +572,10 @@ function AdvModal({ adv, onChange, onClose }) {
       title: "Peak resolution",
       fields: [
         { key: "resolvePeaks", label: "Resolve overlapping peaks", type: "bool" },
-        { key: "resolutionStrength", label: "Resolution strength", type: "float", hint: "0 to 0.95; default 0.75" },
+        { key: "resolutionStrength", label: "Resolution strength", type: "float", hint: "0 to 0.95; default 0.80" },
         { key: "resolutionIterations", label: "Resolution iterations", type: "int" },
+        { key: "peakWidth", label: "Minimum peak width (base units)", type: "float", hint: "Rounds narrow peaks; default 0.24" },
+        { key: "noiseRegularization", label: "Noise regularization", type: "float", hint: "Measured local noise multiplier; default 1" },
         { key: "recallLowQuality", label: "Experimental low-quality substitutions", type: "bool" },
       ],
     },

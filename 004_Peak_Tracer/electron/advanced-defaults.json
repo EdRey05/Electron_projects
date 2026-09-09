@@ -1,8 +1,10 @@
 {
   "resolvePeaks": true,
   "recallLowQuality": false,
-  "resolutionStrength": 0.75,
-  "resolutionIterations": 24,
+  "resolutionStrength": 0.80,
+  "resolutionIterations": 40,
+  "peakWidth": 0.24,
+  "noiseRegularization": 1,
   "baselineSmooth": true,
   "leadDropEnabled": false,
   "leadDropQv": 5,

@@ -25,6 +25,9 @@ class GuiParameterTests(unittest.TestCase):
                           ('leadDropEnabled','lead_drop_enabled'),('stripWellId','strip_well_id'),
                           ('setAbiLimits','set_abi_limits'),('smoothWindow','smooth_window')]:
                 self.assertEqual(data['values'][js],getattr(args,py))
+            for js,py in [('resolutionStrength','resolution_strength'),('resolutionIterations','resolution_iterations'),
+                          ('peakWidth','peak_width'),('noiseRegularization','noise_regularization')]:
+                self.assertEqual(data['values'][js],getattr(args,py))
 
     def test_unknown_setting_is_rejected(self):
         root=Path(__file__).resolve().parents[2]

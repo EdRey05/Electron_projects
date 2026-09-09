@@ -1,4 +1,4 @@
-"""Validated command-line configuration for the v1.8 analysis pipeline."""
+"""Validated command-line configuration for the v1.9 analysis pipeline."""
 import argparse
 import math
 from pathlib import Path
@@ -33,8 +33,11 @@ def parse_args(argv=None):
     p.add_argument('--lead-drop-qv', type=int, default=5)
     p.add_argument('--qv-to-n-threshold', type=int, default=2)
     p.add_argument('--smooth-window', type=int, default=7)
-    p.add_argument('--resolution-strength', type=float, default=0.75)
-    p.add_argument('--resolution-iterations', type=int, default=24)
+    p.add_argument('--resolution-model', choices=('v19','v18'), default='v19', help='v18 reproduces the previous resolver for controlled comparisons')
+    p.add_argument('--resolution-strength', type=float, default=None)
+    p.add_argument('--resolution-iterations', type=int, default=None)
+    p.add_argument('--peak-width', type=float, default=0.24, help='Target minimum Gaussian peak sigma in base-spacing units; zero disables final rounding')
+    p.add_argument('--noise-regularization', type=float, default=1., help='Multiplier for the measured local noise floor (v19)')
     p.add_argument('--trim-quality', type=float, default=9)
     p.add_argument('--trim-window', type=int, default=40)
     p.add_argument('--seq-format', choices=('plain','abi'), default='plain')
@@ -46,13 +49,17 @@ def parse_args(argv=None):
     p.add_argument('--extend-stop-quiet', type=int, default=40, help=argparse.SUPPRESS)
     p.add_argument('--sharpen-factor', type=float, default=2.0, help=argparse.SUPPRESS)
     args = p.parse_args(argv)
+    if args.resolution_strength is None:args.resolution_strength=.75 if args.resolution_model=='v18' else .80
+    if args.resolution_iterations is None:args.resolution_iterations=24 if args.resolution_model=='v18' else 40
     for key in ('rebasecall_data14','sharpen_peaks','enhanced_qv','refine_ploc'):
         if getattr(args,key):
-            p.error('--'+key.replace('_','-')+' is retired: use the v1.8 resolution pipeline')
+            p.error('--'+key.replace('_','-')+' is retired: use the current resolution pipeline')
     for key in ('skip_shorter_than','lead_drop_qv','qv_to_n_threshold','p99_target'):
         if getattr(args,key)<0:p.error(key+' must be nonnegative')
     if not 0 <= args.resolution_strength <= 0.95:p.error('resolution-strength must be in [0, 0.95]')
     if not 1 <= args.resolution_iterations <= 80:p.error('resolution-iterations must be in [1, 80]')
+    if not 0<=args.peak_width<=.5:p.error('peak-width must be in [0, 0.5]')
+    if not 0<=args.noise_regularization<=10:p.error('noise-regularization must be in [0, 10]')
     if args.smooth_window<3 or args.smooth_window%2==0:p.error('smooth-window must be odd and at least 3')
     if args.trim_window<1 or not math.isfinite(args.trim_quality) or not 0<=args.trim_quality<=93:p.error('invalid trimming parameters')
     if args.qv_to_n_threshold>93 or args.lead_drop_qv>93:p.error('QV threshold must be at most 93')

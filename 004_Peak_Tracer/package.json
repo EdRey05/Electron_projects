@@ -1,6 +1,6 @@
 {
   "name": "peak-tracer",
-  "version": "1.8.0-dev",
+  "version": "1.9.0-dev",
   "private": true,
   "description": "Sanger trace resolution with preserved raw evidence, conservative calls and reproducible comparison metrics.",
   "main": "electron/main.js",

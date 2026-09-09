@@ -13,6 +13,7 @@ const booleanFlags = {
 };
 const numberFlags = {
   resolutionStrength: '--resolution-strength', resolutionIterations: '--resolution-iterations',
+  peakWidth: '--peak-width', noiseRegularization: '--noise-regularization',
   leadDropQv: '--lead-drop-qv', skipShorterThan: '--skip-shorter-than',
   smoothWindow: '--smooth-window', qvToNThreshold: '--qv-to-n-threshold',
 };

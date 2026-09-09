@@ -1,4 +1,4 @@
-"""CLI for v1.8. Naming is planned without mutating source files."""
+"""CLI for v1.9. Naming is planned without mutating source files."""
 from __future__ import annotations
 import argparse
 import json
