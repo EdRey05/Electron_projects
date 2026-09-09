@@ -1,0 +1,735 @@
+{
+  "commit": "27c5ef4",
+  "files": [
+    {
+      "plate": "sample4",
+      "file": "POS1-G12.ab1",
+      "sha256": "cecbbff71fb9a7c872367afb3df5db453a1a1a0a7842e72900474d3a6e0d693b"
+    },
+    {
+      "plate": "sample4",
+      "file": "POS2-H12.ab1",
+      "sha256": "0cbbdd78d46ceaf19f0761f87f2317d04279292155ed9431c216cc049bbf12e3"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F3._.U0827.ab1",
+      "sha256": "6243490f416c62a9489f9628ce5a65448ebfa2d3ca90a76dd7be7565ed5f5d8b"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F4._.U0827.ab1",
+      "sha256": "632fa47c6cdc4793b44069cdd65394ffac47f3b1ab30c37ad92237792a71226a"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F5._.U0827.ab1",
+      "sha256": "4b3b0e8fcc04fe71afa6d25aeac7b9ee5eb09b3c225b4f1d12f8708402bcf11c"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F6._.U0827.ab1",
+      "sha256": "0e93089455280c1f0bbf7c11506472cf1afad34524f41934f12007784fbef4d8"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F7._.U0827.ab1",
+      "sha256": "53ba58f36fda0bd0497d9b27c94500c965d59d8933f75aa00d4bfd3443fd024f"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A11._.XP2670383._.XP2670383-F8._.U0827.ab1",
+      "sha256": "b32a57109fc5ed834facca3fc1d5c753001ac6ad8a280899a257a1e15eb50458"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F1._.U0827.ab1",
+      "sha256": "3860fab8d7d9358896dccf8ca0c032d3895e5dbb640099d981b75f785912286b"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F2._.U0827.ab1",
+      "sha256": "ff00408dd4c2c9cda5910a32cba45ead8bd9e053e0e8aba4e164d30632d05835"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F3._.U0827.ab1",
+      "sha256": "f0e7c407cdca21f317a46e64c035c48b1d04535208c89335089827514ed1d7fc"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F4._.U0827.ab1",
+      "sha256": "805425f8cd519b7fcf7709393a87580400d0b28c1d5b8aefb7ab5bf5f911a94b"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F5._.U0827.ab1",
+      "sha256": "68b28809becd08a3c2a234172542cc4109039e79e9ae79694a8eb44413cc037c"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F6._.U0827.ab1",
+      "sha256": "2654c68ad53517075ce70a147f6aa91ef150069e2a096bbe5b363aa742753500"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F7._.U0827.ab1",
+      "sha256": "8dde8d8c2e96087193840a203dd82a713cb17b95fb4f3aac2d4910880d3aabac"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A8._.ZV270402._.ZV270402-F8._.U0827.ab1",
+      "sha256": "93d0d6f9230b9433b78ae7a1bd4b2f7f45cfe6a0a357124e2eb2804c9e3dfd91"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VF._.U0827.ab1",
+      "sha256": "70b4c97b1040af5950b2f1af8e002bd035edf505b2202f6f9923b60ac9aef16a"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A9._.ZV170398._.pcDNA3.1+VR._.U0827.ab1",
+      "sha256": "9bebc9e6956aa5caee70f954a8e7bec067f0c9c02b32f5a1d07dcfe43e9c68c0"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1A9._.ZV170398._.ZV170398-F1._.U0827.ab1",
+      "sha256": "a66e59413cf388d9ade4a7f895ad8195c9b0871742b94095859b14800a628c0c"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1B9._.ZV170398._.pcDNA3.1+VF._.U0827.ab1",
+      "sha256": "6a516de65ceb8404e94ca84b7e9e38e2af674a6221dbda99ab66c8b865e37032"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1B9._.ZV170398._.pcDNA3.1+VR._.U0827.ab1",
+      "sha256": "53fee3ab41f521b33c37c46248d697706d40caf6b4a7beed73c849153ca7a292"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1B9._.ZV170398._.ZV170398-F1._.U0827.ab1",
+      "sha256": "7f0672fdd5b175f0f06cce8731468be7411881520e32ecf529819c10bb2d904d"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F3._.U0827.ab1",
+      "sha256": "9ac890e9f684b06ac63c190f61022b50bc66b5d104b557e03018a36c19f63a26"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F4._.U0827.ab1",
+      "sha256": "929d1bb5ba49122e49da404c6e2850a21bbb8013a57109b822294c39d97c3462"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F5._.U0827.ab1",
+      "sha256": "8e553fefc0cb85665d7bfa07a05d9e0c37a2321c2fba6f95b9ffe068cf4d905d"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F6._.U0827.ab1",
+      "sha256": "e5ec7326f72f7fda3c8b8f776331a2fcddd1a945ee97c084cb9999db8859e367"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F7._.U0827.ab1",
+      "sha256": "6bf1e2423dbef2de2215aeb1e5dc3b23aeb3963afb90790569e153db6780738d"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1C11._.XP2670383._.XP2670383-F8._.U0827.ab1",
+      "sha256": "11d1b2c2be0d3293c9f146795831ecb70766b77a4d0de1957f849091b082ec75"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.M13F-108._.U0827.ab1",
+      "sha256": "1ff41c8045f1ba109ee2ec0693fad89aa758a882500a5d86847b331a198fb0ca"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.M13R+104._.U0827.ab1",
+      "sha256": "9bb761ebe63ffb8c5af59c16f895c5762c9660b8536675ceaec188dd58b5e563"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F1._.U0827.ab1",
+      "sha256": "3d82bb73e74c3396624a4bf572c3ff91d3f15b54557e9c1d51eba300a9b7e9da"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F2._.U0827.ab1",
+      "sha256": "d9f68df8f7dfbc6ffdbe7003169e0393f210056cd161a5c712c403c12442ba0c"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F3._.U0827.ab1",
+      "sha256": "465d4468aa71e47b02a0b3b857b25087efef78ccc74fb1bae0c4a5d445e17136"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F4._.U0827.ab1",
+      "sha256": "531fab1b67c7b06ba5bbdfcb0fbba5d85d29865fe3a526100dc5142e767bac23"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1D7._.ZP170400._.ZP170400-F5._.U0827.ab1",
+      "sha256": "ef8b383aa06e8aa305130306f8069982c0666ab1059d181fe6d53af9c8a593c8"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F3._.U0827.ab1",
+      "sha256": "4b983159eac7a561924fe50e5db484dcd402dc283860f2d352d5dbb8bfa17a83"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F4._.U0827.ab1",
+      "sha256": "a9c3b1233bbc1a0ac4b1f089c419be27b7ad0dd70d6c4e4af2858149bbb9952e"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F5._.U0827.ab1",
+      "sha256": "6c60b56888f257de24006b260f31d5d56b92e07d4306d41a49c2d42eb68fb10d"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F6._.U0827.ab1",
+      "sha256": "5dc5d03416ceeb0c704bbe45ddafed44a1c93a04fe287647a557b50ad65cce9e"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F7._.U0827.ab1",
+      "sha256": "1e5bdbf69862701c508c9e5bfe2f807c878beb74a178598ab74ddab498e1277b"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E11._.XP2670383._.XP2670383-F8._.U0827.ab1",
+      "sha256": "fbf93a3a01ba806630ceb25ce2d6b99646359a9aa15165c0a655c2f6e01a80ac"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.M13F-108._.U0827.ab1",
+      "sha256": "faf5fa444a924d4dcabed2c4aa92d6c18011b072ebb383e9343a6d6ab1ffb421"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.M13R+104._.U0827.ab1",
+      "sha256": "a09bda4f32c49961e5c4d1ed09373ec437003ca5ea3810241e7e1b8259f17a0a"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F1._.U0827.ab1",
+      "sha256": "4a5bf8b0f05b284471ef910c196fb17017465f168f094cdce5144f0ce9b40144"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F2._.U0827.ab1",
+      "sha256": "9df241da3831ae7a370ba7fdda6a4db9945895dbe3a18b52d0ad1fce9e1e970a"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F3._.U0827.ab1",
+      "sha256": "76bce12b8cc63881b63e060976081a59f960d77bc0f0d8c1665c2a48b1f6a23d"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F4._.U0827.ab1",
+      "sha256": "e096d287c55e399cdc1bc5be433d0637260062ba496447452e15833f0ec09735"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E7._.ZP170400._.ZP170400-F5._.U0827.ab1",
+      "sha256": "65a75b002a3d03811401dae20b72b5ba80e0d6af97f8f921008a39d3f08158e0"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E9._.ZF1680437._.M13F-108._.U0827.ab1",
+      "sha256": "7eb6e14a1b0b6d0caa1636810de861c747985a014d07a7987da395d7fb2fc9e1"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1E9._.ZF1680437._.M13R+104._.U0827.ab1",
+      "sha256": "da28267feee9ba7782d6e5212ea9d242e74ab07a3e67523360c011d01f448d7a"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1F9._.ZF1680437._.M13F-108._.U0827.ab1",
+      "sha256": "77f2a9dc86b781804fe37e420912e63ac172b473a044a24093a9fa8429e328bb"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1F9._.ZF1680437._.M13R+104._.U0827.ab1",
+      "sha256": "5b1e0fbc780d29924fa9796b1a2ee2a912d54126d1e0a8e61048e972f1156f92"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G8._.XP1660365._.M13F-108._.U0827.ab1",
+      "sha256": "e09e414e6af026afc61ba1bd178a04e20bdaf1f57b7aaa6cf5a5f04ea8e18bd5"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G8._.XP1660365._.M13R+104._.U0827.ab1",
+      "sha256": "50f9b2795f1565fd6e20035f061e356ce3bcc557f50b0a051276ec33526dd309"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G8._.XP1660365._.XP1660364-F1._.U0827.ab1",
+      "sha256": "3bfbfdc768d6726f560cf33db3a29adfe487ce78be370ad63d2104e7e636f003"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G8._.XP1660365._.XP1660364-F2._.U0827.ab1",
+      "sha256": "7e75c01fdfa4f8f8908574d8ca43d9f977a635fafbce1d3bac27117cacd9a220"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G8._.XP1660365._.XP1660365-F3._.U0827.ab1",
+      "sha256": "a4500a21091dfb3d05785cb20655416ad5fc700ce853d65f3e4b862c3b64fc37"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G9._.ZF1680438._.M13F-108._.U0827.ab1",
+      "sha256": "6fe9c2a9658ef6c46174131294a4c8c792d6dd6374b064112507ffef34fcec70"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1G9._.ZF1680438._.M13R+104._.U0827.ab1",
+      "sha256": "0873552d8244a96c6935852b78d5a4f72e9f91d9809dab95d9697d33ba8959da"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F1._.U0827.ab1",
+      "sha256": "d6efe323183d1c82571aca75b4d1319b2b91d1243b33519298eb8fe9098efb37"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F2._.U0827.ab1",
+      "sha256": "2dd9b001fe145b4b2a2581b254afe50ea46bd59add76c68503b5332b6c13e66b"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F3._.U0827.ab1",
+      "sha256": "68d3d311a820ac00ed6f0c0520802eb4c3675c18dc2107e6c7cdd1b1840702d5"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F4._.U0827.ab1",
+      "sha256": "0bc5698d4e6ff50399b0cf003e8e88124cc41e4ea1bde1b5a959609bcc3a6280"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F5._.U0827.ab1",
+      "sha256": "cccb6731b8dfcb443fb10925dc72f9faeb6e6d579dc8d33170d25a1b851d7baa"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F6._.U0827.ab1",
+      "sha256": "e4cf05ad3c4d3e98dde4ce17f1c455c9ec08be619e83165f3bc7e14bc837f8a6"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F7._.U0827.ab1",
+      "sha256": "2dba2543c53653b00b06f685f831a2aa7036d37e01cd745bed051d8620735d67"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H7._.ZV270402._.ZV270402-F8._.U0827.ab1",
+      "sha256": "8891b2e9be536b2eae8faa4b616340124f4d114cf865a6042aab99e161c16dde"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H8._.XP1660365._.M13F-108._.U0827.ab1",
+      "sha256": "ea079013ff241b7ddfdb4f61c2ab99a9d483b75b042238aaa2f178554248d47f"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H8._.XP1660365._.M13R+104._.U0827.ab1",
+      "sha256": "69c2a50a9f166086e14e7950a4535832f30b497c0c3dee809f317c5abd0462b2"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H8._.XP1660365._.XP1660364-F1._.U0827.ab1",
+      "sha256": "dad36e8c59203a3f28e961e05e8be73e7661ccd628f23fa74e1d3101b8ac4945"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H8._.XP1660365._.XP1660364-F2._.U0827.ab1",
+      "sha256": "39355aa8bcad0758b5eeab7f3ed429b9c603ebd98b93e8685d3788561f8f735d"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H8._.XP1660365._.XP1660365-F3._.U0827.ab1",
+      "sha256": "c22a592af5d9bb4a74af4d398f7463b5f9ecde20354fbebc5ff41eb1a21fa8eb"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H9._.ZF1680438._.M13F-108._.U0827.ab1",
+      "sha256": "70f742666d3cc3bd80e0a2c24552f14d29ab0ff58e3172764d8de5c727adc111"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827P1H9._.ZF1680438._.M13R+104._.U0827.ab1",
+      "sha256": "ce04f8ded23557455493fc36cbee51fd96f6d7f90fa43b2fa381b25eb4c63790"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827PFr1A1._.ZV2650311Frag._.pMON452113-VF._.U0827.ab1",
+      "sha256": "854b5886d59ed8325456912079a9f3f5f4dd2d095a435fce1029528d75948e3c"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827PFr1A1._.ZV2650311Frag._.ZV2650310-F1._.U0827.ab1",
+      "sha256": "5aa3290bbe99165af47204a3f60bd6d10d42aa09f003d8a3ed371adff36f1ff5"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827PFr1A1._.ZV2650311Frag._.ZV2650310-F2._.U0827.ab1",
+      "sha256": "51e270cf602e684ddbb8117eea52656d068a621aafffa57bdcee323b6275730e"
+    },
+    {
+      "plate": "sample4",
+      "file": "U0827PFr1A1._.ZV2650311Frag._.ZV2650310-R1._.U0827.ab1",
+      "sha256": "924a67ba9543762f6881593b8aa765ab8cfcbdafea5486cf799897acc92bcf04"
+    },
+    {
+      "plate": "sample5",
+      "file": "POS1.ab1",
+      "sha256": "12e1cf544be594b3696b14026d2dd9caf580b39f5180b1ea13f844f365c53fe0"
+    },
+    {
+      "plate": "sample5",
+      "file": "POS2.ab1",
+      "sha256": "39f0bd0c56d6c27ca8843b747d5196d265a23f7f0ee12e2e57eb082a647f3c3c"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0827P1B8._.XV1680417._.pGEX-4T-2-VR._.U0831-2.ab1",
+      "sha256": "a06ce382955a1607e5637ef0ef1e704a14eb76dc9c1dc170465d9553e0cb4f82"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0827P1C8._.XV1680417._.pGEX-4T-2-VR._.U0831-2.ab1",
+      "sha256": "6d9587d2b29eb7441e4ef23c53f7131b0a54f0d08db950f7953f5faaa4aac5e0"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0827P1D8._.XV1680417._.pGEX-4T-2-VR._.U0831-2.ab1",
+      "sha256": "3de6e82b3d7cff062f52a981c2efce230f0c880cf094f21fc781e488e96059cd"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A10._.ZF1680435._.M13F-108._.U0831-2.ab1",
+      "sha256": "3a95025a473f2707b9b0d7ccec53108fb9e5af159f90800cad0c5298f77b62a6"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A10._.ZF1680435._.M13R+104._.U0831-2.ab1",
+      "sha256": "c9dd7138f026cf10e2d4a5c9134cd85ef03efa73a22371a5232c8d8261eb939e"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A10._.ZF1680435._.ZP2680439-F1._.U0831-2.ab1",
+      "sha256": "b9cd38d5336a29d81cd2f01e9fa0b13d4aed441b76c2348037d94b516b77cbd2"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A11._.ZF1680443._.M13F-108._.U0831-2.ab1",
+      "sha256": "3b0f95128223046bcb5bfec5d25389b4c720612b5f1aece752b010484e6f524b"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A11._.ZF1680443._.M13R+104._.U0831-2.ab1",
+      "sha256": "c3e2328190f7b61189aae939134b9bbecb9ffa9ee9a680e5467b9588ded93ca2"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A11._.ZF1680443._.ZP2680447-F1._.U0831-2.ab1",
+      "sha256": "b991b8c21182cca727dce870117b7deb4618d56bea22f8f49ec65f66cf890153"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A11._.ZF1680443._.ZP2680447-F2._.U0831-2.ab1",
+      "sha256": "6000884d3580270451bfbce362139d5d613e42049d5fadccabff945c7b5309a5"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A11._.ZF1680443._.ZP2680447-F3._.U0831-2.ab1",
+      "sha256": "ccb6548436b79b62e247b53a69b42ad459b45c3d9c98226e29ba1ee3821ea76d"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A12._.ZF1680445._.M13F-108._.U0831-2.ab1",
+      "sha256": "57f2c0623a329919ee165c01b98721113bb6a97bb3ccbfa436dd12fdfc033225"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A12._.ZF1680445._.M13R+104._.U0831-2.ab1",
+      "sha256": "65f3a21c10f30fdac8a277740ab1dfe328a5080667021cd3c02ef2a7a86878a3"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A12._.ZF1680445._.ZP2680449-F1._.U0831-2.ab1",
+      "sha256": "2ec6d47d44c8221459c4e29154a43a4228b68ab60e01410f45b7a71d00f53c32"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A12._.ZF1680445._.ZP2680449-F2._.U0831-2.ab1",
+      "sha256": "b1ec4e6d876e9ea74a599c83ee773259e725fc143414e005a2ac68babc631a40"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1A12._.ZF1680445._.ZP2680449-F3._.U0831-2.ab1",
+      "sha256": "fd92bfeb53e3a1098e03ac982c005230b62ec4c146e76a384a259b4f2bdbca45"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B10._.ZF1680435._.M13F-108._.U0831-2.ab1",
+      "sha256": "8df0a9ac487d1315b4f5bb8bf519f72d129673ac41bf0aa59ae86607fc051c7f"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B10._.ZF1680435._.M13R+104._.U0831-2.ab1",
+      "sha256": "36752d9c1d71633726cb0878f4f842442f19347df2d064c7896bb7da71abef75"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B10._.ZF1680435._.ZP2680439-F1._.U0831-2.ab1",
+      "sha256": "dce61b37943ad9633ad767aab9a742f13f016ba7ca8df38423824852b4c4695f"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B11._.ZF1680443._.M13F-108._.U0831-2.ab1",
+      "sha256": "204327b05454ddaa5d724ec0f47786f4e1c2eeb0cc1ecfcdbb7a2cbcff904ac4"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B11._.ZF1680443._.M13R+104._.U0831-2.ab1",
+      "sha256": "ae85bcafa9b217d462dd73468baa4ae26a1cb313b0a9a1940e2bde73f4d0e75f"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B11._.ZF1680443._.ZP2680447-F1._.U0831-2.ab1",
+      "sha256": "fdc72e105536259db3b5901aa56340632dae402d5f956f6ee347a4af8a52358d"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B11._.ZF1680443._.ZP2680447-F2._.U0831-2.ab1",
+      "sha256": "d7e222b85f8518270c819e565b7105df2a428dbee6a8115b257d93338dd035bd"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B11._.ZF1680443._.ZP2680447-F3._.U0831-2.ab1",
+      "sha256": "f17e41dd7a99a22a238648092f6813d433570e613918ba09d5b48473f433725a"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B12._.ZF1680445._.M13F-108._.U0831-2.ab1",
+      "sha256": "408f317e0f500c0b15836688ce37cad1d8035194f1e5350b54f8c289e6cd34ab"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B12._.ZF1680445._.M13R+104._.U0831-2.ab1",
+      "sha256": "8ab4960fd8e155dd9f6be5bdb96ee2ebc7842bf9c5130b47b5085db78e952b70"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B12._.ZF1680445._.ZP2680449-F1._.U0831-2.ab1",
+      "sha256": "edb3109519c7db719d49b6a832c92c9271bcfaadab829172d62a1d686af9669a"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B12._.ZF1680445._.ZP2680449-F2._.U0831-2.ab1",
+      "sha256": "bb586398cffc7775cf44f4c3099c4dcfa16b9b67964e71094c7225ff125780f5"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1B12._.ZF1680445._.ZP2680449-F3._.U0831-2.ab1",
+      "sha256": "a51302d2d322ac712154fad4133e29ea1b1a6865b4acd9d800ba2c9e3d828792"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1C10._.ZF1680435._.M13F-108._.U0831-2.ab1",
+      "sha256": "ac4bd898d0b161c6d16dfa260f283e886c7a85767df621b5b387ccb3f45cfd40"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1C10._.ZF1680435._.M13R+104._.U0831-2.ab1",
+      "sha256": "fa22895255f2deea5699689a0f35f77820dee208cae1fc1831cb556020e41d7d"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1C10._.ZF1680435._.ZP2680439-F1._.U0831-2.ab1",
+      "sha256": "68e96ad749d8e5da6a1963fa95d615987e4145d5bafa78da52209c447d9f344c"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E10._.ZF1680436._.M13F-108._.U0831-2.ab1",
+      "sha256": "b86cfb54a6e2bc62a4cddc035b974de5bca4cf8311b970ce3499e27c44cec499"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E10._.ZF1680436._.M13R+104._.U0831-2.ab1",
+      "sha256": "08e15412291835d7e210e378496ac88e2ed6d13e505fa815aaf9c7ee7c8a2dd9"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E10._.ZF1680436._.ZP2680440-F1._.U0831-2.ab1",
+      "sha256": "9ece91831c0fdcb41c35a90b3fa6a79c6f10e985bb54e54e21d1a83097e6a2c1"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E11._.ZF1680444._.M13F-108._.U0831-2.ab1",
+      "sha256": "72cad14dd7247a23ff1bd69ea4595df5bf2d32706d505f071bd1b4c018aae489"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E11._.ZF1680444._.M13R+104._.U0831-2.ab1",
+      "sha256": "ab8d3c221ea3de8a242965a6dbc729b978d44bd67d5b842b8e4bbca5cf4948e6"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E11._.ZF1680444._.ZP2680448-F1._.U0831-2.ab1",
+      "sha256": "5db134a139c9919dd4d641ea7b93b2949e6f944215692fa2bc20ae90d9233fe7"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E11._.ZF1680444._.ZP2680448-F2._.U0831-2.ab1",
+      "sha256": "d37d6b8e2c6d5e5133b2b6e6233ec497ddee3f129ffcb50ab7ed1130977c921f"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E11._.ZF1680444._.ZP2680448-F3._.U0831-2.ab1",
+      "sha256": "2ed6823f0c27e3dcc01c7c0c0780fee1529109f62e7143a4db51b7675270a10c"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E12._.ZF1680446._.M13F-108._.U0831-2.ab1",
+      "sha256": "c367a44a0d09ea18b4f54ecffc70e5e3c0783a2f4cabd04b427fc9daad67e95d"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E12._.ZF1680446._.M13R+104._.U0831-2.ab1",
+      "sha256": "b7a26b4f2cfed32c7a3d602d2e73afa58caee31098f66954649589f3f2560e80"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E12._.ZF1680446._.ZP2680450-F1._.U0831-2.ab1",
+      "sha256": "a135af6fb3fd1ff4a96b9ac11f4bed15f5bca1d37708b5deb59e68611c46e8a5"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1E12._.ZF1680446._.ZP2680450-F2._.U0831-2.ab1",
+      "sha256": "50ad0334a193c5381c9dab1583cf4a01fd1f53c96906ed8d94901bb7e5295be5"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F10._.ZF1680436._.M13F-108._.U0831-2.ab1",
+      "sha256": "48cb1067b306adc57d34d18e9a8c5972df3e4f13e54f82c83dc91b25f2bda9e5"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F10._.ZF1680436._.M13R+104._.U0831-2.ab1",
+      "sha256": "c27ce5a15c389105b7a8fb6961396e8426c229b5d293c0b7543cd9af3f12a58e"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F10._.ZF1680436._.ZP2680440-F1._.U0831-2.ab1",
+      "sha256": "c09acd0950b4a13e04d8f7e6646513c157c04c353ea1c9d2077040ca79205893"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F11._.ZF1680444._.M13F-108._.U0831-2.ab1",
+      "sha256": "469d716da69363f96c17368a6447985353244cbff68420a836f0bdd8ce2cae08"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F11._.ZF1680444._.M13R+104._.U0831-2.ab1",
+      "sha256": "26abe153d03780d8e159540341dbba45ce6f439db482591bcb2e4b28f6fe80be"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F11._.ZF1680444._.ZP2680448-F1._.U0831-2.ab1",
+      "sha256": "0cb0b67a23d44570f91c6c621732906a47d0ed39a39551d840aa8f33d49983cf"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F11._.ZF1680444._.ZP2680448-F2._.U0831-2.ab1",
+      "sha256": "96c7853ad564f185b5739a08927af794f312704a09d713f577c6ec047e9e7e5e"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F11._.ZF1680444._.ZP2680448-F3._.U0831-2.ab1",
+      "sha256": "0587e8cc8d61d02ec7dd4b44cacef0425c89d9ac33a4b241b84ff2f31ffe86a7"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F12._.ZF1680446._.M13F-108._.U0831-2.ab1",
+      "sha256": "0f60c30fc9d1bfc477a5f4eaaf7070760cf36b7f98642ac08f84345f68c56965"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F12._.ZF1680446._.M13R+104._.U0831-2.ab1",
+      "sha256": "fb41aec6b3ce905bb7b8e27c4e68d0afa6dcc24842dfdf539ca5b18e83ae07fd"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F12._.ZF1680446._.ZP2680450-F1._.U0831-2.ab1",
+      "sha256": "b22ee156480c3c1442595f3b856ac8632e28dff5faa23d31177249f87e6ef266"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1F12._.ZF1680446._.ZP2680450-F2._.U0831-2.ab1",
+      "sha256": "168fcd0824282b45d4d162cfa206d011f1a929c5560a9f3115e27a719474f7ce"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1G9._.XP1660364._.M13F-108._.U0831-2.ab1",
+      "sha256": "1926b5ae560e904cf0ef9b699db887bbb1035f8287ce2ffa0211112ccc14f45e"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1G9._.XP1660364._.M13R+104._.U0831-2.ab1",
+      "sha256": "d99eeb0b7809a0dc2a7318d765d1e4a5ee3920268b393a91ccf36e6bda2978ac"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1G9._.XP1660364._.XP1660364-F1._.U0831-2.ab1",
+      "sha256": "92a8a60d28d308570d240af211eb9c97411f7153a3c471a92f6906862a25bf1b"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1G9._.XP1660364._.XP1660364-F2._.U0831-2.ab1",
+      "sha256": "e993488eed67fc0a0d4fa69605ea120e62a5656dd2fc218da1064f9f46d4d74c"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1G9._.XP1660364._.XP1660364-F3._.U0831-2.ab1",
+      "sha256": "e9819247f535f5dfa4fba288113fb27f5587c18111251ee06ee3429afba304a6"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1H9._.XP1660364._.M13F-108._.U0831-2.ab1",
+      "sha256": "b4cadea4df3719350e4c7cfc378857236dd8e236702934d3add3c8873fd18bb2"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1H9._.XP1660364._.M13R+104._.U0831-2.ab1",
+      "sha256": "3ab99f92679c7f79873e408b7732cf338eaa5e494fdbb22ccf24fdb623128504"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1H9._.XP1660364._.XP1660364-F1._.U0831-2.ab1",
+      "sha256": "d37a1da410d47436bec1248cd15343afedce14556523bb4003e4708dbec85052"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1H9._.XP1660364._.XP1660364-F2._.U0831-2.ab1",
+      "sha256": "7b5094b2dbc77cb2678ff677508f8d3fdc5817788dc21b30673e13e2cfe6fcf1"
+    },
+    {
+      "plate": "sample5",
+      "file": "U0828P1H9._.XP1660364._.XP1660364-F3._.U0831-2.ab1",
+      "sha256": "957ebd67c7477d70cb36610df696e51d5105284aaad3edffb01f48d65178bc55"
+    }
+  ]
+}
