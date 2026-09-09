@@ -1,12 +1,4 @@
-"""Unit tests for v1.7 rebasecall default flip.
-
-Before v1.7: --rebasecall-data14 defaulted to False. CLI users had to
-remember to pass the flag, otherwise rebasecall was silently skipped
-and ~9% of bases weren't recovered (verified on sample4).
-
-v1.7: default ON (matches UI behavior, which has always added the
-flag explicitly). New --no-rebasecall-data14 negation flag.
-"""
+"""The unsafe v1.7 raw-gap insertion path is disabled and cannot be enabled."""
 from __future__ import annotations
 
 import sys
@@ -22,17 +14,16 @@ from peaktrace.cli import parse_args
 
 
 class RebasecallDefaultTests(unittest.TestCase):
-    def test_default_on(self):
-        """Plain `peaktrace_core.py --input-dir X --output-dir Y` must
-        have args.rebasecall_data14 == True. This is the v1.7 fix."""
+    def test_default_off(self):
+        """The default must use the measured resolution pipeline."""
         args = parse_args(["--input-dir", "x", "--output-dir", "y"])
-        self.assertTrue(args.rebasecall_data14,
-                        "rebasecall must default ON in v1.7")
+        self.assertFalse(args.rebasecall_data14,
+                         "The disproven v1.7 gap insertion path must not run")
 
     def test_explicit_enable(self):
-        args = parse_args(["--input-dir", "x", "--output-dir", "y",
-                           "--rebasecall-data14"])
-        self.assertTrue(args.rebasecall_data14)
+        with self.assertRaises(SystemExit):
+            parse_args(["--input-dir", "x", "--output-dir", "y",
+                        "--rebasecall-data14"])
 
     def test_explicit_disable(self):
         args = parse_args(["--input-dir", "x", "--output-dir", "y",
@@ -40,16 +31,15 @@ class RebasecallDefaultTests(unittest.TestCase):
         self.assertFalse(args.rebasecall_data14)
 
     def test_negation_overrides_default(self):
-        """--no-rebasecall-data14 must win over the default-True."""
-        args = parse_args(["--input-dir", "x", "--output-dir", "y",
-                           "--rebasecall-data14",
-                           "--no-rebasecall-data14"])
-        self.assertFalse(args.rebasecall_data14)
+        """Conflicting switches must fail explicitly."""
+        with self.assertRaises(SystemExit):
+            parse_args(["--input-dir", "x", "--output-dir", "y",
+                        "--rebasecall-data14", "--no-rebasecall-data14"])
 
     def test_no_flag_means_default(self):
-        """No rebasecall flag in argv means default-True."""
+        """No flag must leave the retired path disabled."""
         args = parse_args(["--input-dir", "x", "--output-dir", "y"])
-        self.assertTrue(args.rebasecall_data14)
+        self.assertFalse(args.rebasecall_data14)
 
 
 if __name__ == "__main__":

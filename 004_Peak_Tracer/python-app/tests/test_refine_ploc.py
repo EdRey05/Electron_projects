@@ -107,8 +107,8 @@ class RefinePlocCliFlagTests(unittest.TestCase):
         self.assertFalse(args.refine_ploc)
 
     def test_explicit_enable(self):
-        args = self._parse("--refine-ploc")
-        self.assertTrue(args.refine_ploc)
+        with self.assertRaises(SystemExit):
+            self._parse("--refine-ploc")
 
 
 class RefinePlocModuleFlagTests(unittest.TestCase):

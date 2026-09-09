@@ -40,10 +40,10 @@ class LeaderDropArgparseTests(unittest.TestCase):
         return parse_args(["--input-dir", str(HERE / "in"), "--output-dir",
                            str(HERE / "out"), *extra])
 
-    def test_default_is_enabled(self):
-        """Default should have leader drop enabled (matches PT)."""
+    def test_default_preserves_leader(self):
+        """Low Q alone is not evidence that a first base should be deleted."""
         args = self._parse()
-        self.assertTrue(args.lead_drop_enabled)
+        self.assertFalse(args.lead_drop_enabled)
 
     def test_explicit_disable(self):
         """The bug: --no-lead-drop was store_true on the same dest as

@@ -141,8 +141,8 @@ class EnhancedQvCliFlagTests(unittest.TestCase):
         self.assertFalse(args.enhanced_qv)
 
     def test_explicit_enable(self):
-        args = self._parse("--enhanced-qv")
-        self.assertTrue(args.enhanced_qv)
+        with self.assertRaises(SystemExit):
+            self._parse("--enhanced-qv")
 
 
 class EnhancedQvModuleFlagTests(unittest.TestCase):

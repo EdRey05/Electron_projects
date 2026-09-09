@@ -1,24 +1,24 @@
 """Peak detection + basecaller + 3'-end trim.
 
-Stage 1: drop_leading_artifact — drops the first base if its PLOC amplitude
-          is anomalously high (> 3× the median amplitude of the first 50
+Stage 1: drop_leading_artifact â€” drops the first base if its PLOC amplitude
+          is anomalously high (> 3Ã— the median amplitude of the first 50
           non-leading peaks). Verified Aug 24: 32.8% of samples trigger this.
 
-Stage 2: detect_peaks — find local maxima in each of the 4 channels.
+Stage 2: detect_peaks â€” find local maxima in each of the 4 channels.
 
-Stage 3: basecall — at each peak position, find the channel with the
+Stage 3: basecall â€” at each peak position, find the channel with the
           maximum amplitude and emit that base (or N if max amp < noise).
           Mixed-base detection disabled by default (mixedPeakThreshold = 0).
 
-Stage 4: calibrate_qvs — assign a quality value to each base based on the
+Stage 4: calibrate_qvs â€” assign a quality value to each base based on the
           SNR at its peak position. Q20 = "good".
 
-Stage 5: trim_3_end — scan from the right, find the first window of size W
+Stage 5: trim_3_end â€” scan from the right, find the first window of size W
           where the average QV is < threshold, and trim there.
           Verified: uses rolling mean of QV over W=40 bases, trims when
           rolling mean drops below 9.
 
-Stage 6: extend_late_read_interpolated — declared late-read extension via
+Stage 6: extend_late_read_interpolated â€” declared late-read extension via
           trace interpolation. v1.7 NOTE (B2): this function is dead code
           (no caller) and does not actually interpolate despite its name.
           Live late-read extension is rebasecall_data14 in stage 3 of
@@ -34,10 +34,9 @@ Stage 7 (v1.5 FIX #17): clean_baseline + smooth_channels on DATA1-4 before
 """
 from __future__ import annotations
 import numpy as np
-from .read import Trace, CHANNELS, CHANNEL_OF_BASE
+from .read import Trace, CHANNELS
 from .smooth import clean_baseline, smooth_channels, sharpen_channels
 
-BASE_OF_CHANNEL = {9: "A", 10: "C", 11: "G", 12: "T"}
 
 # v1.5 FIX #17: tunable parameters for the DATA1-4 pre-processing stage.
 # Module-level so both peak.py and cli.py can read them, and so tests
@@ -122,10 +121,10 @@ def basecall(trace: Trace,
 
     For each peak (scan position), find the channel with the highest amplitude
     and emit that base. The base passes the noise check if its peak amplitude
-    is `peak_min_factor` × the local noise floor.
+    is `peak_min_factor` Ã— the local noise floor.
 
     Noise floor estimation: per-channel, the median of all non-peak amplitudes
-    is a robust estimate of the noise. Anything > peak_min_factor × that
+    is a robust estimate of the noise. Anything > peak_min_factor Ã— that
     counts as a real peak.
 
     `mixed_threshold_pct` (0..200): if a secondary peak is >= this % of primary,
@@ -156,7 +155,7 @@ def basecall(trace: Trace,
                 continue
             amp = int(trace.channels[ch][p])
             if amp < channel_noise[ch] * peak_min_factor:
-                continue  # too quiet — not a real peak
+                continue  # too quiet â€” not a real peak
             all_peaks.append((int(p), ch, amp))
     all_peaks.sort()  # by scan position
 
@@ -181,14 +180,14 @@ def basecall(trace: Trace,
         if primary_amp < floor * peak_min_factor:
             continue
 
-        base_char = BASE_OF_CHANNEL[primary_ch]
+        base_char = {v:k for k,v in trace.channel_of_base.items()}[primary_ch]
 
         # Mixed-base check (disabled if mixed_threshold_pct == 0)
         if mixed_threshold_pct > 0 and len(sorted_amps) > 1:
             secondary_ch, secondary_amp = sorted_amps[1]
             if secondary_amp >= (mixed_threshold_pct / 100.0) * primary_amp:
                 # Emit IUPAC mixed base
-                base_char = _iupac(BASE_OF_CHANNEL[primary_ch], BASE_OF_CHANNEL[secondary_ch])
+                base_char = _iupac({v:k for k,v in trace.channel_of_base.items()}[primary_ch], {v:k for k,v in trace.channel_of_base.items()}[secondary_ch])
 
         bases.append(ord(base_char))
         plocs.append(pos)
@@ -403,11 +402,11 @@ def extend_late_read_interpolated(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall using DATA1-4 (processed, pre-truncation) instead of DATA9-12.
 
-    v1.7 NOTE (B2): this function is currently DEAD CODE — no caller exists
+    v1.7 NOTE (B2): this function is currently DEAD CODE â€” no caller exists
     in cli.py or anywhere else in the live path. The actual late-read
     extension is done by rebasecall_data14 (cli.py:316). The function also
     fails to live up to its name: it declares interpolation_factor=1.25
-    but never resamples — the docstring above (Stage 6) is wrong.
+    but never resamples â€” the docstring above (Stage 6) is wrong.
 
     v1.7 Phase 3.5 decision is wire-or-delete. Without sample4 available
     in this session, the function is left intact with this note so future
@@ -481,8 +480,8 @@ def extend_late_read_interpolated(
     ext_qvs = []
     quiet_count = 0
 
-    # Map channel IDs: DATA1→A, DATA2→C, DATA3→G, DATA4→T
-    BASE_OF_FULL_CHANNEL = {1: "A", 2: "C", 3: "G", 4: "T"}
+    # Map channel IDs: DATA1â†’A, DATA2â†’C, DATA3â†’G, DATA4â†’T
+    BASE_OF_FULL_CHANNEL = {i+1:b for i,b in enumerate(trace.base_order)}
 
     for pos in sorted(merged.keys()):
         if pos < last_seq7_pos + 5:
@@ -539,11 +538,11 @@ def apply_qv_to_n_downgrade(pb: np.ndarray,
                             threshold: int = 5) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """v1.5 FIX #19: walk all basecalls and downgrade QV <= threshold to 'N'.
 
-    Per image_0010 cursor-tooltip observations and the §02 §4 root-cause
+    Per image_0010 cursor-tooltip observations and the Â§02 Â§4 root-cause
     analysis: v1.4 inherits Seq7's no-N policy. The only place QV-to-N
     downgrade fires today is for newly-added gap-fill bases (peak.py:591),
     not for inherited Seq7 calls. This leaves the noisy tail padded with
-    QV = 1, 2, 3 basecalls instead of N's — which masks the low-quality
+    QV = 1, 2, 3 basecalls instead of N's â€” which masks the low-quality
     region and corrupts downstream QV-based filters.
 
     Per cursor-tooltip data: PT's last called base in the late-read has QV
@@ -561,7 +560,7 @@ def apply_qv_to_n_downgrade(pb: np.ndarray,
         threshold: QV <= threshold gets downgraded to N. Default 5 (PT parity).
 
     Returns:
-        (pb_new, ploc, qv_new) — pb modified in place to have N at low-QV positions,
+        (pb_new, ploc, qv_new) â€” pb modified in place to have N at low-QV positions,
         ploc unchanged, qv unchanged (we keep the QV values for diagnostic).
     """
     if len(pb) != len(ploc) or len(pb) != len(qv):
@@ -589,7 +588,7 @@ def apply_qv_to_n_downgrade_zone_aware(
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """v1.7 Phase 3.2: zone-aware QV-to-N downgrade (off by default).
 
-    Split the read into three zones by PLOC position (not by base index —
+    Split the read into three zones by PLOC position (not by base index â€”
     PLOC is the scan coordinate so zone boundaries map to physical scan
     regions, which is what PT does):
 
@@ -597,7 +596,7 @@ def apply_qv_to_n_downgrade_zone_aware(
       middle: between head_frac and 1-tail_frac
       tail:   last `tail_frac` of the PLOC range
 
-    Different thresholds per zone. Defaults: head=5, middle=5, tail=2 —
+    Different thresholds per zone. Defaults: head=5, middle=5, tail=2 â€”
     more aggressive in the tail because the QV scale there differs from
     PT's (PT downgrades low-quality tail positions to N; v1.5's single
     global threshold misses them because QV=4 in our scale is still "real"
@@ -651,7 +650,7 @@ ENHANCED_QV_ENABLED = False
 def refine_ploc_to_local_max(ploc_in: np.ndarray, channel: np.ndarray,
                             window: int = 2) -> np.ndarray:
     """v1.7 Phase 3.3: snap PLOC positions to the nearest local maximum
-    in the given channel within ±window scans.
+    in the given channel within Â±window scans.
 
     Off by default. Wired in via cli.py: --refine-ploc. When off, this
     function is never called from the live path. Off-by-default means
@@ -660,7 +659,7 @@ def refine_ploc_to_local_max(ploc_in: np.ndarray, channel: np.ndarray,
     Rationale: Agent 2's PLOC refinement. Detected peak positions can
     drift off the actual local maximum by a couple of scans because
     find_peaks returns the integer sample closest to the peak. Snapping
-    to the local max within ±2 aligns PLOC with the chromatogram
+    to the local max within Â±2 aligns PLOC with the chromatogram
     geometry SnapGene / Geneious displays.
     """
     if window <= 0:
@@ -729,8 +728,8 @@ def rebasecall_data14(trace: Trace,
         return pb, ploc, qv
 
     # Channel noise from DATA1-4
-    # Use robust estimator: median absolute deviation (MAD) × 1.4826 ≈ std dev
-    # of normal distribution. This is what PT likely uses — robust to peak contamination.
+    # Use robust estimator: median absolute deviation (MAD) Ã— 1.4826 â‰ˆ std dev
+    # of normal distribution. This is what PT likely uses â€” robust to peak contamination.
     noise = {}
     for ch, arr in full.items():
         a = arr.astype(np.float64)
@@ -738,7 +737,7 @@ def rebasecall_data14(trace: Trace,
         mad = float(np.median(np.abs(a - med)))
         sigma = mad * 1.4826
         noise[ch] = max(1.0, sigma)
-    BASE_OF_FULL = {1: "A", 2: "C", 3: "G", 4: "T"}
+    BASE_OF_FULL = {i+1:b for i,b in enumerate(trace.base_order)}
 
     # Merge peaks from all channels: position -> {ch: amp}
     merged = {}
@@ -799,19 +798,19 @@ def rebasecall_data14(trace: Trace,
     cand_qv = np.array(cand_qv, dtype=np.uint8)[valid]
 
     # Merge with Seq7 calls
-    # Only add new bases where Seq7 has a GAP (dropped peak) — i.e., where the
+    # Only add new bases where Seq7 has a GAP (dropped peak) â€” i.e., where the
     # distance flanking Seq7 calls exceeds 1.5x median Seq7 spacing. Within
     # normal-density regions, trust Seq7 and add nothing.
     seq7_pos = ploc.astype(np.int32)
     spacings = np.diff(seq7_pos)
     med_spacing = float(np.median(spacings)) if len(spacings) else 12.0
     gap_centers = []  # (gap_start, g_end) in DATA9-12 coords
-    # NOTE: no leading gap — inserting bases before the first Seq7 call risks
+    # NOTE: no leading gap â€” inserting bases before the first Seq7 call risks
     # primer-injection artifacts and breaks prefix integrity. Skip it.
     for i in range(len(seq7_pos) - 1):
         if spacings[i] > med_spacing * 1.5:
             gap_centers.append((int(seq7_pos[i]), int(seq7_pos[i + 1])))
-    # Trailing gap (after last Seq7 base — the classic extension region).
+    # Trailing gap (after last Seq7 base â€” the classic extension region).
     # FIX #9: extend the trailing gap to include positions beyond trace.n_scans
     # so rebasecall candidates from DATA1-4 can land there. Old code used
     # `trace.n_scans` as g_end which capped extension at Seq7's truncation point.
@@ -907,7 +906,7 @@ def rebasecall_data14(trace: Trace,
     final_qv = all_qv[order].astype(np.uint8)
 
     # v1.7 Phase 3.3: optional PLOC refinement. Off by default. When on,
-    # snap each PLOC to the local maximum within ±2 scans on the
+    # snap each PLOC to the local maximum within Â±2 scans on the
     # processed DATA1-4 channel matching the called base. This realigns
     # PLOC with the chromatogram geometry that SnapGene / Geneious draw.
     # Done AFTER the merge so the new_pos positions (already in DATA9-12
@@ -918,7 +917,7 @@ def rebasecall_data14(trace: Trace,
             int(map_to_data14(int(p), map_params)) for p in final_ploc
         ], dtype=np.int32)
         # Pick the channel matching each called base
-        BASE_OF_FULL = {1: "A", 2: "C", 3: "G", 4: "T"}
+        BASE_OF_FULL = {i+1:b for i,b in enumerate(trace.base_order)}
         CH_OF_BASE = {v: k for k, v in BASE_OF_FULL.items()}
         refined = final_ploc.copy()
         for i, (base, pos14) in enumerate(zip(final_pb, final_ploc_14)):

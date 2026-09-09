@@ -115,8 +115,8 @@ class SharpenCliFlagTests(unittest.TestCase):
             "--sharpen-peaks must default to OFF")
 
     def test_explicit_enable(self):
-        args = self._parse("--sharpen-peaks")
-        self.assertTrue(args.sharpen_peaks)
+        with self.assertRaises(SystemExit):
+            self._parse("--sharpen-peaks")
 
     def test_factor_default(self):
         args = self._parse()
