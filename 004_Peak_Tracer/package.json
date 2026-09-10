@@ -1,6 +1,6 @@
 {
   "name": "peak-tracer",
-  "version": "0.0.1",
+  "version": "1.6.0",
   "private": true,
   "description": "In-house replacement for Nucleics Auto PeakTrace RP. Processes Sanger .ab1 chromatograms (spectral deconvolution → baseline → smoothing → re-basecall → .ab1 output) using a fully open-source Python pipeline.",
   "main": "electron/main.js",

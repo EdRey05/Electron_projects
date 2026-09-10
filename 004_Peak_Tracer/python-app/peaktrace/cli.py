@@ -49,6 +49,200 @@ def strip_well_id(name: str) -> str:
     return WELL_ID_RE.sub("", name)
 
 
+# ---------- v1.6: .bat preprocessing equivalents ----------
+
+def convert_seq_to_fa(seq_path: Path) -> Path | None:
+    """Convert one .seq file to .fa (.bat 1- "Remove Well Position" equivalent).
+
+    .bat logic (the only thing that gets the truth name right):
+      1. Take the .seq filename (e.g. ``WELL01_C09_H12.seq``).
+      2. Strip the last 8 chars (e.g. ``_H12.seq`` -> ``WELL01_C09``). The
+         stripped name becomes the FASTA header.
+      3. Write a sibling .fa with the same filename stem, header ``>WELL01_C09``
+         and the sequence lines (spaces removed).
+      4. Delete the original .seq.
+
+    NOTE: do NOT try to use the .seq file's first line as a name source. Most
+    Seq7 .seq files have no ``>header`` line — line 1 is sequence data, and
+    using it would rename the .ab1 to a 60-70 char garbage string. The .bat
+    derives the name from the FILENAME, not the content.
+
+    Returns the new .fa path, or None on any failure (logged via emit_event).
+    """
+    # Truth name = filename stem with last 8 chars stripped (e.g. _H12.seq).
+    # .bat: Set outname=%%f & Set outname=!outname:~0,-8!
+    fname = seq_path.name  # e.g. "WELL01_C09_H12.seq"
+    if len(fname) <= 8:
+        emit_event("preprocess_warn", src=str(seq_path),
+                   msg=f"filename too short to strip 8 chars: {fname!r}")
+        return None
+    truth_name = fname[:-8]  # e.g. "WELL01_C09_H12.seq" -> "WELL01_C09"
+    truth_name = truth_name.strip().lstrip(">").strip()
+    if not truth_name:
+        emit_event("preprocess_warn", src=str(seq_path), msg="empty truth name, skipping")
+        return None
+
+    # Sequence: read all lines after the (possibly absent) header line.
+    # .bat iterates ALL lines (skip=1 if a header line is present; the loop in
+    # the .bat has both `skip=1` AND non-skip variants commented in). To match,
+    # we skip line 1 IF it's a FASTA header (starts with '>'), otherwise we
+    # include line 1 as sequence.
+    try:
+        with seq_path.open("r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except Exception as e:
+        emit_event("preprocess_warn", src=str(seq_path), msg=f"read failed: {e}")
+        return None
+
+    if not lines:
+        emit_event("preprocess_warn", src=str(seq_path), msg="empty file, skipping")
+        return None
+
+    seq_lines = lines[1:] if lines[0].lstrip().startswith(">") else lines
+    seq_lines = [ln.rstrip("\r\n").replace(" ", "") for ln in seq_lines]
+    seq_lines = [ln for ln in seq_lines if ln]  # drop blank lines
+
+    # .fa filename = same stem, just change extension .seq -> .fa.
+    fa_path = seq_path.with_suffix(".fa")
+    try:
+        with fa_path.open("w", encoding="utf-8") as f:
+            f.write(f">{truth_name}\n")
+            for sl in seq_lines:
+                f.write(sl + "\n")
+        seq_path.unlink()
+        emit_event("preprocess_seq_to_fa", src=str(seq_path), out=str(fa_path),
+                   header=truth_name, n_seq_lines=len(seq_lines))
+        return fa_path
+    except Exception as e:
+        emit_event("preprocess_warn", src=str(seq_path), msg=f"write failed: {e}")
+        return None
+
+
+def run_preprocessing(in_dir: Path, args) -> dict:
+    """Run the .bat preprocessing on the input folder. Returns counts.
+
+    v1.6 Task 4: .seq -> .fa conversion.
+    v1.6 Task 5: rename .fa / .txt / .fasta files to drive .ab1 renames.
+    """
+    counts = {"seq_to_fa": 0, "seq_failed": 0,
+              "renames_done": 0, "renames_failed": 0,
+              "txt_removed": 0}
+    if not getattr(args, "preprocess", True):
+        emit_event("preprocess_skipped", reason="--no-preprocess flag")
+        return counts
+
+    # ---- Task 4: .seq -> .fa ----
+    seq_files = sorted(in_dir.glob("*.seq"))
+    emit_event("preprocess_start", n_seq=len(seq_files))
+    for seq in seq_files:
+        result = convert_seq_to_fa(seq)
+        if result is not None:
+            counts["seq_to_fa"] += 1
+        else:
+            counts["seq_failed"] += 1
+    emit_event("preprocess_seq_done", seq_to_fa=counts["seq_to_fa"],
+               seq_failed=counts["seq_failed"])
+
+    # ---- Task 5: rename from .fa / .txt / .fasta truth-source ----
+    # .bat 3- logic: read first line of each rename-source, extract the truth
+    # name, rename the rename-source to name.txt AND the matching .ab1 to name.ab1.
+    rename_sources = (
+        list(in_dir.glob("*.fa"))
+        + list(in_dir.glob("*.txt"))
+        + list(in_dir.glob("*.fasta"))
+    )
+    # Dedupe by stem (a .fa and .txt with the same stem both shouldn't normally exist,
+    # but in case they do, process each once by absolute path).
+    seen = set()
+    rename_sources = [p for p in rename_sources if not (str(p) in seen or seen.add(str(p)))]
+    emit_event("preprocess_rename_start", n_sources=len(rename_sources))
+
+    for src in rename_sources:
+        try:
+            truth_name = extract_truth_name(src)
+        except Exception as e:
+            emit_event("preprocess_warn", src=str(src), msg=f"truth-name parse failed: {e}")
+            counts["renames_failed"] += 1
+            continue
+        if not truth_name:
+            emit_event("preprocess_warn", src=str(src), msg="could not extract truth name, skipping")
+            counts["renames_failed"] += 1
+            continue
+
+        target_txt = src.parent / f"{truth_name}.txt"
+        target_ab1 = src.parent / f"{truth_name}.ab1"
+        # The matching .ab1 lives in the same directory and has the SAME stem as src
+        # (the source is a rename-source generated by the user / pre-Seq7 tool to
+        # indicate what the .ab1 should be renamed to).
+        source_stem_ab1 = src.parent / f"{src.stem}.ab1"
+
+        try:
+            # Rename the rename-source to <truth_name>.txt
+            if target_txt.exists() and target_txt != src:
+                # Collision: someone else already produced this target. Don't clobber.
+                emit_event("preprocess_warn", src=str(src),
+                           msg=f"target {target_txt.name} exists, skipping rename-source")
+                counts["renames_failed"] += 1
+                continue
+            src.rename(target_txt)
+            # Rename the matching .ab1 if present
+            if source_stem_ab1.exists() and source_stem_ab1 != target_ab1:
+                source_stem_ab1.rename(target_ab1)
+                counts["renames_done"] += 1
+            else:
+                # No matching .ab1, but rename-source still got renamed. Still counts.
+                counts["renames_done"] += 1
+            emit_event("preprocess_rename", src=str(src), truth=truth_name,
+                       out_txt=str(target_txt), out_ab1=str(target_ab1) if target_ab1.exists() else None)
+        except Exception as e:
+            emit_event("preprocess_warn", src=str(src), msg=f"rename failed: {e}")
+            counts["renames_failed"] += 1
+
+    emit_event("preprocess_rename_done",
+               renames_done=counts["renames_done"],
+               renames_failed=counts["renames_failed"])
+
+    # ---- Task 6: delete .txt rename leftovers (.bat 3- cleanup) ----
+    txt_files = sorted(in_dir.glob("*.txt"))
+    for txt in txt_files:
+        try:
+            txt.unlink()
+            counts["txt_removed"] += 1
+        except Exception as e:
+            emit_event("preprocess_warn", src=str(txt), msg=f"txt cleanup failed: {e}")
+    emit_event("preprocess_cleanup_done", txt_removed=counts["txt_removed"])
+
+    return counts
+
+
+def extract_truth_name(rename_source: Path) -> str | None:
+    """Extract the truth basename from a .fa / .txt / .fasta rename-source.
+
+    .bat 3- logic: read first line, drop leading '>', drop trailing '.ab1'.
+    The first line for .fa is `>REALNAME.ab1`; for .txt it's the same (the .bat
+    writes a single line with the new name); for .fasta same as .fa.
+    Returns the truth name (no extension) or None if unparseable.
+    """
+    suffix = rename_source.suffix.lower()
+    if suffix not in (".fa", ".txt", ".fasta"):
+        return None
+    try:
+        with rename_source.open("r", encoding="utf-8", errors="replace") as f:
+            first_line = f.readline()
+    except Exception:
+        return None
+    if not first_line:
+        return None
+    name = first_line.strip().lstrip(">").strip()
+    # Drop trailing .ab1 if present
+    if name.lower().endswith(".ab1"):
+        name = name[:-4]
+    # Sanity: a real basename is short, ASCII, no path separators
+    if not name or len(name) > 200 or "/" in name or "\\" in name:
+        return None
+    return name
+
+
 def emit_event(event_type: str, **fields):
     """Emit a JSON-line event for the Electron renderer."""
     obj = {"type": event_type, **fields}
@@ -345,6 +539,17 @@ def parse_args(argv=None) -> argparse.Namespace:
                    help="Generate 2-Report.xls (replaces .bat 3-, default ON)")
     p.add_argument("--no-write-qc-report", dest="write_qc_report", action="store_true")
 
+    # v1.6: preprocessing toggle (replaces the .bat work the Gene Synthesis
+    # team runs between Seq7 and PT). When ON (default), .seq files in the
+    # input folder are converted to .fa (strip well-ID from first line,
+    # strip spaces from sequence lines), .fa/.txt/.fasta files are renamed
+    # to drive .ab1 renames, then .txt cleanup. When OFF, only the PT
+    # pipeline runs.
+    p.add_argument("--preprocess", action="store_true", default=True,
+                   help="Run the .bat preprocessing (.seq -> .fa, rename, cleanup) before PT (default ON)")
+    p.add_argument("--no-preprocess", dest="preprocess", action="store_true",
+                   help="Skip the .bat preprocessing; run PT pipeline only")
+
     # v1.2: Leading-base drop (matches PT's behavior on 83% of long reads)
     p.add_argument("--lead-drop-enabled", action="store_true", default=True,
                    help="Drop leading base when QV < --lead-drop-qv (matches PT, default ON)")
@@ -405,6 +610,11 @@ def main(argv=None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     emit_event("run_start", input=str(in_dir), output=str(out_dir))
+
+    # v1.6: run the .bat preprocessing equivalent before the PT pipeline.
+    # Currently converts .seq -> .fa. Tasks 5 + 6 will add rename + cleanup.
+    if getattr(args, "preprocess", True):
+        run_preprocessing(in_dir, args)
 
     ab1_files = sorted(in_dir.glob("*.ab1"))
     emit_event("discovered", n_files=len(ab1_files))
