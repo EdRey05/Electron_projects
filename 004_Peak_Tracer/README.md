@@ -11,7 +11,7 @@ remains under development.
 
 ## Run the CLI
 
-The [v2.0 plan](docs/v2.0/PLAN.md) evaluates TraceTuner quality reassessment.
+The [v2.0 plan](docs/v2.0/PLAN.md) and [results](docs/v2.0/RESULTS.md) document TraceTuner quality reassessment.
 Default processing retains v1.9 signal/call behavior. An experimental CLI-only
 mode adds `--quality-mode tracetuner --tracetuner-executable 'PATH_TO_TTUNER.exe'`.
 It scores the enhanced serialized trace with the built-in 3730 POP7 BDTv3 table,

@@ -1,0 +1,7417 @@
+{
+  "plate": "sample5",
+  "processor_source_sha256": "02b760eb97bd641063d2623b5b193fb883aeafd5663755c26a07590435b1e13a",
+  "totals": {
+    "v19": {
+      "bases": 80776,
+      "q20": 65186,
+      "q30": 59022,
+      "n": 1300
+    },
+    "v20": {
+      "bases": 80776,
+      "q20": 66925,
+      "q30": 63321,
+      "n": 1300
+    },
+    "pt": {
+      "bases": 100075,
+      "q20": 82188,
+      "q30": 76930,
+      "n": 2292
+    }
+  },
+  "region_counts": {
+    "v19": [
+      {
+        "n": 20400,
+        "q20": 19055,
+        "q30": 18583
+      },
+      {
+        "n": 20400,
+        "q20": 20396,
+        "q30": 20386
+      },
+      {
+        "n": 20400,
+        "q20": 19880,
+        "q30": 17859
+      },
+      {
+        "n": 19415,
+        "q20": 5848,
+        "q30": 2194
+      }
+    ],
+    "v20": [
+      {
+        "n": 20400,
+        "q20": 19337,
+        "q30": 18379
+      },
+      {
+        "n": 20400,
+        "q20": 20398,
+        "q30": 20391
+      },
+      {
+        "n": 20400,
+        "q20": 20026,
+        "q30": 19598
+      },
+      {
+        "n": 19415,
+        "q20": 7164,
+        "q30": 4953
+      }
+    ],
+    "pt": [
+      {
+        "n": 20400,
+        "q20": 19767,
+        "q30": 18864
+      },
+      {
+        "n": 20400,
+        "q20": 20398,
+        "q30": 20395
+      },
+      {
+        "n": 20400,
+        "q20": 20352,
+        "q30": 20300
+      },
+      {
+        "n": 20400,
+        "q20": 18480,
+        "q30": 16478
+      }
+    ]
+  },
+  "pt_q30_substitution_discordance": {
+    "v19": [
+      {
+        "compared": 4430,
+        "disagree": 203
+      },
+      {
+        "compared": 5532,
+        "disagree": 16
+      },
+      {
+        "compared": 5836,
+        "disagree": 0
+      },
+      {
+        "compared": 8546,
+        "disagree": 0
+      },
+      {
+        "compared": 50075,
+        "disagree": 0
+      }
+    ],
+    "v20": [
+      {
+        "compared": 2971,
+        "disagree": 153
+      },
+      {
+        "compared": 5372,
+        "disagree": 65
+      },
+      {
+        "compared": 3226,
+        "disagree": 1
+      },
+      {
+        "compared": 55677,
+        "disagree": 0
+      },
+      {
+        "compared": 7173,
+        "disagree": 0
+      }
+    ]
+  },
+  "failures": [],
+  "reads": [
+    {
+      "name": "POS1.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1192,
+        "q20": 969,
+        "q30": 860,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 55.443333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 41.54666666666667
+          },
+          "901-1200": {
+            "bases": 292,
+            "q20": 89,
+            "mean_q": 13.513698630136986
+          }
+        }
+      },
+      "new": {
+        "bases": 1192,
+        "q20": 999,
+        "q30": 947,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 34.973333333333336
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.74
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.50666666666667
+          },
+          "901-1200": {
+            "bases": 292,
+            "q20": 110,
+            "mean_q": 17.965753424657535
+          }
+        }
+      },
+      "pt": {
+        "bases": 1425,
+        "q20": 1212,
+        "q30": 1121,
+        "n": 12,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 53.97666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.48
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.276666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 263,
+            "mean_q": 42.233333333333334
+          }
+        }
+      },
+      "qv_increases": 333,
+      "qv_decreases": 843,
+      "baseline_sha256": "54dffa5224b16d8039c62b5dfd832f599be347a7584002bae8370490fc742322"
+    },
+    {
+      "name": "POS2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1195,
+        "q20": 936,
+        "q30": 855,
+        "n": 23,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.07333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.73
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 40.8
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 63,
+            "mean_q": 12.715254237288136
+          }
+        }
+      },
+      "new": {
+        "bases": 1195,
+        "q20": 1008,
+        "q30": 967,
+        "n": 23,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 34.11666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.906666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.70333333333333
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 125,
+            "mean_q": 19.491525423728813
+          }
+        }
+      },
+      "pt": {
+        "bases": 1392,
+        "q20": 1201,
+        "q30": 1116,
+        "n": 10,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 54.776666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.306666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.306666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 257,
+            "mean_q": 42.16
+          }
+        }
+      },
+      "qv_increases": 377,
+      "qv_decreases": 806,
+      "baseline_sha256": "189f52053023948bb58686822531017e22cc793c0fdd7e565c6b86b8f77553c8"
+    },
+    {
+      "name": "U0827P1B8._.XV1680417._.pGEX-4T-2-VR._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1179,
+        "q20": 968,
+        "q30": 877,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 54.60666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.61333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 42.18666666666667
+          },
+          "901-1200": {
+            "bases": 279,
+            "q20": 93,
+            "mean_q": 15.28673835125448
+          }
+        }
+      },
+      "new": {
+        "bases": 1179,
+        "q20": 1009,
+        "q30": 966,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 34.26
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.09
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.47
+          },
+          "901-1200": {
+            "bases": 279,
+            "q20": 122,
+            "mean_q": 19.70250896057348
+          }
+        }
+      },
+      "pt": {
+        "bases": 1464,
+        "q20": 1223,
+        "q30": 1154,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 54.026666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.37
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.35666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 47.43333333333333
+          }
+        }
+      },
+      "qv_increases": 332,
+      "qv_decreases": 832,
+      "baseline_sha256": "c18736ecbc15984218c677481aa35304fe6feb91a774462bc6c1bcc88f4a46da"
+    },
+    {
+      "name": "U0827P1C8._.XV1680417._.pGEX-4T-2-VR._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1179,
+        "q20": 928,
+        "q30": 820,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 54.45
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.653333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 37.79
+          },
+          "901-1200": {
+            "bases": 279,
+            "q20": 67,
+            "mean_q": 12.405017921146953
+          }
+        }
+      },
+      "new": {
+        "bases": 1179,
+        "q20": 967,
+        "q30": 917,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 275,
+            "mean_q": 34.23
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.88666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 35.74
+          },
+          "901-1200": {
+            "bases": 279,
+            "q20": 92,
+            "mean_q": 16.6415770609319
+          }
+        }
+      },
+      "pt": {
+        "bases": 1452,
+        "q20": 1208,
+        "q30": 1130,
+        "n": 36,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 55.04666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.13666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.913333333333334
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 43.20666666666666
+          }
+        }
+      },
+      "qv_increases": 354,
+      "qv_decreases": 803,
+      "baseline_sha256": "9a1b4c36f8bfc03547d8f5a6a24cb5b6fb3bd3fdd706e304fccb66435806436f"
+    },
+    {
+      "name": "U0827P1D8._.XV1680417._.pGEX-4T-2-VR._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1204,
+        "q20": 980,
+        "q30": 893,
+        "n": 15,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 55.52333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.096666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 43.406666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 106,
+            "mean_q": 15.97
+          }
+        }
+      },
+      "new": {
+        "bases": 1204,
+        "q20": 1005,
+        "q30": 946,
+        "n": 15,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 34.70666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.98
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.473333333333336
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 125,
+            "mean_q": 18.77
+          }
+        }
+      },
+      "pt": {
+        "bases": 1450,
+        "q20": 1216,
+        "q30": 1154,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 55.556666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.346666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.58
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 47.196666666666665
+          }
+        }
+      },
+      "qv_increases": 312,
+      "qv_decreases": 871,
+      "baseline_sha256": "553c35cd5e2fdb67e0fc8812bbd484a8beafc1de04244aa8498bfb3e906aa71c"
+    },
+    {
+      "name": "U0828P1A10._.ZF1680435._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1162,
+        "q20": 946,
+        "q30": 868,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 55.343333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.973333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 43.21
+          },
+          "901-1200": {
+            "bases": 262,
+            "q20": 68,
+            "mean_q": 13.84732824427481
+          }
+        }
+      },
+      "new": {
+        "bases": 1162,
+        "q20": 991,
+        "q30": 908,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.15
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.983333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.656666666666666
+          },
+          "901-1200": {
+            "bases": 262,
+            "q20": 107,
+            "mean_q": 17.137404580152673
+          }
+        }
+      },
+      "pt": {
+        "bases": 1525,
+        "q20": 1224,
+        "q30": 1152,
+        "n": 49,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 53.10666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.47666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.14333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 275,
+            "mean_q": 45.3
+          }
+        }
+      },
+      "qv_increases": 295,
+      "qv_decreases": 852,
+      "baseline_sha256": "940fb324039dde6dcfa682ca823fa69ec69e7efb135600b9a07fc0b99cbbc21b"
+    },
+    {
+      "name": "U0828P1A10._.ZF1680435._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1177,
+        "q20": 954,
+        "q30": 856,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 276,
+            "mean_q": 54.29
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.596666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 40.32
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 85,
+            "mean_q": 15.007220216606498
+          }
+        }
+      },
+      "new": {
+        "bases": 1177,
+        "q20": 963,
+        "q30": 915,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.553333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.8
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 35.57666666666667
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 86,
+            "mean_q": 16.617328519855597
+          }
+        }
+      },
+      "pt": {
+        "bases": 1518,
+        "q20": 1202,
+        "q30": 1117,
+        "n": 62,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 53.093333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.526666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.986666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 272,
+            "mean_q": 43.79
+          }
+        }
+      },
+      "qv_increases": 315,
+      "qv_decreases": 841,
+      "baseline_sha256": "27553325174e973326b34aebaab5b330b3339ae3d209949cb72d26e7b2d981d3"
+    },
+    {
+      "name": "U0828P1A10._.ZF1680435._.ZP2680439-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1204,
+        "q20": 964,
+        "q30": 864,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 53.766666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.24333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 40.55
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 85,
+            "mean_q": 14.433333333333334
+          }
+        }
+      },
+      "new": {
+        "bases": 1204,
+        "q20": 973,
+        "q30": 925,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 33.876666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 35.57333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 34.33
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 103,
+            "mean_q": 17.48
+          }
+        }
+      },
+      "pt": {
+        "bases": 1557,
+        "q20": 1195,
+        "q30": 1102,
+        "n": 48,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 49.67
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.71
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 57.32
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 271,
+            "mean_q": 44.02
+          }
+        }
+      },
+      "qv_increases": 296,
+      "qv_decreases": 885,
+      "baseline_sha256": "a72c6378656508e37cfedb18200bbe0b7154985991d5dd1fca25ea69f06843b3"
+    },
+    {
+      "name": "U0828P1A11._.ZF1680443._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1195,
+        "q20": 972,
+        "q30": 885,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 56.056666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.653333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 44.05
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 95,
+            "mean_q": 15.345762711864406
+          }
+        }
+      },
+      "new": {
+        "bases": 1195,
+        "q20": 992,
+        "q30": 959,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 35.07
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.836666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.346666666666664
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 105,
+            "mean_q": 18.6
+          }
+        }
+      },
+      "pt": {
+        "bases": 1455,
+        "q20": 1227,
+        "q30": 1160,
+        "n": 34,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 55.21333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.17666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.55
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 46.97
+          }
+        }
+      },
+      "qv_increases": 295,
+      "qv_decreases": 886,
+      "baseline_sha256": "32022c33dba17529a94e8b5e13b586f0468afb6545cca10728401297169b0c9a"
+    },
+    {
+      "name": "U0828P1A11._.ZF1680443._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1207,
+        "q20": 992,
+        "q30": 890,
+        "n": 10,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.23
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.306666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 42.84
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 116,
+            "mean_q": 16.766666666666666
+          }
+        }
+      },
+      "new": {
+        "bases": 1207,
+        "q20": 1034,
+        "q30": 963,
+        "n": 10,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 34.69
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.876666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.70333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 144,
+            "mean_q": 21.206666666666667
+          }
+        }
+      },
+      "pt": {
+        "bases": 1414,
+        "q20": 1225,
+        "q30": 1135,
+        "n": 6,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 54.14333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.33
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.626666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 48.07666666666667
+          }
+        }
+      },
+      "qv_increases": 352,
+      "qv_decreases": 846,
+      "baseline_sha256": "b73f8ff471c312257153efd498b4d034adcc8f335f11f1740e7f9d60690cf23e"
+    },
+    {
+      "name": "U0828P1A11._.ZF1680443._.ZP2680447-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1190,
+        "q20": 963,
+        "q30": 884,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 276,
+            "mean_q": 54.303333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.00666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 42.973333333333336
+          },
+          "901-1200": {
+            "bases": 290,
+            "q20": 93,
+            "mean_q": 14.668965517241379
+          }
+        }
+      },
+      "new": {
+        "bases": 1190,
+        "q20": 1022,
+        "q30": 942,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 33.653333333333336
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.26
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 35.46333333333333
+          },
+          "901-1200": {
+            "bases": 290,
+            "q20": 142,
+            "mean_q": 20.90344827586207
+          }
+        }
+      },
+      "pt": {
+        "bases": 1535,
+        "q20": 1234,
+        "q30": 1153,
+        "n": 44,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 50.84
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.24
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.196666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 46.663333333333334
+          }
+        }
+      },
+      "qv_increases": 329,
+      "qv_decreases": 843,
+      "baseline_sha256": "84398d3e135515fd656381df1441a99c9e68b7b1e95c0ec692b30aba25b40cd9"
+    },
+    {
+      "name": "U0828P1A11._.ZF1680443._.ZP2680447-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1173,
+        "q20": 978,
+        "q30": 876,
+        "n": 12,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 55.46
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 42.96333333333333
+          },
+          "901-1200": {
+            "bases": 273,
+            "q20": 99,
+            "mean_q": 15.91941391941392
+          }
+        }
+      },
+      "new": {
+        "bases": 1173,
+        "q20": 988,
+        "q30": 932,
+        "n": 12,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 34.57333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.66
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.50333333333333
+          },
+          "901-1200": {
+            "bases": 273,
+            "q20": 104,
+            "mean_q": 19.01831501831502
+          }
+        }
+      },
+      "pt": {
+        "bases": 1527,
+        "q20": 1216,
+        "q30": 1146,
+        "n": 34,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 54.13666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.28
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.29
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 45.56
+          }
+        }
+      },
+      "qv_increases": 297,
+      "qv_decreases": 863,
+      "baseline_sha256": "6ddb63e4cc0ac4a3a146475a4c0287bdf029b08b36796575bc05486b3d20ff24"
+    },
+    {
+      "name": "U0828P1A11._.ZF1680443._.ZP2680447-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1175,
+        "q20": 930,
+        "q30": 824,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.526666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.63
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 38.07
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 59,
+            "mean_q": 12.163636363636364
+          }
+        }
+      },
+      "new": {
+        "bases": 1175,
+        "q20": 980,
+        "q30": 929,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 34.053333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.58
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.31333333333333
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 98,
+            "mean_q": 17.956363636363637
+          }
+        }
+      },
+      "pt": {
+        "bases": 1489,
+        "q20": 1212,
+        "q30": 1128,
+        "n": 38,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 54.2
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.66
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.02333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 265,
+            "mean_q": 42.406666666666666
+          }
+        }
+      },
+      "qv_increases": 376,
+      "qv_decreases": 785,
+      "baseline_sha256": "a8aecc468e95b550145c2b50f5e5a21aaa9971bf0f8c342a7c59d8177ee26c9c"
+    },
+    {
+      "name": "U0828P1A12._.ZF1680445._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1177,
+        "q20": 946,
+        "q30": 863,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 55.98
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.3
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 40.43666666666667
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 69,
+            "mean_q": 13.306859205776174
+          }
+        }
+      },
+      "new": {
+        "bases": 1177,
+        "q20": 963,
+        "q30": 902,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 35.06
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.75
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 35.943333333333335
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 79,
+            "mean_q": 15.740072202166065
+          }
+        }
+      },
+      "pt": {
+        "bases": 1422,
+        "q20": 1222,
+        "q30": 1137,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 54.95666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.28333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.233333333333334
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 270,
+            "mean_q": 43.68333333333333
+          }
+        }
+      },
+      "qv_increases": 306,
+      "qv_decreases": 854,
+      "baseline_sha256": "7a6fb52cf98b2ab3ef9d1553377279e55dcaf3661d75ba2212d665c5a0678302"
+    },
+    {
+      "name": "U0828P1A12._.ZF1680445._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1201,
+        "q20": 973,
+        "q30": 876,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 276,
+            "mean_q": 54.266666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 59.36333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 41.28
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 100,
+            "mean_q": 14.686666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1201,
+        "q20": 985,
+        "q30": 928,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.93666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.416666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 35.81666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 101,
+            "mean_q": 17.383333333333333
+          }
+        }
+      },
+      "pt": {
+        "bases": 1424,
+        "q20": 1229,
+        "q30": 1146,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 53.27333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 60.053333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.78666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 48.526666666666664
+          }
+        }
+      },
+      "qv_increases": 341,
+      "qv_decreases": 843,
+      "baseline_sha256": "9b0bfdfafce23eddfd33c7ed9b224502cae61f635507829e7b6bbedd7ab60bb2"
+    },
+    {
+      "name": "U0828P1A12._.ZF1680445._.ZP2680449-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1164,
+        "q20": 929,
+        "q30": 853,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 55.266666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.05
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 41.93
+          },
+          "901-1200": {
+            "bases": 264,
+            "q20": 60,
+            "mean_q": 12.984848484848484
+          }
+        }
+      },
+      "new": {
+        "bases": 1164,
+        "q20": 970,
+        "q30": 928,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 34.46666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.57333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.233333333333334
+          },
+          "901-1200": {
+            "bases": 264,
+            "q20": 88,
+            "mean_q": 16.90909090909091
+          }
+        }
+      },
+      "pt": {
+        "bases": 1451,
+        "q20": 1191,
+        "q30": 1105,
+        "n": 34,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 51.27
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 59.9
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.36
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 263,
+            "mean_q": 41.83
+          }
+        }
+      },
+      "qv_increases": 339,
+      "qv_decreases": 814,
+      "baseline_sha256": "efae992289ed207ec0a8ecf63249eca4969b30d69c176c841e387f90017f159a"
+    },
+    {
+      "name": "U0828P1A12._.ZF1680445._.ZP2680449-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1182,
+        "q20": 966,
+        "q30": 886,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 56.96666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.943333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 43.64
+          },
+          "901-1200": {
+            "bases": 282,
+            "q20": 86,
+            "mean_q": 15.106382978723405
+          }
+        }
+      },
+      "new": {
+        "bases": 1182,
+        "q20": 970,
+        "q30": 914,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.5
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.89
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 35.85
+          },
+          "901-1200": {
+            "bases": 282,
+            "q20": 91,
+            "mean_q": 17.414893617021278
+          }
+        }
+      },
+      "pt": {
+        "bases": 1492,
+        "q20": 1226,
+        "q30": 1155,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 53.306666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.34
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.04
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 46.556666666666665
+          }
+        }
+      },
+      "qv_increases": 275,
+      "qv_decreases": 897,
+      "baseline_sha256": "a66980ef356c51843ca5fac9aaece6659ebac5a60fccaa58917f9d1732e84aa3"
+    },
+    {
+      "name": "U0828P1A12._.ZF1680445._.ZP2680449-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1165,
+        "q20": 950,
+        "q30": 868,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.9
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 59.596666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 42.83
+          },
+          "901-1200": {
+            "bases": 265,
+            "q20": 74,
+            "mean_q": 14.045283018867925
+          }
+        }
+      },
+      "new": {
+        "bases": 1165,
+        "q20": 977,
+        "q30": 919,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 34.263333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.50333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.303333333333335
+          },
+          "901-1200": {
+            "bases": 265,
+            "q20": 100,
+            "mean_q": 18.633962264150945
+          }
+        }
+      },
+      "pt": {
+        "bases": 1431,
+        "q20": 1203,
+        "q30": 1141,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 54.27333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.07666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.74333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 270,
+            "mean_q": 44.95333333333333
+          }
+        }
+      },
+      "qv_increases": 302,
+      "qv_decreases": 849,
+      "baseline_sha256": "2a5ecba9ad9544bf73b6e488fd71c2e496a812ddde43014bab39e149802a6196"
+    },
+    {
+      "name": "U0828P1B10._.ZF1680435._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1200,
+        "q20": 957,
+        "q30": 871,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 56.01
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.64333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 41.77333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 80,
+            "mean_q": 13.853333333333333
+          }
+        }
+      },
+      "new": {
+        "bases": 1200,
+        "q20": 995,
+        "q30": 928,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 34.60666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.69
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.336666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 111,
+            "mean_q": 16.753333333333334
+          }
+        }
+      },
+      "pt": {
+        "bases": 1544,
+        "q20": 1197,
+        "q30": 1126,
+        "n": 43,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 53.24
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.05
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.70333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 269,
+            "mean_q": 45.32666666666667
+          }
+        }
+      },
+      "qv_increases": 301,
+      "qv_decreases": 881,
+      "baseline_sha256": "0208a1256965e7b57c7523ae3fee971d16733e592cd1dc1b7245d0564180f485"
+    },
+    {
+      "name": "U0828P1B10._.ZF1680435._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1185,
+        "q20": 966,
+        "q30": 868,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.42666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.276666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 42.223333333333336
+          },
+          "901-1200": {
+            "bases": 285,
+            "q20": 94,
+            "mean_q": 15.203508771929824
+          }
+        }
+      },
+      "new": {
+        "bases": 1185,
+        "q20": 978,
+        "q30": 921,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 34.43333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.9
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 35.85
+          },
+          "901-1200": {
+            "bases": 285,
+            "q20": 95,
+            "mean_q": 17.25263157894737
+          }
+        }
+      },
+      "pt": {
+        "bases": 1487,
+        "q20": 1191,
+        "q30": 1116,
+        "n": 40,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 53.13333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.266666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.8
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 275,
+            "mean_q": 45.25333333333333
+          }
+        }
+      },
+      "qv_increases": 300,
+      "qv_decreases": 870,
+      "baseline_sha256": "bf0f9733caa7ed112d4e7a69b2351fad5449a7b5d1dfd0b1adfaf06085d561f4"
+    },
+    {
+      "name": "U0828P1B10._.ZF1680435._.ZP2680439-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1175,
+        "q20": 924,
+        "q30": 819,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 52.763333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 56.473333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 36.38333333333333
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 55,
+            "mean_q": 12.26909090909091
+          }
+        }
+      },
+      "new": {
+        "bases": 1175,
+        "q20": 955,
+        "q30": 916,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 33.8
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 35.526666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 34.54333333333334
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 81,
+            "mean_q": 16.52
+          }
+        }
+      },
+      "pt": {
+        "bases": 1498,
+        "q20": 1205,
+        "q30": 1118,
+        "n": 48,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 51.52
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.35666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.14666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 275,
+            "mean_q": 43.85666666666667
+          }
+        }
+      },
+      "qv_increases": 347,
+      "qv_decreases": 801,
+      "baseline_sha256": "748d4806d4ded7414a0eaa6ec89996a16e4e6fdacfc3ee3b9d0c70c2733dce32"
+    },
+    {
+      "name": "U0828P1B11._.ZF1680443._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1163,
+        "q20": 919,
+        "q30": 812,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 55.71333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 57.61333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 35.75333333333333
+          },
+          "901-1200": {
+            "bases": 263,
+            "q20": 56,
+            "mean_q": 12.03041825095057
+          }
+        }
+      },
+      "new": {
+        "bases": 1163,
+        "q20": 962,
+        "q30": 907,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 34.873333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.10666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 35.32333333333333
+          },
+          "901-1200": {
+            "bases": 263,
+            "q20": 78,
+            "mean_q": 16.247148288973385
+          }
+        }
+      },
+      "pt": {
+        "bases": 1406,
+        "q20": 1198,
+        "q30": 1114,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 55.50666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.21666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.50333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 267,
+            "mean_q": 42.57
+          }
+        }
+      },
+      "qv_increases": 359,
+      "qv_decreases": 786,
+      "baseline_sha256": "21ff73865480a2def8a172d2e79c191e515f32fa60f67f7815d98cdb2e17512d"
+    },
+    {
+      "name": "U0828P1B11._.ZF1680443._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1207,
+        "q20": 974,
+        "q30": 888,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 274,
+            "mean_q": 54.803333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.99666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 44.31333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 104,
+            "mean_q": 16.55666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1207,
+        "q20": 1011,
+        "q30": 970,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.46666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.84
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.123333333333335
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 125,
+            "mean_q": 19.536666666666665
+          }
+        }
+      },
+      "pt": {
+        "bases": 1441,
+        "q20": 1215,
+        "q30": 1147,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 52.59
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.31333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.18333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 48.56333333333333
+          }
+        }
+      },
+      "qv_increases": 313,
+      "qv_decreases": 870,
+      "baseline_sha256": "43ac0d769200eedfb19b631536ee567135568cbae2039f934d48d2af9bbe4ab4"
+    },
+    {
+      "name": "U0828P1B11._.ZF1680443._.ZP2680447-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1197,
+        "q20": 963,
+        "q30": 877,
+        "n": 10,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 275,
+            "mean_q": 54.473333333333336
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.29
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 42.723333333333336
+          },
+          "901-1200": {
+            "bases": 297,
+            "q20": 90,
+            "mean_q": 14.835016835016836
+          }
+        }
+      },
+      "new": {
+        "bases": 1197,
+        "q20": 1003,
+        "q30": 944,
+        "n": 10,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 33.86666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.63666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 35.553333333333335
+          },
+          "901-1200": {
+            "bases": 297,
+            "q20": 129,
+            "mean_q": 19.488215488215488
+          }
+        }
+      },
+      "pt": {
+        "bases": 1526,
+        "q20": 1219,
+        "q30": 1143,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 52.28
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.156666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.49
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 46.193333333333335
+          }
+        }
+      },
+      "qv_increases": 333,
+      "qv_decreases": 845,
+      "baseline_sha256": "e499a0ec39a985224baa188b9cd6247963edd8c7258bac815910456b5a358d13"
+    },
+    {
+      "name": "U0828P1B11._.ZF1680443._.ZP2680447-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1181,
+        "q20": 965,
+        "q30": 881,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.303333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.21666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 43.55
+          },
+          "901-1200": {
+            "bases": 281,
+            "q20": 88,
+            "mean_q": 15.412811387900355
+          }
+        }
+      },
+      "new": {
+        "bases": 1181,
+        "q20": 968,
+        "q30": 929,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.373333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.86666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 36.38
+          },
+          "901-1200": {
+            "bases": 281,
+            "q20": 80,
+            "mean_q": 16.380782918149468
+          }
+        }
+      },
+      "pt": {
+        "bases": 1482,
+        "q20": 1212,
+        "q30": 1144,
+        "n": 37,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 53.82666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.55
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 272,
+            "mean_q": 44.46333333333333
+          }
+        }
+      },
+      "qv_increases": 274,
+      "qv_decreases": 888,
+      "baseline_sha256": "9eee83c3141b9c8826f74bc6ce4f76ee545b3271994c7588be0bb11fc721fc63"
+    },
+    {
+      "name": "U0828P1B11._.ZF1680443._.ZP2680447-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1175,
+        "q20": 941,
+        "q30": 872,
+        "n": 32,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.99
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 41.25
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 68,
+            "mean_q": 13.072727272727272
+          }
+        }
+      },
+      "new": {
+        "bases": 1175,
+        "q20": 977,
+        "q30": 938,
+        "n": 32,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 34.45666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.64333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 36.46666666666667
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 101,
+            "mean_q": 17.258181818181818
+          }
+        }
+      },
+      "pt": {
+        "bases": 1500,
+        "q20": 1228,
+        "q30": 1139,
+        "n": 41,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 54.49
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.21
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.373333333333335
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 271,
+            "mean_q": 43.20666666666666
+          }
+        }
+      },
+      "qv_increases": 304,
+      "qv_decreases": 853,
+      "baseline_sha256": "3a54dbb4fba9a44ef19bfd81aaca5afa81a1f24c1e448f8cb33a3e9edc7e30d3"
+    },
+    {
+      "name": "U0828P1B12._.ZF1680445._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1229,
+        "q20": 983,
+        "q30": 893,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 55.68333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.71333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 43.20333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 101,
+            "mean_q": 16.35333333333333
+          }
+        }
+      },
+      "new": {
+        "bases": 1229,
+        "q20": 1028,
+        "q30": 997,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 35.123333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.413333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.31666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 139,
+            "mean_q": 21.12
+          }
+        }
+      },
+      "pt": {
+        "bases": 1346,
+        "q20": 1220,
+        "q30": 1130,
+        "n": 5,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 55.32333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.24666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.306666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 274,
+            "mean_q": 45.04
+          }
+        }
+      },
+      "qv_increases": 352,
+      "qv_decreases": 865,
+      "baseline_sha256": "e0afcbda38318154e8e5b7639fe097a79636edda61c23f6ca6074077331dac37"
+    },
+    {
+      "name": "U0828P1B12._.ZF1680445._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1172,
+        "q20": 927,
+        "q30": 839,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 54.13666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.39
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 37.89
+          },
+          "901-1200": {
+            "bases": 272,
+            "q20": 55,
+            "mean_q": 12.363970588235293
+          }
+        }
+      },
+      "new": {
+        "bases": 1172,
+        "q20": 952,
+        "q30": 905,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 34.266666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.09
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.373333333333335
+          },
+          "901-1200": {
+            "bases": 272,
+            "q20": 69,
+            "mean_q": 14.974264705882353
+          }
+        }
+      },
+      "pt": {
+        "bases": 1405,
+        "q20": 1207,
+        "q30": 1112,
+        "n": 11,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 52.96333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.27333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.373333333333335
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 45.263333333333335
+          }
+        }
+      },
+      "qv_increases": 347,
+      "qv_decreases": 801,
+      "baseline_sha256": "b728e11332f25ddbfe300621da301e13947162945c372dd839bd419fa7433664"
+    },
+    {
+      "name": "U0828P1B12._.ZF1680445._.ZP2680449-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1165,
+        "q20": 932,
+        "q30": 854,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 55.53333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.37
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 41.42
+          },
+          "901-1200": {
+            "bases": 265,
+            "q20": 63,
+            "mean_q": 12.89056603773585
+          }
+        }
+      },
+      "new": {
+        "bases": 1165,
+        "q20": 953,
+        "q30": 908,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 34.54333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.473333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 35.13333333333333
+          },
+          "901-1200": {
+            "bases": 265,
+            "q20": 85,
+            "mean_q": 16.883018867924527
+          }
+        }
+      },
+      "pt": {
+        "bases": 1475,
+        "q20": 1196,
+        "q30": 1114,
+        "n": 40,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 52.31
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.13666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.35666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 267,
+            "mean_q": 42.89333333333333
+          }
+        }
+      },
+      "qv_increases": 301,
+      "qv_decreases": 847,
+      "baseline_sha256": "8de9d89194a1ad2e2e45356b8121320a2016c05bcbe32549282b3b2507232313"
+    },
+    {
+      "name": "U0828P1B12._.ZF1680445._.ZP2680449-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1166,
+        "q20": 933,
+        "q30": 854,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 55.35
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.21
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 40.403333333333336
+          },
+          "901-1200": {
+            "bases": 266,
+            "q20": 67,
+            "mean_q": 13.545112781954888
+          }
+        }
+      },
+      "new": {
+        "bases": 1166,
+        "q20": 967,
+        "q30": 918,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 34.736666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.736666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 35.373333333333335
+          },
+          "901-1200": {
+            "bases": 266,
+            "q20": 86,
+            "mean_q": 17.428571428571427
+          }
+        }
+      },
+      "pt": {
+        "bases": 1418,
+        "q20": 1243,
+        "q30": 1165,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 53.64666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.5
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.373333333333335
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 47.083333333333336
+          }
+        }
+      },
+      "qv_increases": 317,
+      "qv_decreases": 839,
+      "baseline_sha256": "20d8f282779a1a8b08acc86caba6fb09b981d33f6360fb4d020047b15ea6fe04"
+    },
+    {
+      "name": "U0828P1B12._.ZF1680445._.ZP2680449-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1201,
+        "q20": 983,
+        "q30": 893,
+        "n": 7,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 56.19
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.89333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 42.32
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 104,
+            "mean_q": 15.86
+          }
+        }
+      },
+      "new": {
+        "bases": 1201,
+        "q20": 997,
+        "q30": 934,
+        "n": 7,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 34.17
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.626666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.10333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 119,
+            "mean_q": 18.55666666666667
+          }
+        }
+      },
+      "pt": {
+        "bases": 1513,
+        "q20": 1211,
+        "q30": 1156,
+        "n": 42,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 53.483333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.34
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.69
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 47.446666666666665
+          }
+        }
+      },
+      "qv_increases": 304,
+      "qv_decreases": 869,
+      "baseline_sha256": "f766cda98d502bfd89723f163e834e05570e7aa593e417f762f6512cbbf40b2a"
+    },
+    {
+      "name": "U0828P1C10._.ZF1680435._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1175,
+        "q20": 927,
+        "q30": 834,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 55.626666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.89666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 39.02
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 57,
+            "mean_q": 12.305454545454545
+          }
+        }
+      },
+      "new": {
+        "bases": 1175,
+        "q20": 958,
+        "q30": 903,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.81333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.50666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 35.056666666666665
+          },
+          "901-1200": {
+            "bases": 275,
+            "q20": 83,
+            "mean_q": 16.221818181818183
+          }
+        }
+      },
+      "pt": {
+        "bases": 1523,
+        "q20": 1202,
+        "q30": 1108,
+        "n": 36,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 53.78
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.43
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.95333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 269,
+            "mean_q": 43.443333333333335
+          }
+        }
+      },
+      "qv_increases": 333,
+      "qv_decreases": 818,
+      "baseline_sha256": "0033e1f3529ff38efaa111716d944586b00d4cdd5c1750241aedab635bf4f9d7"
+    },
+    {
+      "name": "U0828P1C10._.ZF1680435._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1190,
+        "q20": 961,
+        "q30": 865,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.2
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.67
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 40.803333333333335
+          },
+          "901-1200": {
+            "bases": 290,
+            "q20": 90,
+            "mean_q": 14.803448275862069
+          }
+        }
+      },
+      "new": {
+        "bases": 1190,
+        "q20": 992,
+        "q30": 926,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.64
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.63666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 35.52333333333333
+          },
+          "901-1200": {
+            "bases": 290,
+            "q20": 117,
+            "mean_q": 18.30344827586207
+          }
+        }
+      },
+      "pt": {
+        "bases": 1515,
+        "q20": 1189,
+        "q30": 1124,
+        "n": 47,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 53.656666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.403333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.99333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 272,
+            "mean_q": 45.163333333333334
+          }
+        }
+      },
+      "qv_increases": 339,
+      "qv_decreases": 834,
+      "baseline_sha256": "a7486c8cce03c6c9b49a3680ed134c0bd6f4d2e179ac080e256c098c3a7cbb44"
+    },
+    {
+      "name": "U0828P1C10._.ZF1680435._.ZP2680439-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1191,
+        "q20": 972,
+        "q30": 863,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 53.77
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.12
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 40.29
+          },
+          "901-1200": {
+            "bases": 291,
+            "q20": 90,
+            "mean_q": 14.429553264604811
+          }
+        }
+      },
+      "new": {
+        "bases": 1191,
+        "q20": 974,
+        "q30": 920,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 34.053333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 35.57333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 34.04333333333334
+          },
+          "901-1200": {
+            "bases": 291,
+            "q20": 104,
+            "mean_q": 17.432989690721648
+          }
+        }
+      },
+      "pt": {
+        "bases": 1515,
+        "q20": 1198,
+        "q30": 1133,
+        "n": 56,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 52.0
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.49
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 57.79333333333334
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 44.5
+          }
+        }
+      },
+      "qv_increases": 294,
+      "qv_decreases": 874,
+      "baseline_sha256": "9d2fc848bc6a322d6d06de47f1b7890bd8d77c1bcff9e783f8f38008bfe5149c"
+    },
+    {
+      "name": "U0828P1E10._.ZF1680436._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1203,
+        "q20": 958,
+        "q30": 889,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.14666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.09
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 43.663333333333334
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 81,
+            "mean_q": 14.466666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1203,
+        "q20": 1010,
+        "q30": 954,
+        "n": 22,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 33.946666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.41
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.74333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 125,
+            "mean_q": 19.536666666666665
+          }
+        }
+      },
+      "pt": {
+        "bases": 1496,
+        "q20": 1213,
+        "q30": 1133,
+        "n": 56,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 53.91
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.35666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.766666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 45.04333333333334
+          }
+        }
+      },
+      "qv_increases": 338,
+      "qv_decreases": 852,
+      "baseline_sha256": "daab18ce3b9b450dae00ef4e846304728c408d0712d26e22882ec2b59e624bd2"
+    },
+    {
+      "name": "U0828P1E10._.ZF1680436._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1185,
+        "q20": 953,
+        "q30": 873,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.03333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.44
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 40.88
+          },
+          "901-1200": {
+            "bases": 285,
+            "q20": 80,
+            "mean_q": 14.126315789473685
+          }
+        }
+      },
+      "new": {
+        "bases": 1185,
+        "q20": 991,
+        "q30": 942,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.623333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.8
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.39333333333333
+          },
+          "901-1200": {
+            "bases": 285,
+            "q20": 107,
+            "mean_q": 18.196491228070176
+          }
+        }
+      },
+      "pt": {
+        "bases": 1503,
+        "q20": 1180,
+        "q30": 1119,
+        "n": 36,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 53.06666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.61666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.3
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 44.54333333333334
+          }
+        }
+      },
+      "qv_increases": 335,
+      "qv_decreases": 831,
+      "baseline_sha256": "be283b2134b5acc51d1bceb5f013725358f5619e1eab9959f1d580509a67337a"
+    },
+    {
+      "name": "U0828P1E10._.ZF1680436._.ZP2680440-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1188,
+        "q20": 957,
+        "q30": 870,
+        "n": 28,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.053333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.00333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 42.0
+          },
+          "901-1200": {
+            "bases": 288,
+            "q20": 84,
+            "mean_q": 13.909722222222221
+          }
+        }
+      },
+      "new": {
+        "bases": 1188,
+        "q20": 974,
+        "q30": 917,
+        "n": 28,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 34.11666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.87
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 36.406666666666666
+          },
+          "901-1200": {
+            "bases": 288,
+            "q20": 94,
+            "mean_q": 16.84722222222222
+          }
+        }
+      },
+      "pt": {
+        "bases": 1469,
+        "q20": 1200,
+        "q30": 1133,
+        "n": 32,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 54.86666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.24
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.346666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 262,
+            "mean_q": 43.06333333333333
+          }
+        }
+      },
+      "qv_increases": 316,
+      "qv_decreases": 864,
+      "baseline_sha256": "04ff6f569ef4fc02230f778817786bd1dfe5104f8b9c1deae003c0774f9981be"
+    },
+    {
+      "name": "U0828P1E11._.ZF1680444._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1195,
+        "q20": 983,
+        "q30": 879,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 55.86333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.596666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 42.54666666666667
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 110,
+            "mean_q": 17.0
+          }
+        }
+      },
+      "new": {
+        "bases": 1195,
+        "q20": 1022,
+        "q30": 968,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 34.87
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.79333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.336666666666666
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 136,
+            "mean_q": 20.34237288135593
+          }
+        }
+      },
+      "pt": {
+        "bases": 1405,
+        "q20": 1243,
+        "q30": 1148,
+        "n": 6,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 52.406666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.06
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.193333333333335
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 274,
+            "mean_q": 45.06666666666667
+          }
+        }
+      },
+      "qv_increases": 313,
+      "qv_decreases": 869,
+      "baseline_sha256": "2b12eb260e2e65f912c9bb938a0becf1d8f22bf83436653b7208adaee4b17aaf"
+    },
+    {
+      "name": "U0828P1E11._.ZF1680444._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1204,
+        "q20": 978,
+        "q30": 901,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 55.1
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.77333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 45.373333333333335
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 104,
+            "mean_q": 16.376666666666665
+          }
+        }
+      },
+      "new": {
+        "bases": 1204,
+        "q20": 979,
+        "q30": 929,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.31666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.75666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 36.236666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 100,
+            "mean_q": 17.496666666666666
+          }
+        }
+      },
+      "pt": {
+        "bases": 1434,
+        "q20": 1232,
+        "q30": 1110,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 52.63
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.32
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.656666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 44.873333333333335
+          }
+        }
+      },
+      "qv_increases": 282,
+      "qv_decreases": 906,
+      "baseline_sha256": "d757ccb77e2444b9db4c305dec80d70dcfd8d345b44ebfcfee64c970b4fa27de"
+    },
+    {
+      "name": "U0828P1E11._.ZF1680444._.ZP2680448-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1196,
+        "q20": 941,
+        "q30": 838,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 272,
+            "mean_q": 54.556666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 57.623333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 37.25
+          },
+          "901-1200": {
+            "bases": 296,
+            "q20": 83,
+            "mean_q": 14.20945945945946
+          }
+        }
+      },
+      "new": {
+        "bases": 1196,
+        "q20": 967,
+        "q30": 919,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 34.126666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.86333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.053333333333335
+          },
+          "901-1200": {
+            "bases": 296,
+            "q20": 89,
+            "mean_q": 16.83445945945946
+          }
+        }
+      },
+      "pt": {
+        "bases": 1566,
+        "q20": 1210,
+        "q30": 1129,
+        "n": 44,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 53.163333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.123333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.52
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 45.43333333333333
+          }
+        }
+      },
+      "qv_increases": 373,
+      "qv_decreases": 805,
+      "baseline_sha256": "71031929be43f5701117b50593a24042321d3eebdc9d22737c392e0e2d22f7ec"
+    },
+    {
+      "name": "U0828P1E11._.ZF1680444._.ZP2680448-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1195,
+        "q20": 964,
+        "q30": 887,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.17666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.55
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 43.17666666666667
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 90,
+            "mean_q": 14.72542372881356
+          }
+        }
+      },
+      "new": {
+        "bases": 1195,
+        "q20": 1006,
+        "q30": 952,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 34.153333333333336
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.55
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.45
+          },
+          "901-1200": {
+            "bases": 295,
+            "q20": 121,
+            "mean_q": 19.576271186440678
+          }
+        }
+      },
+      "pt": {
+        "bases": 1560,
+        "q20": 1214,
+        "q30": 1147,
+        "n": 49,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 55.22666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.48
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.35333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 275,
+            "mean_q": 45.086666666666666
+          }
+        }
+      },
+      "qv_increases": 332,
+      "qv_decreases": 846,
+      "baseline_sha256": "9c2ab60f0be3038470e743ef262f0cb6bf7ca001ffc4745c217a1a3e1d608a5f"
+    },
+    {
+      "name": "U0828P1E11._.ZF1680444._.ZP2680448-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1183,
+        "q20": 963,
+        "q30": 884,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 55.3
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.943333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 43.39666666666667
+          },
+          "901-1200": {
+            "bases": 283,
+            "q20": 89,
+            "mean_q": 15.183745583038869
+          }
+        }
+      },
+      "new": {
+        "bases": 1183,
+        "q20": 1016,
+        "q30": 965,
+        "n": 20,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 33.803333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.88666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.416666666666664
+          },
+          "901-1200": {
+            "bases": 283,
+            "q20": 139,
+            "mean_q": 20.703180212014136
+          }
+        }
+      },
+      "pt": {
+        "bases": 1499,
+        "q20": 1204,
+        "q30": 1110,
+        "n": 38,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 52.91
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.18
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.336666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 253,
+            "mean_q": 42.766666666666666
+          }
+        }
+      },
+      "qv_increases": 315,
+      "qv_decreases": 852,
+      "baseline_sha256": "180319d60be81d494856e1ee612cfa96c074aef6baa36e130213f87131aa79a0"
+    },
+    {
+      "name": "U0828P1E12._.ZF1680446._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1222,
+        "q20": 989,
+        "q30": 901,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 56.46666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.03666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 44.04666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 107,
+            "mean_q": 16.993333333333332
+          }
+        }
+      },
+      "new": {
+        "bases": 1222,
+        "q20": 1054,
+        "q30": 1004,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.39
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.56
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.626666666666665
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 165,
+            "mean_q": 23.226666666666667
+          }
+        }
+      },
+      "pt": {
+        "bases": 1466,
+        "q20": 1223,
+        "q30": 1143,
+        "n": 30,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 53.28666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.26
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.45333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 46.2
+          }
+        }
+      },
+      "qv_increases": 338,
+      "qv_decreases": 867,
+      "baseline_sha256": "9a3a79038f99276ba438b7b95756dbe724f5834db8cf68b36fd4006ef9c70dd3"
+    },
+    {
+      "name": "U0828P1E12._.ZF1680446._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1214,
+        "q20": 997,
+        "q30": 899,
+        "n": 11,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 55.2
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.81666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 43.026666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 117,
+            "mean_q": 16.666666666666668
+          }
+        }
+      },
+      "new": {
+        "bases": 1214,
+        "q20": 1008,
+        "q30": 937,
+        "n": 11,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.93
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.07333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 35.85333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 129,
+            "mean_q": 19.28
+          }
+        }
+      },
+      "pt": {
+        "bases": 1441,
+        "q20": 1205,
+        "q30": 1131,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 53.306666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.2
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 46.24666666666667
+          }
+        }
+      },
+      "qv_increases": 328,
+      "qv_decreases": 867,
+      "baseline_sha256": "b52302eb7eed1cb0b27043ea9aa1e679aaa91a6f0c7034ec0e9b838c9a980894"
+    },
+    {
+      "name": "U0828P1E12._.ZF1680446._.ZP2680450-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1217,
+        "q20": 942,
+        "q30": 813,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 55.57333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.43666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 251,
+            "mean_q": 34.166666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 109,
+            "mean_q": 15.913333333333334
+          }
+        }
+      },
+      "new": {
+        "bases": 1217,
+        "q20": 897,
+        "q30": 836,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 35.123333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.806666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 249,
+            "mean_q": 31.063333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 64,
+            "mean_q": 14.97
+          }
+        }
+      },
+      "pt": {
+        "bases": 1405,
+        "q20": 1021,
+        "q30": 968,
+        "n": 88,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 54.17666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.38
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 49.04333333333334
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 151,
+            "mean_q": 29.19333333333333
+          }
+        }
+      },
+      "qv_increases": 310,
+      "qv_decreases": 886,
+      "baseline_sha256": "ece8aba677b5a06fa6b9289f3e745692fcc86c9dc7ae7727481036631cbf55ba"
+    },
+    {
+      "name": "U0828P1E12._.ZF1680446._.ZP2680450-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1188,
+        "q20": 972,
+        "q30": 897,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 56.17666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.00333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 43.56666666666667
+          },
+          "901-1200": {
+            "bases": 288,
+            "q20": 90,
+            "mean_q": 15.42013888888889
+          }
+        }
+      },
+      "new": {
+        "bases": 1188,
+        "q20": 977,
+        "q30": 921,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 34.093333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.98
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 35.943333333333335
+          },
+          "901-1200": {
+            "bases": 288,
+            "q20": 105,
+            "mean_q": 17.90625
+          }
+        }
+      },
+      "pt": {
+        "bases": 1430,
+        "q20": 1225,
+        "q30": 1150,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 54.11666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.18
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.36666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 47.38666666666666
+          }
+        }
+      },
+      "qv_increases": 271,
+      "qv_decreases": 898,
+      "baseline_sha256": "61c648b1bacc096814cf668c04b0a3edc95f549c5edc22f4f7fb3bd9dcb47144"
+    },
+    {
+      "name": "U0828P1F10._.ZF1680436._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1209,
+        "q20": 989,
+        "q30": 908,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 56.45333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.95666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 43.48
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 106,
+            "mean_q": 15.896666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1209,
+        "q20": 1019,
+        "q30": 969,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.70666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.79
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 37.16
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 130,
+            "mean_q": 20.356666666666666
+          }
+        }
+      },
+      "pt": {
+        "bases": 1511,
+        "q20": 1196,
+        "q30": 1115,
+        "n": 42,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 54.11333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.44
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.666666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 270,
+            "mean_q": 44.126666666666665
+          }
+        }
+      },
+      "qv_increases": 332,
+      "qv_decreases": 854,
+      "baseline_sha256": "5388c5ab54333368d5d1cc001e50af7e11053eb8c6ecb67de1cd932b545e7eef"
+    },
+    {
+      "name": "U0828P1F10._.ZF1680436._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1210,
+        "q20": 978,
+        "q30": 857,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 54.88333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.60333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 39.06666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 101,
+            "mean_q": 14.793333333333333
+          }
+        }
+      },
+      "new": {
+        "bases": 1210,
+        "q20": 1004,
+        "q30": 949,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 34.806666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.2
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.096666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 116,
+            "mean_q": 18.446666666666665
+          }
+        }
+      },
+      "pt": {
+        "bases": 1452,
+        "q20": 1180,
+        "q30": 1112,
+        "n": 34,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 52.26
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.29
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.85333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 44.11333333333334
+          }
+        }
+      },
+      "qv_increases": 372,
+      "qv_decreases": 815,
+      "baseline_sha256": "1b5dcf4d30b81467aaf8738c9e3dc1bd65686442267c36f5c67c26329c715b77"
+    },
+    {
+      "name": "U0828P1F10._.ZF1680436._.ZP2680440-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1167,
+        "q20": 943,
+        "q30": 861,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.43666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.53333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 40.26
+          },
+          "901-1200": {
+            "bases": 267,
+            "q20": 77,
+            "mean_q": 14.49063670411985
+          }
+        }
+      },
+      "new": {
+        "bases": 1167,
+        "q20": 952,
+        "q30": 878,
+        "n": 16,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 33.74333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.5
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 35.0
+          },
+          "901-1200": {
+            "bases": 267,
+            "q20": 77,
+            "mean_q": 15.786516853932584
+          }
+        }
+      },
+      "pt": {
+        "bases": 1448,
+        "q20": 1214,
+        "q30": 1127,
+        "n": 43,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 53.46666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.123333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.92333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 276,
+            "mean_q": 45.3
+          }
+        }
+      },
+      "qv_increases": 288,
+      "qv_decreases": 858,
+      "baseline_sha256": "2acd2da0c300ae3f438b3d81b0184a28ee2d84eb2a54dc41cfce4e9f9bdedd29"
+    },
+    {
+      "name": "U0828P1F11._.ZF1680444._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1183,
+        "q20": 952,
+        "q30": 861,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 56.1
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.876666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 39.626666666666665
+          },
+          "901-1200": {
+            "bases": 283,
+            "q20": 83,
+            "mean_q": 14.76678445229682
+          }
+        }
+      },
+      "new": {
+        "bases": 1183,
+        "q20": 947,
+        "q30": 906,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 35.263333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.626666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 35.29
+          },
+          "901-1200": {
+            "bases": 283,
+            "q20": 76,
+            "mean_q": 15.69964664310954
+          }
+        }
+      },
+      "pt": {
+        "bases": 1423,
+        "q20": 1224,
+        "q30": 1127,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 54.553333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.123333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.63
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 270,
+            "mean_q": 44.01
+          }
+        }
+      },
+      "qv_increases": 309,
+      "qv_decreases": 860,
+      "baseline_sha256": "ce5bbbbee3c88d042b7fe95ce387a10090800fd7d4e873e92b0cf71037bc2e17"
+    },
+    {
+      "name": "U0828P1F11._.ZF1680444._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1182,
+        "q20": 948,
+        "q30": 865,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 276,
+            "mean_q": 54.25333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.586666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 40.64
+          },
+          "901-1200": {
+            "bases": 282,
+            "q20": 81,
+            "mean_q": 14.638297872340425
+          }
+        }
+      },
+      "new": {
+        "bases": 1182,
+        "q20": 992,
+        "q30": 950,
+        "n": 19,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 34.82333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.39
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 36.3
+          },
+          "901-1200": {
+            "bases": 282,
+            "q20": 109,
+            "mean_q": 18.43617021276596
+          }
+        }
+      },
+      "pt": {
+        "bases": 1461,
+        "q20": 1217,
+        "q30": 1126,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 50.96666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.25333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.5
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 45.62
+          }
+        }
+      },
+      "qv_increases": 344,
+      "qv_decreases": 817,
+      "baseline_sha256": "83509e349111d850416b3855b5c354666fe5b0351ca1608f1d035f2c7b8deebf"
+    },
+    {
+      "name": "U0828P1F11._.ZF1680444._.ZP2680448-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1187,
+        "q20": 966,
+        "q30": 876,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 56.093333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 61.056666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 43.85666666666667
+          },
+          "901-1200": {
+            "bases": 287,
+            "q20": 88,
+            "mean_q": 15.094076655052264
+          }
+        }
+      },
+      "new": {
+        "bases": 1187,
+        "q20": 1010,
+        "q30": 952,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 33.77
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.88
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.763333333333335
+          },
+          "901-1200": {
+            "bases": 287,
+            "q20": 130,
+            "mean_q": 20.174216027874564
+          }
+        }
+      },
+      "pt": {
+        "bases": 1509,
+        "q20": 1212,
+        "q30": 1148,
+        "n": 38,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 54.18333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.39333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 46.93666666666667
+          }
+        }
+      },
+      "qv_increases": 306,
+      "qv_decreases": 869,
+      "baseline_sha256": "e1cf84a2d94e6cf7c3ae6be9b30b595b2c3d20efbd45c7c80b541b3b0cac3533"
+    },
+    {
+      "name": "U0828P1F11._.ZF1680444._.ZP2680448-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1169,
+        "q20": 956,
+        "q30": 878,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 281,
+            "mean_q": 56.06333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.626666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 43.04666666666667
+          },
+          "901-1200": {
+            "bases": 269,
+            "q20": 82,
+            "mean_q": 15.185873605947956
+          }
+        }
+      },
+      "new": {
+        "bases": 1169,
+        "q20": 989,
+        "q30": 923,
+        "n": 13,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 34.24
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.73
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 36.13333333333333
+          },
+          "901-1200": {
+            "bases": 269,
+            "q20": 108,
+            "mean_q": 19.397769516728623
+          }
+        }
+      },
+      "pt": {
+        "bases": 1495,
+        "q20": 1234,
+        "q30": 1185,
+        "n": 49,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 55.803333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.46
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.516666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 46.32333333333333
+          }
+        }
+      },
+      "qv_increases": 299,
+      "qv_decreases": 857,
+      "baseline_sha256": "b905803b5d4db1a13695228629b62c043bb22cfe52d17b610a0d0fcf4fe3b1d7"
+    },
+    {
+      "name": "U0828P1F11._.ZF1680444._.ZP2680448-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1182,
+        "q20": 955,
+        "q30": 865,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 55.46
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.51
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 42.27
+          },
+          "901-1200": {
+            "bases": 282,
+            "q20": 81,
+            "mean_q": 14.03191489361702
+          }
+        }
+      },
+      "new": {
+        "bases": 1182,
+        "q20": 984,
+        "q30": 939,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 276,
+            "mean_q": 34.05
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.733333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.18666666666667
+          },
+          "901-1200": {
+            "bases": 282,
+            "q20": 110,
+            "mean_q": 18.421985815602838
+          }
+        }
+      },
+      "pt": {
+        "bases": 1491,
+        "q20": 1219,
+        "q30": 1139,
+        "n": 37,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 53.55
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.33
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.03333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 260,
+            "mean_q": 43.62
+          }
+        }
+      },
+      "qv_increases": 323,
+      "qv_decreases": 849,
+      "baseline_sha256": "e936e7596f7b072901a676b382da59c1ca9ceb7add4bc089e2978b9f0b8f5b66"
+    },
+    {
+      "name": "U0828P1F12._.ZF1680446._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1212,
+        "q20": 998,
+        "q30": 897,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 55.92666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.67
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 43.70333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 119,
+            "mean_q": 17.186666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1212,
+        "q20": 1009,
+        "q30": 960,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 34.343333333333334
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.50333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 36.11
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 132,
+            "mean_q": 21.256666666666668
+          }
+        }
+      },
+      "pt": {
+        "bases": 1546,
+        "q20": 1225,
+        "q30": 1143,
+        "n": 41,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 52.93333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.32
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.68
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 46.06
+          }
+        }
+      },
+      "qv_increases": 316,
+      "qv_decreases": 879,
+      "baseline_sha256": "8dc09259938297ece2c931524efc9499f1afbe003df5e5ed046b952166c6b45c"
+    },
+    {
+      "name": "U0828P1F12._.ZF1680446._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1207,
+        "q20": 997,
+        "q30": 888,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.12
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.126666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 42.17666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 118,
+            "mean_q": 16.86
+          }
+        }
+      },
+      "new": {
+        "bases": 1207,
+        "q20": 1040,
+        "q30": 974,
+        "n": 27,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.44
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.50666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 36.02333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 152,
+            "mean_q": 21.653333333333332
+          }
+        }
+      },
+      "pt": {
+        "bases": 1455,
+        "q20": 1191,
+        "q30": 1132,
+        "n": 34,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 53.526666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.443333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.4
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 47.26
+          }
+        }
+      },
+      "qv_increases": 339,
+      "qv_decreases": 854,
+      "baseline_sha256": "c7d5c5c836d6dd0a42b7b4f9da8b4100a2780774f57644c440376e822744d427"
+    },
+    {
+      "name": "U0828P1F12._.ZF1680446._.ZP2680450-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1189,
+        "q20": 885,
+        "q30": 770,
+        "n": 11,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 55.776666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.88333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 224,
+            "mean_q": 31.153333333333332
+          },
+          "901-1200": {
+            "bases": 289,
+            "q20": 78,
+            "mean_q": 14.069204152249135
+          }
+        }
+      },
+      "new": {
+        "bases": 1189,
+        "q20": 850,
+        "q30": 775,
+        "n": 11,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 286,
+            "mean_q": 35.36
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.29333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 220,
+            "mean_q": 27.94
+          },
+          "901-1200": {
+            "bases": 289,
+            "q20": 44,
+            "mean_q": 13.114186851211073
+          }
+        }
+      },
+      "pt": {
+        "bases": 1469,
+        "q20": 1010,
+        "q30": 974,
+        "n": 104,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 55.403333333333336
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.20666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 272,
+            "mean_q": 47.05
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 150,
+            "mean_q": 28.18
+          }
+        }
+      },
+      "qv_increases": 302,
+      "qv_decreases": 865,
+      "baseline_sha256": "2f0d09729322a850031a41d600156ada60e1e7280f316fef50b4aa6606ed2ba5"
+    },
+    {
+      "name": "U0828P1F12._.ZF1680446._.ZP2680450-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1174,
+        "q20": 957,
+        "q30": 880,
+        "n": 15,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 56.03666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.15
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 43.0
+          },
+          "901-1200": {
+            "bases": 274,
+            "q20": 77,
+            "mean_q": 14.215328467153284
+          }
+        }
+      },
+      "new": {
+        "bases": 1174,
+        "q20": 975,
+        "q30": 925,
+        "n": 15,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 34.666666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.776666666666664
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.626666666666665
+          },
+          "901-1200": {
+            "bases": 274,
+            "q20": 90,
+            "mean_q": 16.635036496350367
+          }
+        }
+      },
+      "pt": {
+        "bases": 1469,
+        "q20": 1219,
+        "q30": 1161,
+        "n": 28,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 54.63666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.906666666666666
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 46.833333333333336
+          }
+        }
+      },
+      "qv_increases": 289,
+      "qv_decreases": 871,
+      "baseline_sha256": "36fef77680b74617a52679f40a6af42ff44a90c2a35f7749078a10756f0c0770"
+    },
+    {
+      "name": "U0828P1G9._.XP1660364._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1173,
+        "q20": 964,
+        "q30": 858,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 55.666666666666664
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.473333333333336
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 41.82666666666667
+          },
+          "901-1200": {
+            "bases": 273,
+            "q20": 84,
+            "mean_q": 13.948717948717949
+          }
+        }
+      },
+      "new": {
+        "bases": 1173,
+        "q20": 961,
+        "q30": 907,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 34.46333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.733333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 35.89
+          },
+          "901-1200": {
+            "bases": 273,
+            "q20": 85,
+            "mean_q": 16.487179487179485
+          }
+        }
+      },
+      "pt": {
+        "bases": 1425,
+        "q20": 1234,
+        "q30": 1143,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 55.27
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.59
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.723333333333336
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 44.35
+          }
+        }
+      },
+      "qv_increases": 287,
+      "qv_decreases": 866,
+      "baseline_sha256": "e1b7e270eab32a46d5ab7164ab6765e21da66adbc05ec5e8c56121cf328dd18e"
+    },
+    {
+      "name": "U0828P1G9._.XP1660364._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1170,
+        "q20": 962,
+        "q30": 884,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.28
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 61.22666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 299,
+            "mean_q": 44.06666666666667
+          },
+          "901-1200": {
+            "bases": 270,
+            "q20": 84,
+            "mean_q": 14.966666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1170,
+        "q20": 965,
+        "q30": 913,
+        "n": 18,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 34.4
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.74
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.2
+          },
+          "901-1200": {
+            "bases": 270,
+            "q20": 80,
+            "mean_q": 16.24074074074074
+          }
+        }
+      },
+      "pt": {
+        "bases": 1421,
+        "q20": 1239,
+        "q30": 1146,
+        "n": 15,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 54.35666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.39
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.46666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 283,
+            "mean_q": 46.03666666666667
+          }
+        }
+      },
+      "qv_increases": 263,
+      "qv_decreases": 879,
+      "baseline_sha256": "fc7c1d7ab73180e479cee8846b9938185468144bbab58fa1d6929be56967c3fa"
+    },
+    {
+      "name": "U0828P1G9._.XP1660364._.XP1660364-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1188,
+        "q20": 974,
+        "q30": 885,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 54.75666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.36333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 41.403333333333336
+          },
+          "901-1200": {
+            "bases": 288,
+            "q20": 103,
+            "mean_q": 15.885416666666666
+          }
+        }
+      },
+      "new": {
+        "bases": 1188,
+        "q20": 985,
+        "q30": 935,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 34.57333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.56
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 36.096666666666664
+          },
+          "901-1200": {
+            "bases": 288,
+            "q20": 105,
+            "mean_q": 18.225694444444443
+          }
+        }
+      },
+      "pt": {
+        "bases": 1460,
+        "q20": 1228,
+        "q30": 1158,
+        "n": 36,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 54.02333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.18333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.02
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 47.63666666666666
+          }
+        }
+      },
+      "qv_increases": 318,
+      "qv_decreases": 855,
+      "baseline_sha256": "4435d173c35af09f93c8d1505112228945e5fe56afa86b7b8c47604d3fe47938"
+    },
+    {
+      "name": "U0828P1G9._.XP1660364._.XP1660364-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1170,
+        "q20": 941,
+        "q30": 826,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 54.193333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.35666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 37.70666666666666
+          },
+          "901-1200": {
+            "bases": 270,
+            "q20": 71,
+            "mean_q": 13.866666666666667
+          }
+        }
+      },
+      "new": {
+        "bases": 1170,
+        "q20": 972,
+        "q30": 917,
+        "n": 17,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 34.42333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.42
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 35.49333333333333
+          },
+          "901-1200": {
+            "bases": 270,
+            "q20": 89,
+            "mean_q": 17.340740740740742
+          }
+        }
+      },
+      "pt": {
+        "bases": 1506,
+        "q20": 1218,
+        "q30": 1139,
+        "n": 29,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 53.96666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.17333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.95333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 46.053333333333335
+          }
+        }
+      },
+      "qv_increases": 346,
+      "qv_decreases": 798,
+      "baseline_sha256": "38028b6f1919937bae2cb0ab953f39296099e3658ca56bf42dd519929397db6f"
+    },
+    {
+      "name": "U0828P1G9._.XP1660364._.XP1660364-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1189,
+        "q20": 939,
+        "q30": 853,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 55.056666666666665
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.86
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 295,
+            "mean_q": 40.153333333333336
+          },
+          "901-1200": {
+            "bases": 289,
+            "q20": 62,
+            "mean_q": 12.730103806228374
+          }
+        }
+      },
+      "new": {
+        "bases": 1189,
+        "q20": 992,
+        "q30": 933,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 34.06
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.696666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 36.096666666666664
+          },
+          "901-1200": {
+            "bases": 289,
+            "q20": 111,
+            "mean_q": 17.802768166089965
+          }
+        }
+      },
+      "pt": {
+        "bases": 1443,
+        "q20": 1222,
+        "q30": 1143,
+        "n": 25,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 55.77333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.41
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.06
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 44.79333333333334
+          }
+        }
+      },
+      "qv_increases": 370,
+      "qv_decreases": 806,
+      "baseline_sha256": "81d09e824da27e99fa16eb2b35ad3361fbeca5c60e06b78d930a86512291d6b9"
+    },
+    {
+      "name": "U0828P1H9._.XP1660364._.M13F-108._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1177,
+        "q20": 948,
+        "q30": 862,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.943333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.73
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 298,
+            "mean_q": 41.50666666666667
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 70,
+            "mean_q": 14.007220216606498
+          }
+        }
+      },
+      "new": {
+        "bases": 1177,
+        "q20": 984,
+        "q30": 941,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 288,
+            "mean_q": 35.00333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.52333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.163333333333334
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 96,
+            "mean_q": 16.76173285198556
+          }
+        }
+      },
+      "pt": {
+        "bases": 1433,
+        "q20": 1244,
+        "q30": 1160,
+        "n": 24,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 55.693333333333335
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.41
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.596666666666664
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 284,
+            "mean_q": 46.33
+          }
+        }
+      },
+      "qv_increases": 303,
+      "qv_decreases": 858,
+      "baseline_sha256": "1f220a25e40481e568d3bcb505d4e36a179a3eaae5fb28023ebda3b99dde062b"
+    },
+    {
+      "name": "U0828P1H9._.XP1660364._.M13R+104._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1169,
+        "q20": 942,
+        "q30": 875,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 55.14666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.81
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 43.20666666666666
+          },
+          "901-1200": {
+            "bases": 269,
+            "q20": 68,
+            "mean_q": 13.561338289962825
+          }
+        }
+      },
+      "new": {
+        "bases": 1169,
+        "q20": 985,
+        "q30": 936,
+        "n": 21,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 289,
+            "mean_q": 34.82
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.32666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.61
+          },
+          "901-1200": {
+            "bases": 269,
+            "q20": 96,
+            "mean_q": 17.520446096654275
+          }
+        }
+      },
+      "pt": {
+        "bases": 1444,
+        "q20": 1227,
+        "q30": 1133,
+        "n": 29,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 291,
+            "mean_q": 54.4
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.28333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.04333333333334
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 282,
+            "mean_q": 44.81
+          }
+        }
+      },
+      "qv_increases": 303,
+      "qv_decreases": 850,
+      "baseline_sha256": "3f699495a475929a9f0c145cad912bd49e9196d8eae1d51f02724f28a38d18ad"
+    },
+    {
+      "name": "U0828P1H9._.XP1660364._.XP1660364-F1._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1177,
+        "q20": 969,
+        "q30": 882,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 55.586666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.61666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 42.53333333333333
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 95,
+            "mean_q": 15.693140794223826
+          }
+        }
+      },
+      "new": {
+        "bases": 1177,
+        "q20": 963,
+        "q30": 926,
+        "n": 14,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 277,
+            "mean_q": 34.31
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.70333333333333
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 36.06333333333333
+          },
+          "901-1200": {
+            "bases": 277,
+            "q20": 94,
+            "mean_q": 16.99638989169675
+          }
+        }
+      },
+      "pt": {
+        "bases": 1519,
+        "q20": 1224,
+        "q30": 1160,
+        "n": 55,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 290,
+            "mean_q": 54.06666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.48
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 58.47666666666667
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 278,
+            "mean_q": 47.85
+          }
+        }
+      },
+      "qv_increases": 279,
+      "qv_decreases": 880,
+      "baseline_sha256": "e3b0c16c7de03a7cb7b744f620534ead879270701370f4148a9d02b2c8e85065"
+    },
+    {
+      "name": "U0828P1H9._.XP1660364._.XP1660364-F2._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1199,
+        "q20": 989,
+        "q30": 900,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 279,
+            "mean_q": 55.04
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.656666666666666
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 297,
+            "mean_q": 45.166666666666664
+          },
+          "901-1200": {
+            "bases": 299,
+            "q20": 113,
+            "mean_q": 16.652173913043477
+          }
+        }
+      },
+      "new": {
+        "bases": 1199,
+        "q20": 988,
+        "q30": 957,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 34.34
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.943333333333335
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 296,
+            "mean_q": 36.49666666666667
+          },
+          "901-1200": {
+            "bases": 299,
+            "q20": 112,
+            "mean_q": 18.39464882943144
+          }
+        }
+      },
+      "pt": {
+        "bases": 1493,
+        "q20": 1222,
+        "q30": 1156,
+        "n": 15,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 287,
+            "mean_q": 54.39666666666667
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.43
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.67
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 285,
+            "mean_q": 48.39333333333333
+          }
+        }
+      },
+      "qv_increases": 286,
+      "qv_decreases": 904,
+      "baseline_sha256": "408b1bfbef98e885fcfc486a39f74c3bb51debcaec818263e9755b10c831b0ef"
+    },
+    {
+      "name": "U0828P1H9._.XP1660364._.XP1660364-F3._.U0831-2.ab1",
+      "checks": {
+        "sequence_retained": true,
+        "positions_retained": true,
+        "signal_retained": true,
+        "raw_retained": true,
+        "opaque_retained": true,
+        "call_sets_synchronized": true,
+        "source_hash": true,
+        "source_version": true,
+        "strict_positions": true,
+        "ambiguous_q0": true,
+        "clear_range": true,
+        "sequence_export": true
+      },
+      "old": {
+        "bases": 1210,
+        "q20": 966,
+        "q30": 879,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 280,
+            "mean_q": 55.516666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.446666666666665
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 292,
+            "mean_q": 42.92333333333333
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 94,
+            "mean_q": 14.543333333333333
+          }
+        }
+      },
+      "new": {
+        "bases": 1210,
+        "q20": 992,
+        "q30": 941,
+        "n": 26,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 274,
+            "mean_q": 33.77333333333333
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 36.78666666666667
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 294,
+            "mean_q": 36.3
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 124,
+            "mean_q": 19.19333333333333
+          }
+        }
+      },
+      "pt": {
+        "bases": 1511,
+        "q20": 1222,
+        "q30": 1141,
+        "n": 35,
+        "nonincreasing_positions": 0,
+        "regions": {
+          "1-300": {
+            "bases": 300,
+            "q20": 293,
+            "mean_q": 54.836666666666666
+          },
+          "301-600": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 60.163333333333334
+          },
+          "601-900": {
+            "bases": 300,
+            "q20": 300,
+            "mean_q": 59.15
+          },
+          "901-1200": {
+            "bases": 300,
+            "q20": 273,
+            "mean_q": 45.11333333333334
+          }
+        }
+      },
+      "qv_increases": 329,
+      "qv_decreases": 866,
+      "baseline_sha256": "0cf715a59eedd782803e050a2de4ad25ab55faef0fe7d659d0b0df4f4b5e8f8b"
+    }
+  ]
+}

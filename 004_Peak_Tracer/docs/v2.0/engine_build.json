@@ -1,0 +1,22 @@
+{
+  "distribution": "TraceTuner 3.0.6~beta+dfsg",
+  "internal_banner": "TT_3.0.4beta",
+  "source_url": "https://deb.debian.org/debian/pool/main/t/tracetuner/tracetuner_3.0.6~beta+dfsg.orig.tar.xz",
+  "source_sha256": "24190cef98d7f6faaac35306c496d8fe16d72991da89d25cc589dcd5619938e0",
+  "engine_sha256": "7a9d0fda67ef98d808a36b4701d52c8ddd202adf9a4bcd159a761a3172e867b5",
+  "compiler": "Zig 0.14.1 (Python-distributed portable wheel)",
+  "compiler_archive_sha256": "e4f7e089a44d5ce34181853a90cdb8456e63c6640f5d44b844a117055326c375",
+  "flags": [
+    "cc",
+    "-target",
+    "x86_64-windows-gnu",
+    "-std=gnu99",
+    "-O2",
+    "-D__WIN32",
+    "-DOS_NAME=\"Windows\"",
+    "-Wno-implicit-function-declaration",
+    "-Wno-int-conversion"
+  ],
+  "source_modifications": "None; Debian patch archive inspected but not applied",
+  "license": "GPL-2.0-or-later per source headers and Debian copyright"
+}

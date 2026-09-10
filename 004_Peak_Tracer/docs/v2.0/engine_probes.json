@@ -1,0 +1,141 @@
+{
+  "baseline": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "raw_zero": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "qv_42": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "analyzed_zero": {
+    "returncode": 0,
+    "phd_count": 0
+  },
+  "fwo_ACGT": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_ACTG": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_AGCT": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_AGTC": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_ATCG": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_ATGC": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_CAGT": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_CATG": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_CGAT": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_CGTA": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_CTAG": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_CTGA": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_GACT": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_GATC": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_GCAT": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_GCTA": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_GTAC": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_GTCA": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_TACG": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_TAGC": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_TCAG": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_TCGA": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_TGAC": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  },
+  "fwo_TGCA": {
+    "returncode": 0,
+    "phd_count": 1,
+    "same_as_baseline": true
+  }
+}
