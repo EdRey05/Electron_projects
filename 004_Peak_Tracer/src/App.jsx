@@ -29,6 +29,28 @@ const DEFAULT_SETTINGS = {
   mode: "with_preprocess",
 };
 
+// v1.7 Phase 4.3: persist the mode toggle in localStorage so it
+// survives across app restarts. No new dependency. Stored as a single
+// key; SSR-safe (typeof window guard).
+function loadPersistedMode() {
+  if (typeof window === "undefined" || !window.localStorage) return DEFAULT_SETTINGS.mode;
+  try {
+    const v = window.localStorage.getItem("peaktrace.mode");
+    if (v === "with_preprocess" || v === "pt_only") return v;
+  } catch (_) {
+    // localStorage may be disabled (privacy mode, etc.) — fall back.
+  }
+  return DEFAULT_SETTINGS.mode;
+}
+function persistMode(mode) {
+  if (typeof window === "undefined" || !window.localStorage) return;
+  try {
+    window.localStorage.setItem("peaktrace.mode", mode);
+  } catch (_) {
+    // localStorage may be disabled (privacy mode, etc.) — ignore.
+  }
+}
+
 // ---------- helpers ----------
 function fmtBytes(n) {
   if (!n) return "\u2014";
@@ -54,7 +76,10 @@ export default function PeakTracer() {
   const [outputDir, setOutputDir] = useState("");
 
   // ---- settings ----
-  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settings, setSettings] = useState({
+    ...DEFAULT_SETTINGS,
+    mode: loadPersistedMode(),
+  });
 
   // ---- run state ----
   const [running, setRunning] = useState(false);
@@ -184,16 +209,20 @@ export default function PeakTracer() {
     setRunning(true);
     setResults([]);
     setLogs([]);
+    // v1.7 Phase 4.2: pass adv through to the spawn call so the modal
+    // values actually flow into the CLI argv. Each adv key maps to a CLI
+    // flag name (see electron/main.js); unknown keys are dropped.
     const res = await window.api.runBatch({
       inputDir,
       outputDir,
       settings,
+      adv,
     });
     if (!res.ok) {
       setRunning(false);
       setLogs((prev) => [...prev, { level: "error", message: res.error || "Batch failed" }]);
     }
-  }, [inputDir, outputDir, inputFiles, settings]);
+  }, [inputDir, outputDir, inputFiles, settings, adv]);
 
   const onReset = useCallback(() => {
     setResults([]);
@@ -333,7 +362,7 @@ export default function PeakTracer() {
             <div className="flex flex-col gap-2">
               <ModeCard
                 selected={settings.mode === "with_preprocess"}
-                onClick={() => setSettings((s) => ({ ...s, mode: "with_preprocess" }))}
+                onClick={() => { persistMode("with_preprocess"); setSettings((s) => ({ ...s, mode: "with_preprocess" })); }}
                 title="Preprocessing + PT"
                 steps={[
                   "Strips well-ID from .seq",
@@ -344,7 +373,7 @@ export default function PeakTracer() {
               />
               <ModeCard
                 selected={settings.mode === "pt_only"}
-                onClick={() => setSettings((s) => ({ ...s, mode: "pt_only" }))}
+                onClick={() => { persistMode("pt_only"); setSettings((s) => ({ ...s, mode: "pt_only" })); }}
                 title="PT only"
                 steps={["Runs PT"]}
               />
@@ -439,10 +468,15 @@ export default function PeakTracer() {
                     <div className="text-right">Extended</div>
                   </div>
 
-                  {/* Scrollable body (18 rows + frozen header visible at default row height) */}
+                  {/* v1.7 Phase 4.4: 4K laptop verification.
+                      v1.6 used a fixed 625px maxHeight tuned for 1080p.
+                      On 4K (2560x1440) that looked small. Use a vh-based
+                      floor that keeps the 18-rows-visible behavior on
+                      1080p (~625px at 900vh) but scales with viewport.
+                      Ed to verify on actual 4K hardware (carry-over C4). */}
                   <div
                     className="overflow-y-auto"
-                    style={{ maxHeight: 625 }}
+                    style={{ maxHeight: "min(625px, 70vh)" }}
                   >
                     {/* File rows */}
                     {results.map((r, i) => {

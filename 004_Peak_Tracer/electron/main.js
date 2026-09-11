@@ -104,7 +104,7 @@ ipcMain.handle("fs:listAb1", async (_evt, folder) => {
 
 // ---- IPC: run peaktrace_core on a batch ----
 
-ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settings }) => {
+ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settings, adv }) => {
   const py = pythonExePath();
   const script = peaktraceScriptPath();
 
@@ -138,10 +138,61 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   else args.push("--preprocess");
 
   // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped).
-  // v1.6: always on — single PT pipeline, no UI toggle.
-  args.push("--rebasecall-data14");
+  // v1.6: always on in the UI.
+  // v1.7: CLI default flipped to ON (matches UI); no longer need to
+  // pass --rebasecall-data14 here. --min-rebasecall-len and
+  // --extend-min-snr stay because the modal exposes them.
   args.push("--min-rebasecall-len", "1000");
   args.push("--extend-min-snr", "1.3");
+
+  // v1.7 Phase 4.2: wire the advanced parameters modal. Each adv key
+  // maps to a CLI flag. Unknown keys are dropped silently. Bools: when
+  // true, add the --flag; when false, add the --no-flag. Strings/numbers:
+  // add --flag VALUE.
+  if (adv && typeof adv === "object") {
+    const boolKeys = {
+      rebasecallData14:   { flag: "--rebasecall-data14", neg: "--no-rebasecall-data14" },
+      baselineSmooth:     { flag: "--baseline-smooth",   neg: "--no-baseline-smooth" },
+      leadDropEnabled:    { flag: "--lead-drop-enabled", neg: "--no-lead-drop" },
+      qvToNEnabled:       { flag: "--qv-to-n-enabled",   neg: "--no-qv-to-n" },
+      sharpenPeaks:       { flag: "--sharpen-peaks",     neg: null },  // off by default; --no-sharpen-peaks not defined
+      enhancedQv:         { flag: "--enhanced-qv",       neg: null },
+      refinePloc:         { flag: "--refine-ploc",       neg: null },
+      writeSidecarTrace:  { flag: "--write-sidecar-trace", neg: null },
+    };
+    const intKeys = {
+      minRebasecallLen:   "--min-rebasecall-len",
+      leadDropQv:         "--lead-drop-qv",
+      qvToNThreshold:     "--qv-to-n-threshold",
+    };
+    const floatKeys = {
+      extendMinSnr:       "--extend-min-snr",
+      sharpenFactor:      "--sharpen-factor",
+    };
+    for (const [k, v] of Object.entries(adv)) {
+      if (v === undefined || v === null || v === "") continue;
+      if (k in boolKeys) {
+        const m = boolKeys[k];
+        if (v) {
+          if (m.flag) args.push(m.flag);
+        } else {
+          if (m.neg) args.push(m.neg);
+        }
+      } else if (k in intKeys) {
+        args.push(intKeys[k], String(v));
+      } else if (k in floatKeys) {
+        args.push(floatKeys[k], String(v));
+      }
+      // Unknown key: drop silently. Modal will be re-populated as
+      // more v1.7 phases add new adv fields.
+    }
+    // Emit an "effective params" log line so the operator can see what
+    // the spawn actually used.
+    event.sender.send("peaktrace:log", {
+      level: "info",
+      message: `effective advanced params: ${JSON.stringify(adv)}`,
+    });
+  }
 
   return new Promise((resolve) => {
     const child = spawn(py, args, { windowsHide: true });

@@ -18,10 +18,12 @@ Stage 5: trim_3_end — scan from the right, find the first window of size W
           Verified: uses rolling mean of QV over W=40 bases, trims when
           rolling mean drops below 9.
 
-Stage 6: extend_late_read_interpolated — re-basecall via trace interpolation.
-          Interpolates 4 channels to ~1.25x resolution, detects peaks with
-          adaptive prominence, keeps existing Seq7 calls where they match,
-          adds new calls in low-SNR regions, stops when quality collapses.
+Stage 6: extend_late_read_interpolated — declared late-read extension via
+          trace interpolation. v1.7 NOTE (B2): this function is dead code
+          (no caller) and does not actually interpolate despite its name.
+          Live late-read extension is rebasecall_data14 in stage 3 of
+          process_one. Kept intact with a deprecation note; see function
+          docstring for the wire-or-delete decision.
 
 Stage 7 (v1.5 FIX #17): clean_baseline + smooth_channels on DATA1-4 before
           peak detection. Returns baseline-subtracted + Savitzky-Golay
@@ -33,7 +35,7 @@ Stage 7 (v1.5 FIX #17): clean_baseline + smooth_channels on DATA1-4 before
 from __future__ import annotations
 import numpy as np
 from .read import Trace, CHANNELS, CHANNEL_OF_BASE
-from .smooth import clean_baseline, smooth_channels
+from .smooth import clean_baseline, smooth_channels, sharpen_channels
 
 BASE_OF_CHANNEL = {9: "A", 10: "C", 11: "G", 12: "T"}
 
@@ -244,7 +246,8 @@ def trim_3_end(bases: np.ndarray, qvs: np.ndarray, value: int = 9, window: int =
     return bases[:trim_pos], qvs[:trim_pos]
 
 
-def get_data14_channels(trace: Trace, process: bool = True) -> dict:
+def get_data14_channels(trace: Trace, process: bool = True,
+                       sharpen: bool = False, sharpen_factor: float = 2.0) -> dict:
     """Extract DATA1-4 (full-resolution processed channels) from trace.tags.
 
     Returns dict {1: ndarray, 2: ndarray, 3: ndarray, 4: ndarray} (A, C, G, T).
@@ -259,6 +262,9 @@ def get_data14_channels(trace: Trace, process: bool = True) -> dict:
     The original DATA1-4 values in trace.tags are NOT mutated; processing
     happens on a local copy. This keeps the existing writer path (which
     reads DATA1-4 for chromatogram extension) operating on raw values.
+
+    v1.7 Phase 3.1: optional sharpen step (Laplacian inverse filter).
+    Off by default (sharpen=False). When on, factor defaults to 2.0.
 
     Tunable parameters (module-level, see top of file):
       - DATA14_BASELINE_WINDOW (default 400)
@@ -297,6 +303,10 @@ def get_data14_channels(trace: Trace, process: bool = True) -> dict:
                     level=DATA14_SMOOTH_LEVEL,
                     order=DATA14_SMOOTH_ORDER)
 
+    # Stage 3 (v1.7 Phase 3.1): optional sharpen. Off by default.
+    if sharpen:
+        sharpen_channels(tmp, factor=sharpen_factor)
+
     # Map back to DATA1-4 keys
     processed = {}
     for ch in (1, 2, 3, 4):
@@ -310,7 +320,9 @@ def detect_peaks_data14(trace: Trace,
                         min_snr: float = 1.3,
                         distance: int = 8,
                         adaptive_fill: bool = True,
-                        process: bool = True) -> dict:
+                        process: bool = True,
+                        sharpen: bool = False,
+                        sharpen_factor: float = 2.0) -> dict:
     """Detect peaks in DATA1-4 at PT-like density (~12.3 scans/base).
 
     Strategy:
@@ -323,11 +335,15 @@ def detect_peaks_data14(trace: Trace,
     v1.5 FIX #17: `process=True` (default) applies baseline subtraction +
     Savitzky-Golay smoothing to DATA1-4 channels before peak detection.
 
+    v1.7 Phase 3.1: `sharpen` (off by default) adds Laplacian sharpening
+    after smoothing. Threaded to get_data14_channels.
+
     Sanity: total peaks across channels should be ~ len(DATA1) / 12.3.
     """
     from scipy.signal import find_peaks
 
-    full = get_data14_channels(trace, process=process)
+    full = get_data14_channels(trace, process=process,
+                               sharpen=sharpen, sharpen_factor=sharpen_factor)
     if not full:
         return {}
 
@@ -386,6 +402,18 @@ def extend_late_read_interpolated(
     stop_quiet_bases: int = 40,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall using DATA1-4 (processed, pre-truncation) instead of DATA9-12.
+
+    v1.7 NOTE (B2): this function is currently DEAD CODE — no caller exists
+    in cli.py or anywhere else in the live path. The actual late-read
+    extension is done by rebasecall_data14 (cli.py:316). The function also
+    fails to live up to its name: it declares interpolation_factor=1.25
+    but never resamples — the docstring above (Stage 6) is wrong.
+
+    v1.7 Phase 3.5 decision is wire-or-delete. Without sample4 available
+    in this session, the function is left intact with this note so future
+    work can decide. If anyone re-wires it, the interpolation_factor
+    parameter must be honoured (currently it isn't). If anyone deletes
+    it, this note goes too.
 
     Seq7 truncates DATA9-12 to ~16k scans but leaves DATA1-4 intact at ~18.7k.
     PeakTrace RP uses DATA1-4 to recover ~400 bases beyond Seq7's 3' end.
@@ -549,6 +577,113 @@ def apply_qv_to_n_downgrade(pb: np.ndarray,
     return pb_new, ploc, qv
 
 
+def apply_qv_to_n_downgrade_zone_aware(
+    pb: np.ndarray,
+    ploc: np.ndarray,
+    qv: np.ndarray,
+    head_threshold: int = 5,
+    middle_threshold: int = 5,
+    tail_threshold: int = 2,
+    head_frac: float = 0.1,
+    tail_frac: float = 0.3,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """v1.7 Phase 3.2: zone-aware QV-to-N downgrade (off by default).
+
+    Split the read into three zones by PLOC position (not by base index —
+    PLOC is the scan coordinate so zone boundaries map to physical scan
+    regions, which is what PT does):
+
+      head:   first `head_frac` of the PLOC range
+      middle: between head_frac and 1-tail_frac
+      tail:   last `tail_frac` of the PLOC range
+
+    Different thresholds per zone. Defaults: head=5, middle=5, tail=2 —
+    more aggressive in the tail because the QV scale there differs from
+    PT's (PT downgrades low-quality tail positions to N; v1.5's single
+    global threshold misses them because QV=4 in our scale is still "real"
+    by our threshold but "garbage" by PT's).
+
+    Off by default. Wired in via cli.py: --enhanced-qv. When off, the
+    existing apply_qv_to_n_downgrade with a single threshold is used
+    unchanged (R11: PCON is unchanged unless the new code path runs).
+    """
+    if len(pb) != len(ploc) or len(pb) != len(qv):
+        raise ValueError(f"pb/ploc/qv length mismatch: {len(pb)}/{len(ploc)}/{len(qv)}")
+    if len(ploc) == 0:
+        return pb.copy(), ploc, qv
+
+    ploc_min = int(ploc.min())
+    ploc_max = int(ploc.max())
+    ploc_range = ploc_max - ploc_min
+    if ploc_range <= 0:
+        # Degenerate (all same position). Treat as a single zone.
+        return apply_qv_to_n_downgrade(pb, ploc, qv, threshold=middle_threshold)
+
+    head_cutoff = ploc_min + head_frac * ploc_range
+    tail_cutoff = ploc_max - tail_frac * ploc_range
+
+    pb_new = pb.copy()
+    downgraded = 0
+    for i in range(len(pb_new)):
+        if int(pb_new[i]) == ord('N'):
+            continue  # already N
+        pos = int(ploc[i])
+        if pos <= head_cutoff:
+            thr = head_threshold
+        elif pos >= tail_cutoff:
+            thr = tail_threshold
+        else:
+            thr = middle_threshold
+        if int(qv[i]) <= thr:
+            pb_new[i] = ord('N')
+            downgraded += 1
+
+    return pb_new, ploc, qv
+
+
+# v1.7 Phase 3.2 module-level switch. Off by default. When True, the
+# cli.py calls apply_qv_to_n_downgrade_zone_aware instead of
+# apply_qv_to_n_downgrade. The constant exists so tests can verify the
+# default-off state without spinning up the whole CLI.
+ENHANCED_QV_ENABLED = False
+
+
+def refine_ploc_to_local_max(ploc_in: np.ndarray, channel: np.ndarray,
+                            window: int = 2) -> np.ndarray:
+    """v1.7 Phase 3.3: snap PLOC positions to the nearest local maximum
+    in the given channel within ±window scans.
+
+    Off by default. Wired in via cli.py: --refine-ploc. When off, this
+    function is never called from the live path. Off-by-default means
+    callers must opt in explicitly; no import-time side effect.
+
+    Rationale: Agent 2's PLOC refinement. Detected peak positions can
+    drift off the actual local maximum by a couple of scans because
+    find_peaks returns the integer sample closest to the peak. Snapping
+    to the local max within ±2 aligns PLOC with the chromatogram
+    geometry SnapGene / Geneious displays.
+    """
+    if window <= 0:
+        return ploc_in.copy()
+    ploc_out = ploc_in.copy().astype(np.int32)
+    n = len(channel)
+    for i in range(len(ploc_out)):
+        pos = int(ploc_out[i])
+        lo = max(0, pos - window)
+        hi = min(n, pos + window + 1)
+        if lo >= hi:
+            continue
+        window_arr = channel[lo:hi]
+        # np.argmax on float; ties go to the first occurrence.
+        new_pos = lo + int(np.argmax(window_arr))
+        ploc_out[i] = new_pos
+    return ploc_out
+
+
+# v1.7 Phase 3.3 module-level switch. Off by default.
+REFINE_PLOC_ENABLED = False
+
+
 def rebasecall_data14(trace: Trace,
                       map_params: dict,
                       peaks14: dict,
@@ -558,6 +693,9 @@ def rebasecall_data14(trace: Trace,
                       qv_floor: int = 10,
                       stop_quiet_bases: int = 40,
                       process: bool = True,
+                      sharpen: bool = False,
+                      sharpen_factor: float = 2.0,
+                      refine_ploc: bool = False,
                       pb=None, ploc=None, qv=None) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Re-basecall on DATA1-4 peak positions, merge with Seq7's existing calls.
 
@@ -574,6 +712,10 @@ def rebasecall_data14(trace: Trace,
       - QV >= qv_floor (default 10); otherwise downgrade base to 'N'
       - Stop extension after `stop_quiet_bases` consecutive bases with QV < qv_floor
 
+    v1.7 Phase 3.1: `sharpen` (off by default) threads through to
+    get_data14_channels. Use the same sharpen value as detect_peaks_data14
+    so the peaks14 dict is consistent with the channels used to derive QV.
+
     Returns (pb, ploc, qv) in DATA9-12 coordinates, sorted by PLOC.
     """
     from .align import map_to_data9
@@ -581,7 +723,8 @@ def rebasecall_data14(trace: Trace,
     if pb is None: pb = trace.pb_in.copy()
     if ploc is None: ploc = trace.ploc_in.copy()
     if qv is None: qv = trace.qv_in.copy()
-    full = get_data14_channels(trace, process=process)
+    full = get_data14_channels(trace, process=process,
+                               sharpen=sharpen, sharpen_factor=sharpen_factor)
     if not full or not peaks14 or not map_params.get("ok"):
         return pb, ploc, qv
 
@@ -759,6 +902,36 @@ def rebasecall_data14(trace: Trace,
     all_qv = np.concatenate([qv, new_qv])
     order = np.argsort(all_pos, kind="stable")
 
-    return (all_base[order].astype(np.uint8),
-            all_pos[order].astype(np.int32),
-            all_qv[order].astype(np.uint8))
+    final_pb = all_base[order].astype(np.uint8)
+    final_ploc = all_pos[order].astype(np.int32)
+    final_qv = all_qv[order].astype(np.uint8)
+
+    # v1.7 Phase 3.3: optional PLOC refinement. Off by default. When on,
+    # snap each PLOC to the local maximum within ±2 scans on the
+    # processed DATA1-4 channel matching the called base. This realigns
+    # PLOC with the chromatogram geometry that SnapGene / Geneious draw.
+    # Done AFTER the merge so the new_pos positions (already in DATA9-12
+    # coordinates) are mapped back through map_to_data14 for refinement.
+    if refine_ploc and len(final_ploc) > 0 and full:
+        from .align import map_to_data14
+        final_ploc_14 = np.array([
+            int(map_to_data14(int(p), map_params)) for p in final_ploc
+        ], dtype=np.int32)
+        # Pick the channel matching each called base
+        BASE_OF_FULL = {1: "A", 2: "C", 3: "G", 4: "T"}
+        CH_OF_BASE = {v: k for k, v in BASE_OF_FULL.items()}
+        refined = final_ploc.copy()
+        for i, (base, pos14) in enumerate(zip(final_pb, final_ploc_14)):
+            ch_id = CH_OF_BASE.get(chr(int(base)), None)
+            if ch_id is None or ch_id not in full:
+                continue
+            arr = full[ch_id]
+            lo = max(0, pos14 - 2)
+            hi = min(len(arr), pos14 + 3)
+            if lo >= hi:
+                continue
+            local_pos14 = lo + int(np.argmax(arr[lo:hi]))
+            refined[i] = int(map_to_data9(local_pos14, map_params))
+        final_ploc = refined
+
+    return final_pb, final_ploc, final_qv

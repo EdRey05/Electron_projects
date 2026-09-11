@@ -285,9 +285,11 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     qv = trace.qv_in.copy()
     ploc = trace.ploc_in.copy()
 
-    # NOTE: v1.2 leader-base-drop logic exists but is disabled by default.
-    # The current .ab1 writer has bugs that corrupt files when buffer size
-    # changes (which lead-drop causes). Re-enabled in v1.3 once writer is fixed.
+    # v1.7 FIX #27: the v1.2 "writer corrupts files when buffer size
+    # changes" comment above this block is stale — that bug class
+    # (element codes + offset) was fixed in v1.0. The trim logic
+    # itself is functional; only the --no-lead-drop argparse flag was
+    # broken (now fixed one block below in parse_args).
     lead_dropped = False
     if args.lead_drop_enabled and len(pb) > 1 and len(qv) > 0 and int(qv[0]) < args.lead_drop_qv:
         pb = pb[1:]
@@ -320,10 +322,15 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
                 map_r2 = map_params.get("r_squared", 0.0)
                 if map_params.get("ok"):
                     peaks14 = detect_peaks_data14(trace, min_snr=args.extend_min_snr,
-                                                   process=args.baseline_smooth)
+                                                   process=args.baseline_smooth,
+                                                   sharpen=args.sharpen_peaks,
+                                                   sharpen_factor=args.sharpen_factor)
                     pb_new, ploc_new, qv_new = rebasecall_data14(
                         trace, map_params, peaks14, min_snr=args.extend_min_snr,
                         process=args.baseline_smooth,
+                        sharpen=args.sharpen_peaks,
+                        sharpen_factor=args.sharpen_factor,
+                        refine_ploc=args.refine_ploc,
                         pb=pb, ploc=ploc, qv=qv)
                     # Sanity: every original call must survive in the merged output
                     # (same positions, same bases). Internal gap insertions expected.
@@ -363,11 +370,30 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
     n_downgraded = 0
     if args.qv_to_n_threshold > 0 and len(pb) > 0:
         try:
-            from .peak import apply_qv_to_n_downgrade
-            pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
-            pb, ploc, qv = apply_qv_to_n_downgrade(pb, ploc, qv, threshold=args.qv_to_n_threshold)
-            pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
-            n_downgraded = pb_orig_count - pb_new_count
+            if getattr(args, 'enhanced_qv', False):
+                # v1.7 Phase 3.2: zone-aware downgrade. Off by default.
+                # Uses zone-aware thresholds (head/middle/tail) instead of
+                # a single global threshold. PCON values are unchanged
+                # (R11); only the base character changes at low-QV positions.
+                from .peak import apply_qv_to_n_downgrade_zone_aware
+                pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
+                # Tail threshold is 3 below the global threshold so the tail
+                # is more aggressive (matches the default head/middle/tail =
+                # 5/5/2 spacing in the function signature).
+                pb, ploc, qv = apply_qv_to_n_downgrade_zone_aware(
+                    pb, ploc, qv,
+                    head_threshold=args.qv_to_n_threshold,
+                    middle_threshold=args.qv_to_n_threshold,
+                    tail_threshold=max(1, args.qv_to_n_threshold - 3),
+                )
+                pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
+                n_downgraded = pb_orig_count - pb_new_count
+            else:
+                from .peak import apply_qv_to_n_downgrade
+                pb_orig_count = sum(1 for b in pb if int(b) != ord('N'))
+                pb, ploc, qv = apply_qv_to_n_downgrade(pb, ploc, qv, threshold=args.qv_to_n_threshold)
+                pb_new_count = sum(1 for b in pb if int(b) != ord('N'))
+                n_downgraded = pb_orig_count - pb_new_count
         except Exception as e:
             emit_event("file_warn", src=str(src_ab1),
                        msg=f"qv-to-n downgrade failed: {e}")
@@ -424,6 +450,23 @@ def process_one(src_ab1: Path, out_dir: Path, args) -> dict:
         except Exception as e:
             emit_event("file_error", src=str(src_ab1), error=f"write seq failed: {e}")
             return {"src": str(src_ab1), "status": "error"}
+
+    # v1.7 Phase 3.4: optional sidecar trace artifact.
+    # Off by default. Writes JSON with processed DATA1-4 channels into
+    # <output>/sidecar/ (NOT the main output folder — Kimi R8).
+    if getattr(args, 'write_sidecar_trace', False):
+        try:
+            from .peak import get_data14_channels
+            from .sidecar import write_sidecar_trace
+            processed = get_data14_channels(trace, process=args.baseline_smooth,
+                                            sharpen=args.sharpen_peaks,
+                                            sharpen_factor=args.sharpen_factor)
+            sidecar_path = write_sidecar_trace(out_dir, base, processed)
+            emit_event("sidecar_written", src=str(src_ab1),
+                       path=str(sidecar_path))
+        except Exception as e:
+            emit_event("file_warn", src=str(src_ab1),
+                       msg=f"sidecar write failed: {e}")
 
     emit_event("file_done", src=str(src_ab1), out=str(out_ab1),
                    n_bases_in=trace.n_bases, n_bases_out=len(pb),
@@ -553,13 +596,24 @@ def parse_args(argv=None) -> argparse.Namespace:
     # v1.2: Leading-base drop (matches PT's behavior on 83% of long reads)
     p.add_argument("--lead-drop-enabled", action="store_true", default=True,
                    help="Drop leading base when QV < --lead-drop-qv (matches PT, default ON)")
-    p.add_argument("--no-lead-drop", dest="lead_drop_enabled", action="store_true")
+    # v1.7 FIX #27: --no-lead-drop was action="store_true" which could
+    # never disable (same dest as --lead-drop-enabled, default=True).
+    # Flipped to store_false so the flag actually works.
+    p.add_argument("--no-lead-drop", dest="lead_drop_enabled", action="store_false")
     p.add_argument("--lead-drop-qv", type=int, default=5,
                    help="QV threshold for leading-base drop (default 5; PT drops when QV < ~5)")
 
-    # v1.3: Re-basecall from DATA1-4 raw channels (recovers late reads)
-    p.add_argument("--rebasecall-data14", action="store_true", default=False,
-                   help="Re-basecall from DATA1-4 full-resolution channels, merged into Seq7 gaps")
+    # v1.3: Re-basecall from DATA1-4 raw channels (recovers late reads).
+    # v1.7: DEFAULT ON. The feature has been on in the UI (electron/main.js
+    # adds --rebasecall-data14 to argv unconditionally) since v1.6; the
+    # CLI default of False was a footgun (forgetting the flag silently
+    # skipped +9% base recovery). Flip the CLI default to True so UI and
+    # CLI match. Disable with --no-rebasecall-data14 for regression
+    # testing against v1.5 behavior.
+    p.add_argument("--rebasecall-data14", action="store_true", default=True,
+                   help="Re-basecall from DATA1-4 full-resolution channels, merged into Seq7 gaps (v1.7 default ON)")
+    p.add_argument("--no-rebasecall-data14", action="store_false", dest="rebasecall_data14",
+                   help="Disable re-basecall (v1.5 trust-input behavior)")
     p.add_argument("--extend-min-snr", type=float, default=1.3,
                    help="Minimum SNR for re-basecalled peaks (default 1.3)")
     p.add_argument("--extend-stop-quiet", type=int, default=40,
@@ -573,6 +627,33 @@ def parse_args(argv=None) -> argparse.Namespace:
     # for regression testing against the v1.4 behavior.
     p.add_argument("--no-baseline-smooth", dest="baseline_smooth", action="store_false", default=True,
                    help="Disable DATA1-4 baseline subtraction + smoothing (v1.4 behavior, default ON in v1.5)")
+
+    # v1.7 Phase 3.1: optional Laplacian sharpening after baseline+smooth.
+    # Off by default. factor defaults to 2.0; range 1-5 typical.
+    # No module-level state allocated when flag is off (R3 / Kimi D).
+    p.add_argument("--sharpen-peaks", action="store_true", default=False,
+                   help="Apply Laplacian sharpening to processed DATA1-4 (default OFF; v1.7 Phase 3.1)")
+    p.add_argument("--sharpen-factor", type=float, default=2.0,
+                   help="Laplacian sharpening factor (default 2.0; range 1.0-5.0)")
+
+    # v1.7 Phase 3.2: zone-aware QV-to-N downgrade.
+    # Off by default. When on, applies different thresholds to head/middle/tail
+    # regions (tail more aggressive) instead of a single global threshold.
+    # PCON values are NOT modified (R11); only the base character changes.
+    p.add_argument("--enhanced-qv", action="store_true", default=False,
+                   help="Use zone-aware QV-to-N downgrade (default OFF; v1.7 Phase 3.2)")
+
+    # v1.7 Phase 3.3: snap PLOC to the local maximum on the called-base channel.
+    # Off by default.
+    p.add_argument("--refine-ploc", action="store_true", default=False,
+                   help="Snap PLOC to local maximum ±2 scans on the called-base channel (default OFF; v1.7 Phase 3.3)")
+
+    # v1.7 Phase 3.4: write a sidecar trace artifact (processed channels) for
+    # offline inspection. Off by default. Sidecars go in <output>/sidecar/
+    # (Kimi R8) — not the main output folder — to avoid SnapGene file-type
+    # confusion. .ab1 ABI contract stays intact (DATA9-12 unchanged).
+    p.add_argument("--write-sidecar-trace", action="store_true", default=False,
+                   help="Write processed channels as JSON into <output>/sidecar/ (default OFF; v1.7 Phase 3.4)")
 
     # v1.5 FIX #19: post-merge QV-to-N downgrade. Applied globally to all
     # basecalls (Seq7-inherited + re-basecalled).

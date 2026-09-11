@@ -1,16 +1,60 @@
+# ============================================
+# Node.js & Build Dependencies
+# ============================================
 node_modules
-out
+.pnpm-lock.yaml
+.pnpm-debug.log
+
+# ============================================
+# Build & Distribution Outputs
+# ============================================
 dist
-.vite
-*.log
-.DS_Store
-.env
-.env.*
-coverage
-tests/.tmp
+out
 build
 release
+
+# ============================================
+# Vite Cache
+# ============================================
+.vite
+
+# ============================================
+# Environment Variables & Secrets
+# ============================================
+.env
+.env.*
+!.env.example
+
+# ============================================
+# System & IDE Files
+# ============================================
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+
+# ============================================
+# Logs & Coverage
+# ============================================
+*.log
+coverage
+
+# ============================================
+# Python Environment & Dependencies
+# ============================================
 python-app/runtime-venv
 python-app/runtime
 python-app/**/__pycache__
 *.pyc
+*.pyo
+*.pyd
+
+# ============================================
+# Development & Testing (Not for Production)
+# ============================================
+docs/
+python-app/experiments/
+python-app/tests/
+tests/.tmp
+python-app/.tmp
