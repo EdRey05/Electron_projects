@@ -13,6 +13,7 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { spawn } = require("child_process");
+const { advancedDefaults, advancedArgs } = require("./parameters");
 
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
@@ -116,6 +117,7 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   // toggle for the PT processing itself — RP/Full/Passthrough confusion was
   // removed in v1.6. The only mode toggle is preprocessing (with/without
   // the .bat equivalent your team runs between Seq7 and PT).
+  settings = settings || {};
   const mode = (settings.mode || "with_preprocess").toLowerCase();
 
   const args = [
@@ -125,85 +127,33 @@ ipcMain.handle("peaktrace:runBatch", async (event, { inputDir, outputDir, settin
   ];
 
   // Output toggles (what the v1.6 UI exposes)
-  if (settings.stripWellId !== false) args.push("--strip-well-id");
-  else args.push("--no-strip-well-id");
   if (settings.emitSeq !== false) args.push("--emit-seq");
   else args.push("--no-emit-seq");
-  if (settings.setAbiLimits !== false) args.push("--set-abi-limits");
-  if (settings.skipShorterThan) args.push("--skip-shorter-than", String(settings.skipShorterThan));
   if (settings.filenameSuffix) args.push("--filename-suffix", settings.filenameSuffix);
 
   // Preprocessing toggle (the v1.6 2-mode UI choice)
   if (mode === "pt_only") args.push("--no-preprocess");
   else args.push("--preprocess");
 
-  // v1.3: Re-basecall from raw channels (recovers late reads Seq7 dropped).
-  // v1.6: always on in the UI.
-  // v1.7: CLI default flipped to ON (matches UI); no longer need to
-  // pass --rebasecall-data14 here. --min-rebasecall-len and
-  // --extend-min-snr stay because the modal exposes them.
-  args.push("--min-rebasecall-len", "1000");
-  args.push("--extend-min-snr", "1.3");
-
-  // v1.7 Phase 4.2: wire the advanced parameters modal. Each adv key
-  // maps to a CLI flag. Unknown keys are dropped silently. Bools: when
-  // true, add the --flag; when false, add the --no-flag. Strings/numbers:
-  // add --flag VALUE.
-  if (adv && typeof adv === "object") {
-    const boolKeys = {
-      rebasecallData14:   { flag: "--rebasecall-data14", neg: "--no-rebasecall-data14" },
-      baselineSmooth:     { flag: "--baseline-smooth",   neg: "--no-baseline-smooth" },
-      leadDropEnabled:    { flag: "--lead-drop-enabled", neg: "--no-lead-drop" },
-      qvToNEnabled:       { flag: "--qv-to-n-enabled",   neg: "--no-qv-to-n" },
-      sharpenPeaks:       { flag: "--sharpen-peaks",     neg: null },  // off by default; --no-sharpen-peaks not defined
-      enhancedQv:         { flag: "--enhanced-qv",       neg: null },
-      refinePloc:         { flag: "--refine-ploc",       neg: null },
-      writeSidecarTrace:  { flag: "--write-sidecar-trace", neg: null },
-    };
-    const intKeys = {
-      minRebasecallLen:   "--min-rebasecall-len",
-      leadDropQv:         "--lead-drop-qv",
-      qvToNThreshold:     "--qv-to-n-threshold",
-    };
-    const floatKeys = {
-      extendMinSnr:       "--extend-min-snr",
-      sharpenFactor:      "--sharpen-factor",
-    };
-    for (const [k, v] of Object.entries(adv)) {
-      if (v === undefined || v === null || v === "") continue;
-      if (k in boolKeys) {
-        const m = boolKeys[k];
-        if (v) {
-          if (m.flag) args.push(m.flag);
-        } else {
-          if (m.neg) args.push(m.neg);
-        }
-      } else if (k in intKeys) {
-        args.push(intKeys[k], String(v));
-      } else if (k in floatKeys) {
-        args.push(floatKeys[k], String(v));
-      }
-      // Unknown key: drop silently. Modal will be re-populated as
-      // more v1.7 phases add new adv fields.
-    }
-    // Emit an "effective params" log line so the operator can see what
-    // the spawn actually used.
-    event.sender.send("peaktrace:log", {
-      level: "info",
-      message: `effective advanced params: ${JSON.stringify(adv)}`,
-    });
+  try {
+    args.push(...advancedArgs({ ...advancedDefaults, ...adv }));
+  } catch (error) {
+    return { ok: false, error: error.message };
   }
 
   return new Promise((resolve) => {
     const child = spawn(py, args, { windowsHide: true });
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
     let stdoutBuf = "";
     let stderrBuf = "";
 
     child.stdout.on("data", (chunk) => {
-      const text = chunk.toString();
-      stdoutBuf += text;
+      stdoutBuf += chunk.toString();
+      const lines = stdoutBuf.split(/\r?\n/);
+      stdoutBuf = lines.pop();
       // Stream progress: every line is one JSON object OR a plain status line.
-      for (const line of text.split(/\r?\n/)) {
+      for (const line of lines) {
         if (!line.trim()) continue;
         try {
           const obj = JSON.parse(line);

@@ -1,65 +1,46 @@
-# Peak Tracer v0
+# Peak Tracer v1.8 development
 
-In-house replacement for Nucleics Auto PeakTrace RP. Processes Sanger `.ab1`
-chromatograms (spectral deconvolution → baseline → smoothing → re-basecall →
-new `.ab1` output) using a fully open-source Python pipeline (Biopython +
-NumPy + SciPy + PyWavelets), wrapped in an Electron UI.
+Sanger chromatogram processing for post-Seq7 AB1 files, with an Electron interface
+and a Python CLI. The current pipeline resolves measured overlapping peaks,
+preserves raw acquisition data and inherited KB confidence, and writes coherent
+AB1, sequence and provenance outputs.
 
-## Status
+See [v1.8 validation results](docs/v1.8/VALIDATION.md) for the two-plate comparison,
+four diagnostic plots, known limits and next development steps. This is a trace
+resolution milestone; longer high-quality basecalling comparable to PeakTrace
+remains under development.
 
-**v0 scaffold only — no Python core yet.** Electron UI is wired to spawn
-`python-app/Code/peaktrace_core.py` with all settings as CLI flags, but the
-Python script itself doesn't exist yet. The Electron app will show "script
-not found" errors until `python-app/` is populated.
+## Run the CLI
 
-## User flow (target)
+Use Python with the dependencies in `python-app/requirements.txt`:
 
-1. Pick the input folder (the `raw/` subfolder containing post-Seq7 `.ab1`
-   files). The app enumerates the `.ab1` files in it.
-2. Output folder auto-fills to the parent (matches PeakTrace RP convention).
-3. Pick a processing mode (Raw Proportional, Full PeakTrace, or Pass-through).
-4. (Optional) Show Advanced and tune smoothing / baseline / basecaller knobs.
-5. Click **Run Peak Tracer**. Per-file progress streams live; each result row
-   can be expanded to see QC stats.
-6. The new `.ab1` files land in the output folder, ready to send to the
-   sister company.
-
-## UI integration decision (open)
-
-Three possible delivery paths (tracked in agent folder's SPECS.md §9):
-- **A. Standalone Electron app** (this v0)
-- **B. Subapp inside `003_Gene_Synthesis_Hub/`** (Electron hub)
-- **C. Module inside `BBI_projects/App_hub/`** (legacy Tkinter hub)
-
-The Python core is identical in all three; only the wrapper UI changes.
-Ed hasn't decided yet.
-
-## Build
-
-See BUILD.md. Dev loop:
-
-```bash
-cd 004_Peak_Tracer
-npm install
-npm run dev
+```powershell
+python python-app/peaktrace_core.py --input-dir 'POST_SEQ7_FOLDER' --output-dir 'FRESH_OUTPUT_FOLDER' --no-preprocess
 ```
 
-## Python side (TODO)
+Omit `--no-preprocess` to derive output names from paired naming headers.
+Processing never modifies input files. Use a fresh output folder for each run.
+Default sequence export is plain text from the computed clear range; use
+`--seq-range full` for all calls or `--seq-format abi` for two filename headers.
 
-The following need to land in `python-app/`:
+`--help` lists supported settings. Resolution is enabled by default; experimental
+low-quality substitutions are disabled. Retired v1.7 calling options are rejected.
 
-- `python-app/runtime-venv/` — bundled Python venv (created from `requirements.txt` by `scripts/setup_python_app.sh`)
-- `python-app/Code/peaktrace_core.py` — CLI entry point (consumes all the CLI flags the Electron main process passes)
-- `python-app/Code/peaktrace/` — the Python package implementing the pipeline
-- `python-app/requirements.txt` — pinned: biopython, numpy, scipy, pywavelets, abifpy or rohankan/ab1-file-writer
+## Verify
 
-This is the next major chunk of work, separate from the UI scaffold.
+```powershell
+python -m unittest discover -s python-app/tests
+node --check electron/main.js
+node --check electron/parameters.js
+```
 
-## Conventions
+The reproducible scripts under `python-app/experiments/` compare paired AB1 files,
+audit the written outputs, and exercise synthetic peak recovery. Plot generation
+additionally requires matplotlib. Dataset paths are supplied explicitly; no
+sample data or network services are required by the production processor.
 
-Follows the Electron_projects repo conventions (see
-`../electron-projects-repo-conventions` skill):
-- Folder name `004_Peak_Tracer/` (next sequential slot)
-- Single clean commit per version
-- Source only — no built artifacts committed
-- Per-app `.gitignore` matching `001_FileSync/`
+## Electron
+
+The interface and main process share validated advanced defaults. See `BUILD.md`
+for the existing build workflow. v1.8 has not yet been built or packaged; the
+current development milestone is CLI processing and validation.

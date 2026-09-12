@@ -16,7 +16,8 @@ import numpy as np
 
 
 def write_sidecar_trace(out_dir: Path, src_basename: str,
-                        full_channels: dict[int, np.ndarray]) -> Path:
+                        full_channels: dict[int, np.ndarray], *,
+                        base_order: str = 'ACGT', coordinate_system: str = 'unspecified') -> Path:
     """Write the processed DATA1-4 channels as JSON.
 
     full_channels: dict mapping {1,2,3,4} -> ndarray (A, C, G, T).
@@ -28,14 +29,14 @@ def write_sidecar_trace(out_dir: Path, src_basename: str,
     sidecar_dir = out_dir / "sidecar"
     sidecar_dir.mkdir(parents=True, exist_ok=True)
     out_path = sidecar_dir / f"{src_basename}.sidecar.json"
+    if len(base_order) != 4 or set(base_order) != set('ACGT'):
+        raise ValueError('Invalid sidecar channel order')
     payload = {
         "format_version": 1,
-        "channels": {
-            "A": [float(x) for x in full_channels.get(1, np.array([]))],
-            "C": [float(x) for x in full_channels.get(2, np.array([]))],
-            "G": [float(x) for x in full_channels.get(3, np.array([]))],
-            "T": [float(x) for x in full_channels.get(4, np.array([]))],
-        },
+        "coordinate_system": coordinate_system,
+        "channel_order": base_order,
+        "channels": {base: [float(x) for x in full_channels.get(i+1, np.array([]))]
+                     for i, base in enumerate(base_order)},
     }
     with out_path.open("w", encoding="utf-8") as f:
         json.dump(payload, f)

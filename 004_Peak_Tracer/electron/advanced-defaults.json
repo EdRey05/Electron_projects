@@ -1,0 +1,14 @@
+{
+  "resolvePeaks": true,
+  "recallLowQuality": false,
+  "resolutionStrength": 0.75,
+  "resolutionIterations": 24,
+  "baselineSmooth": true,
+  "leadDropEnabled": false,
+  "leadDropQv": 5,
+  "skipShorterThan": 0,
+  "setAbiLimits": true,
+  "stripWellId": true,
+  "doSmooth": true,
+  "smoothWindow": 7
+}
