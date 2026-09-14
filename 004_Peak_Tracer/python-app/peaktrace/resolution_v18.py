@@ -10,30 +10,22 @@ from scipy.ndimage import gaussian_filter1d, percentile_filter, median_filter
 from scipy.signal import find_peaks, peak_widths, savgol_filter
 
 
-# Keep the exact v1.8 primitive available for historical regression fixtures.
-from .resolution_v18 import _restore
-
-
-def _recover(observed, sigma, iterations, noise):
-    """Damped nonnegative inverse with an additive noise floor in the ratio."""
-    floor=max(float(noise),float(np.percentile(observed,95))*.002,1e-6)
-    estimate=np.maximum(observed,floor*.01)
+def _restore(observed, sigma, iterations):
+    if sigma<0.35:return observed.copy()
+    floor=max(float(np.percentile(observed,95))*.002,1e-6)
+    estimate=np.maximum(observed,floor)
     for _ in range(iterations):
         prediction=gaussian_filter1d(estimate,sigma,mode='reflect')
-        ratio=(observed+floor)/(prediction+floor)
+        ratio=observed/np.maximum(prediction,floor)
         correction=gaussian_filter1d(ratio,sigma,mode='reflect')
-        estimate*=np.clip(correction,.2,5.)**.8
+        # Damped updates and a small smoothness penalty limit noise amplification.
+        estimate*=np.clip(correction,0.2,5.)**0.8
         estimate=gaussian_filter1d(estimate,.35,mode='reflect')
     return np.maximum(estimate,0)
 
 
 def resolve_channels(trace, args):
-    if getattr(args,'resolution_model','v19')=='v18':
-        from .resolution_v18 import resolve_channels as legacy
-        return legacy(trace,args)
     signal=np.array([trace.channels[k] for k in range(9,13)],float)
-    detail=signal-savgol_filter(signal,min(7,signal.shape[1]//2*2-1),2,axis=1) if signal.shape[1]>=7 else signal*0
-    noise_floor=max(.1,1.4826*float(np.median(np.abs(detail-np.median(detail)))))
     positions=np.unique(trace.ploc_in)
     if len(positions)<20:return {k:signal[k-9] for k in range(9,13)},{'resolved':False,'reason':'too few anchors'}
     spacing=float(np.median(np.diff(positions)))
@@ -70,7 +62,7 @@ def resolve_channels(trace, args):
     width_x=np.array(width_x);width_y=np.array(width_y)
     # Overlap/add each locally stationary window. Same kernel for all four dyes
     # preserves relative gain; the width trend can change over the read.
-    total=np.zeros_like(measured);weights=np.zeros(len(grid));sigmas=[];local_noise_levels=[];rounding_sigmas=[]
+    total=np.zeros_like(measured);weights=np.zeros(len(grid));sigmas=[]
     block=1024;step=256
     for center in range(0,len(grid)+step,step):
         lo=max(0,center-block//2);hi=min(len(grid),center+block//2)
@@ -80,32 +72,14 @@ def resolve_channels(trace, args):
         observed_sigma=fwhm/2.355
         # Leave finite width: a fully inverted impulse train would misrepresent evidence.
         kernel_sigma=max(.35,observed_sigma*args.resolution_strength)
-        kernel_sigma=min(kernel_sigma,getattr(args,'kernel_cap',8.))
+        kernel_sigma=min(kernel_sigma,5.)
         sigmas.append(kernel_sigma)
         w=np.maximum(np.hanning(hi-lo),1e-4)
-        target_sigma=getattr(args,'peak_width',.24)*samples_per_base
-        if getattr(args,'adaptive_peak_width',True) and target_sigma>0:
-            remaining_sigma=observed_sigma*np.sqrt(max(0.,1-args.resolution_strength**2))
-            target_sigma=np.sqrt(max(target_sigma**2-remaining_sigma**2,(.04*samples_per_base)**2))
-        local_noise=noise_floor
-        if getattr(args,'local_noise',True):
-            start_scan=int(scan_grid[lo]);end_scan=min(trace.n_scans,int(scan_grid[hi-1])+1)
-            local_detail=detail[:,start_scan:end_scan]
-            local_noise=max(.1,1.4826*float(np.median(np.abs(local_detail-np.median(local_detail)))))
-        local_noise_levels.append(local_noise);rounding_sigmas.append(target_sigma/samples_per_base)
         for ch in range(4):
-            latent=_recover(measured[ch,lo:hi],kernel_sigma,args.resolution_iterations,
-                            local_noise*getattr(args,'noise_regularization',1.))
-            finite=gaussian_filter1d(latent,target_sigma,mode='reflect') if target_sigma>0 else latent
-            total[ch,lo:hi]+=finite*w
+            total[ch,lo:hi]+=_restore(measured[ch,lo:hi],kernel_sigma,args.resolution_iterations)*w
         weights[lo:hi]+=w
     restored=total/np.maximum(weights,1e-9)
     out={k:np.interp(np.arange(trace.n_scans),scan_grid,restored[k-9]) for k in range(9,13)}
-    return out,{'resolved':True,'method':'noise-regularized inverse with finite-width reconvolution',
+    return out,{'resolved':True,'method':'local-width regularized Richardson-Lucy',
                 'width_anchors':len(width_x),'median_kernel_sigma_base':float(np.median(sigmas)/samples_per_base),
-                'strength':args.resolution_strength,'iterations':args.resolution_iterations,
-                'target_peak_sigma_base':getattr(args,'peak_width',.24),'measured_noise_floor':noise_floor,
-                'median_local_noise':float(np.median(local_noise_levels)),
-                'median_rounding_sigma_base':float(np.median(rounding_sigmas)),
-                'noise_regularization':getattr(args,'noise_regularization',1.),
-                'model':'v19'}
+                'strength':args.resolution_strength,'iterations':args.resolution_iterations}

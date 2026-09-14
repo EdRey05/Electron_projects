@@ -1,12 +1,11 @@
-# Peak Tracer v1.8 development
+# Peak Tracer v1.9 development
 
 Sanger chromatogram processing for post-Seq7 AB1 files, with an Electron interface
 and a Python CLI. The current pipeline resolves measured overlapping peaks,
 preserves raw acquisition data and inherited KB confidence, and writes coherent
 AB1, sequence and provenance outputs.
 
-See [v1.8 validation results](docs/v1.8/VALIDATION.md) for the two-plate comparison,
-four diagnostic plots, known limits and next development steps. This is a trace
+See the [v1.9 plan](docs/v1.9/PLAN.md) and [v1.9 results](docs/v1.9/RESULTS.md) for adaptive peak rounding, two-plate comparisons, tuning records and known regressions. The [v1.8 validation](docs/v1.8/VALIDATION.md) remains available as the baseline. This is a trace
 resolution milestone; longer high-quality basecalling comparable to PeakTrace
 remains under development.
 
@@ -42,5 +41,5 @@ sample data or network services are required by the production processor.
 ## Electron
 
 The interface and main process share validated advanced defaults. See `BUILD.md`
-for the existing build workflow. v1.8 has not yet been built or packaged; the
+for the existing build workflow. v1.9 has not yet been built or packaged; the
 current development milestone is CLI processing and validation.
