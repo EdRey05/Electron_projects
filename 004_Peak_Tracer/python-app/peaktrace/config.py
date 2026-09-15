@@ -25,6 +25,7 @@ def parse_args(argv=None):
     boolean('resolve-peaks', True, 'Resolve measured peaks using regularized deconvolution')
     boolean('recall-low-quality', False, 'Experimentally revise strongly contradicted low-Q calls')
     boolean('write-sidecar-trace', False, 'Write analytical channels to a diagnostic sidecar')
+    boolean('write-evidence', False, 'Write native signal-evidence diagnostics; never changes calls or QVs')
     # Accept old negative switches for automation migration, but reject the unsafe paths.
     for name in ('rebasecall-data14', 'sharpen-peaks', 'enhanced-qv', 'refine-ploc'):
         boolean(name, False, 'Retired v1.7 option (enabling is rejected)')
