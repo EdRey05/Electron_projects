@@ -1,5 +1,7 @@
 # v2.0 plan: evaluate an established Sanger quality estimator
 
+> Status, 15 September 2026: this is the original experiment plan. TraceTuner was subsequently removed from the application at the user's request. v2.0 remains open; see [NEXT_STEPS.md](NEXT_STEPS.md) for the current direction. The experiment and its outputs remain historical evidence.
+
 Starting checkpoint: `7e0931f` on `dev-peak-tracer` (v1.9). Scope: CLI experiments and conditional integration; no version lock, push or executable packaging. Preserve all previous input/output evidence.
 
 ## Scientific basis

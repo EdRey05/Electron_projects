@@ -11,14 +11,11 @@ remains under development.
 
 ## Run the CLI
 
-The [v2.0 plan](docs/v2.0/PLAN.md) and [results](docs/v2.0/RESULTS.md) document TraceTuner quality reassessment.
-Default processing retains v1.9 signal/call behavior. An experimental CLI-only
-mode adds `--quality-mode tracetuner --tracetuner-executable 'PATH_TO_TTUNER.exe'`.
-It scores the enhanced serialized trace with the built-in 3730 POP7 BDTv3 table,
-preserves base identities and label positions, and assigns ambiguous bases Q0.
-The resulting confidence is not independently calibrated for our processing.
-Full TraceTuner recalling is an evaluation condition, not an app option.
-The executable is an external GPL engine, not bundled in this development change.
+v2.0 remains open for development. TraceTuner integration was removed on
+15 September 2026; the app retains v1.9 signal processing and inherited Seq7 QVs.
+The [revised direction](docs/v2.0/NEXT_STEPS.md) describes the next investigation.
+The [original plan](docs/v2.0/PLAN.md) and [historical results](docs/v2.0/RESULTS.md)
+preserve the completed experiment. Its saved QV outputs are not current app output.
 
 Use Python with the dependencies in `python-app/requirements.txt`:
 

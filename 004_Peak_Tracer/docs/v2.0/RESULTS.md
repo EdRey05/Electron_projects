@@ -1,5 +1,7 @@
 # Peak Tracer v2.0: quality reassessment results
 
+> Status, 15 September 2026: the report below describes the historical `8e27cac` checkpoint. TraceTuner's adapter and CLI switches have now been removed from the app at the user's request. The `7-v2.0-experimental-qv` files and metrics are preserved experiment results, not outputs reproducible with the current CLI. Use the historical checkpoint to reproduce that integration. Current development retains v1.9 signal processing and Seq7 QVs; v2.0 is not locked. See [NEXT_STEPS.md](NEXT_STEPS.md).
+
 Experiments and implementation completed 9 September 2026; documentation finalized after resuming on 10 September. Starting point: v1.9 `7e0931f`. Plan/evaluation commit: `c35cb78`; implementation: `16c65ac`, on `dev-peak-tracer`. This is a development checkpoint, not a locked or packaged release.
 
 **v2.0 now has a working, opt-in TraceTuner quality reassessment mode.** It changes QVs using the engine's existing 3730 lookup table while preserving v1.9's peaks, base identities and label positions. On the two plates, predicted Q20 counts rise by 1.83% and 2.67%, and Q30 counts by 7.40% and 7.28%. This is progress toward meaningful confidence estimation, not demonstrated improvement in sequence accuracy or equivalence to PeakTrace.
