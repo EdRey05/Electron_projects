@@ -28,6 +28,13 @@ Processing never modifies input files. Use a fresh output folder for each run.
 Default sequence export is plain text from the computed clear range; use
 `--seq-range full` for all calls or `--seq-format abi` for two filename headers.
 
+Add `--write-evidence` for the v2.0 native diagnostic experiment. It writes one
+`.evidence.json` per read with original/resolved signal features, strength
+sensitivity and isolated same-base pair fits. This is CLI-only, off by default,
+and adds computation and disk usage. It does not change the exported signals,
+basecalls or inherited QVs. Model preferences are not calibrated probabilities.
+See the [native evidence report](docs/v2.0/NATIVE_EVIDENCE_RESULTS.md).
+
 `--help` lists supported settings. Resolution is enabled by default; experimental
 low-quality substitutions are disabled. Retired v1.7 calling options are rejected.
 

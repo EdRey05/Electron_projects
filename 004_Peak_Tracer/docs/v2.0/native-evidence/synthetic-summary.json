@@ -1,0 +1,152 @@
+{
+  "synthetic": [
+    {
+      "family": "asymmetric_single",
+      "n": 54,
+      "original": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      },
+      "resolved": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      }
+    },
+    {
+      "family": "double",
+      "n": 54,
+      "original": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      },
+      "resolved": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      }
+    },
+    {
+      "family": "single",
+      "n": 54,
+      "original": {
+        "delta_above_10": 17,
+        "screened_two": 17
+      },
+      "resolved": {
+        "delta_above_10": 17,
+        "screened_two": 17
+      }
+    },
+    {
+      "family": "unequal_width_double",
+      "n": 54,
+      "original": {
+        "delta_above_10": 54,
+        "screened_two": 49
+      },
+      "resolved": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      }
+    }
+  ],
+  "synthetic-refined": [
+    {
+      "family": "asymmetric_single",
+      "n": 54,
+      "original": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      },
+      "resolved": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      }
+    },
+    {
+      "family": "double",
+      "n": 54,
+      "original": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      },
+      "resolved": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      }
+    },
+    {
+      "family": "single",
+      "n": 54,
+      "original": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      },
+      "resolved": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      }
+    },
+    {
+      "family": "unequal_width_double",
+      "n": 54,
+      "original": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      },
+      "resolved": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      }
+    }
+  ],
+  "synthetic-holdout": [
+    {
+      "family": "asymmetric_single",
+      "n": 72,
+      "original": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      },
+      "resolved": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      }
+    },
+    {
+      "family": "double",
+      "n": 72,
+      "original": {
+        "delta_above_10": 48,
+        "screened_two": 36
+      },
+      "resolved": {
+        "delta_above_10": 54,
+        "screened_two": 54
+      }
+    },
+    {
+      "family": "single",
+      "n": 72,
+      "original": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      },
+      "resolved": {
+        "delta_above_10": 0,
+        "screened_two": 0
+      }
+    },
+    {
+      "family": "unequal_width_double",
+      "n": 72,
+      "original": {
+        "delta_above_10": 50,
+        "screened_two": 36
+      },
+      "resolved": {
+        "delta_above_10": 54,
+        "screened_two": 48
+      }
+    }
+  ]
+}

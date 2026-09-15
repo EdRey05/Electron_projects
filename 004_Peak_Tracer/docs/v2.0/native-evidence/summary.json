@@ -1,0 +1,193 @@
+{
+  "processor_source_sha256": "42f498dea02ebf6a4e7ba5d8a4868e8bcf481c47087e0ce46f7dcbad70653600",
+  "plates": {
+    "sample4": {
+      "files": 78,
+      "all_exported_arrays_and_seq_equal_v19": true,
+      "source_hashes_verified": true,
+      "q20": 70268,
+      "q30": 62874,
+      "pt_q20": 88736,
+      "pt_q30": 82221,
+      "source_bases": 91757,
+      "same_base_pairs": 23249,
+      "unmodeled_pairs": 10607,
+      "bands": [
+        {
+          "start_index": 0,
+          "end_index": 100,
+          "measured_bases": 7800,
+          "modeled_pairs": 1032,
+          "original_pair_screen": 941,
+          "resolved_pair_screen": 931,
+          "resolved_only_screen": 5,
+          "original_only_screen": 15,
+          "dominant_dye_unstable": 26,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.06227436823104693,
+            "median_noise_fraction": 0.000853710470871985
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.04721004475921495,
+            "median_noise_fraction": 0.0006148893025321811
+          }
+        },
+        {
+          "start_index": 100,
+          "end_index": 600,
+          "measured_bases": 39000,
+          "modeled_pairs": 5577,
+          "original_pair_screen": 5393,
+          "resolved_pair_screen": 5387,
+          "resolved_only_screen": 14,
+          "original_only_screen": 20,
+          "dominant_dye_unstable": 134,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.04150943396226415,
+            "median_noise_fraction": 0.0011013368144500064
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.03374493466933959,
+            "median_noise_fraction": 0.0006198365623413828
+          }
+        },
+        {
+          "start_index": 600,
+          "end_index": 900,
+          "measured_bases": 23342,
+          "modeled_pairs": 3374,
+          "original_pair_screen": 3217,
+          "resolved_pair_screen": 3250,
+          "resolved_only_screen": 45,
+          "original_only_screen": 12,
+          "dominant_dye_unstable": 86,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.23639212131844142,
+            "median_noise_fraction": 0.0006869829493924387
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.07733419882075677,
+            "median_noise_fraction": 0.0006696976093302429
+          }
+        },
+        {
+          "start_index": 900,
+          "end_index": 100000,
+          "measured_bases": 21609,
+          "modeled_pairs": 2656,
+          "original_pair_screen": 1563,
+          "resolved_pair_screen": 1567,
+          "resolved_only_screen": 292,
+          "original_only_screen": 288,
+          "dominant_dye_unstable": 577,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.6112632421281375,
+            "median_noise_fraction": 0.0007497345132747997
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.36086474350094333,
+            "median_noise_fraction": 0.0005281212420876843
+          }
+        }
+      ]
+    },
+    "sample5": {
+      "files": 68,
+      "all_exported_arrays_and_seq_equal_v19": true,
+      "source_hashes_verified": true,
+      "q20": 65186,
+      "q30": 59022,
+      "pt_q20": 82188,
+      "pt_q30": 76930,
+      "source_bases": 80777,
+      "same_base_pairs": 21640,
+      "unmodeled_pairs": 10447,
+      "bands": [
+        {
+          "start_index": 0,
+          "end_index": 100,
+          "measured_bases": 6800,
+          "modeled_pairs": 925,
+          "original_pair_screen": 865,
+          "resolved_pair_screen": 858,
+          "resolved_only_screen": 8,
+          "original_only_screen": 15,
+          "dominant_dye_unstable": 13,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.06629914001803025,
+            "median_noise_fraction": 0.0008236666666666683
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.050444983000579875,
+            "median_noise_fraction": 0.0006153397267692078
+          }
+        },
+        {
+          "start_index": 100,
+          "end_index": 600,
+          "measured_bases": 34000,
+          "modeled_pairs": 4884,
+          "original_pair_screen": 4884,
+          "resolved_pair_screen": 4878,
+          "resolved_only_screen": 0,
+          "original_only_screen": 6,
+          "dominant_dye_unstable": 0,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.036601307189542485,
+            "median_noise_fraction": 0.0010338518899744697
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.03028812354045613,
+            "median_noise_fraction": 0.00055828785381595
+          }
+        },
+        {
+          "start_index": 600,
+          "end_index": 900,
+          "measured_bases": 20400,
+          "modeled_pairs": 2988,
+          "original_pair_screen": 2966,
+          "resolved_pair_screen": 2971,
+          "resolved_only_screen": 9,
+          "original_only_screen": 4,
+          "dominant_dye_unstable": 4,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.20397796943395968,
+            "median_noise_fraction": 0.0006366733466933985
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.06122826828799917,
+            "median_noise_fraction": 0.0006143197223870367
+          }
+        },
+        {
+          "start_index": 900,
+          "end_index": 100000,
+          "measured_bases": 19573,
+          "modeled_pairs": 2395,
+          "original_pair_screen": 1593,
+          "resolved_pair_screen": 1578,
+          "resolved_only_screen": 249,
+          "original_only_screen": 264,
+          "dominant_dye_unstable": 388,
+          "median_crest_span_base": 0.0,
+          "original": {
+            "median_competitor_ratio": 0.5588819261914715,
+            "median_noise_fraction": 0.0006710640036098894
+          },
+          "resolved": {
+            "median_competitor_ratio": 0.29076434422222774,
+            "median_noise_fraction": 0.0004782454593682574
+          }
+        }
+      ]
+    }
+  }
+}

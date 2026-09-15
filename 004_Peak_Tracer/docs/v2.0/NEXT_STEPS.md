@@ -17,7 +17,12 @@ Peak appearance, correct base recovery and calibrated quality are different outc
 
 Verification: 104 remaining tests passed. The analysis, configuration and resolution modules match the v1.9 checkpoint `7e0931f` exactly after removal. The removed scoring CLI option is rejected explicitly rather than ignored. No full-plate rerun was needed for an unchanged processing path; prior TraceTuner results remain tied to their historical source hash.
 
-## Next investigation, not yet implemented
+## Investigation plan (progress updated 15 September 2026)
+
+Native diagnostics and isolated-pair hypotheses are now implemented in `d6c9da4`.
+See [NATIVE_EVIDENCE_RESULTS.md](NATIVE_EVIDENCE_RESULTS.md) for the exact scope,
+continuous-fit correction, synthetic challenge, real-plate audit and remaining
+work. The list below is the original plan, not a claim that all steps are complete.
 
 1. **Create native per-base evidence measurements.** Compare original and resolved signal around each call: competing-dye intensity, spacing irregularity, repeat separation, local noise, fit residual and stability under small changes in processing strength. Keep these as diagnostic features initially, not invented Phred scores.
 2. **Test whether apparent improvement is supported.** Use known synthetic peak mixtures and existing difficult real windows to identify cases where resolution adds true separation versus artifacts. Estimate how much each feature merely reflects our own sharpening operation. Restrict initial work to the existing useful span rather than extending poor tails.
