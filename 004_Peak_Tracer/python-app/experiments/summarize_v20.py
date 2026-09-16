@@ -19,7 +19,7 @@ def main():
             matches=list(a.pt.rglob(Path(r['name']).name))
         if len(matches)!=1:raise ValueError(f'PT pairing ambiguous/missing: {outname}, {matches}')
         ref=abi(matches[0]);row={'name':r['name'],'methods':{}}
-        methods={'seq7':abi(archived_path(r['sources']['seq7']['path'])),'v19':abi(Path(r['sources']['v19']['path'])),'pt':ref}
+        methods={'seq7':abi(archived_path(r['sources']['seq7']['path'])),'v19':abi(archived_path(r['sources']['v19']['path'])),'pt':ref}
         for key,v in r['runs'].items():
             if 'error' not in v:methods[key]=phd(Path(v['phd']))
         for key,called in methods.items():

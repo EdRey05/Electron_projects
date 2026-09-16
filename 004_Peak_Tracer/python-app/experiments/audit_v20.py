@@ -21,6 +21,7 @@ def main():
     p.add_argument('--plate',choices=('sample4','sample5'),required=True);p.add_argument('--output',type=Path,required=True)
     a=p.parse_args();a.output.mkdir(parents=True,exist_ok=True)
     baseline=a.task/f'v1.9_validation/{a.plate}/6-v1.9';candidate=a.task/f'v2.0_validation/{a.plate}/7-v2.0-experimental-qv'
+    baseline=relocated(a.task,baseline)
     pt=(a.task/'v1.8_validation/sample4/3-P1905969_2026-08-28' if a.plate=='sample4' else
         a.task/'analysis_v1.7/samples/sample5/3-P1905972_2026-09-01')
     pt=relocated(a.task,pt)

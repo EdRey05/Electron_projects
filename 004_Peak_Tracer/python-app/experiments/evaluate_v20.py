@@ -50,7 +50,7 @@ def main():
     source=(a.task/'v1.8_validation/sample4/2-P1905969_2026-08-28' if a.plate=='sample4'
             else a.task/'analysis_v1.7/samples/sample5/2-P1905972_2026-09-01')
     source=relocated(a.task,source)
-    manifest=json.loads((a.task/f'v1.9_validation/{a.plate}/6-v1.9/run_manifest.json').read_text())
+    manifest=json.loads(relocated(a.task,a.task/f'v1.9_validation/{a.plate}/6-v1.9/run_manifest.json').read_text())
     pairs=sorted(manifest['files'],key=lambda x:Path(x['src']).name)
     if not a.all:
         selected=pairs[::8]
@@ -60,7 +60,7 @@ def main():
         pairs=selected
     report=dict(plate=a.plate,engine=str(engine),engine_sha256=sha(engine),subset=not a.all,reads=[])
     for index,item in enumerate(pairs):
-        src=source/Path(item['src']).name; enhanced=Path(item['out'])
+        src=source/Path(item['src']).name; enhanced=relocated(a.task,item['out'])
         row=dict(name=src.name,sources={},runs={})
         for label,path in [('seq7',src),('v19',enhanced)]:
             original=abi(path); row['sources'][label]=dict(path=str(path),sha256=sha(path),stats=stats(original))

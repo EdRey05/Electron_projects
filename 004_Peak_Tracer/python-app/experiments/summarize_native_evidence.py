@@ -19,7 +19,7 @@ def main():
     for plate,expected in (('sample4',78),('sample5',68)):
         folder=args.task/'v2.0_validation/native_evidence'/plate/'9-v2.0-native-evidence-refined'
         files=sorted(folder.glob('*.evidence.json'));assert len(files)==expected,(plate,len(files))
-        baseline=args.task/'v1.9_validation'/plate/'6-v1.9'
+        baseline=relocated(args.task,args.task/'v1.9_validation'/plate/'6-v1.9')
         ptfolder=(args.task/'v1.8_validation/sample4/3-P1905969_2026-08-28' if plate=='sample4' else args.task/'analysis_v1.7/samples/sample5/3-P1905972_2026-09-01')
         ptfolder=relocated(args.task,ptfolder)
         manifest=json.loads((folder/'run_manifest.json').read_text())
