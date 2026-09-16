@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import numpy as np
 from Bio import SeqIO
+from task_paths import relocated
 
 
 def tags(path):return SeqIO.read(path,'abi').annotations['abif_raw']
@@ -20,13 +21,14 @@ def main():
         files=sorted(folder.glob('*.evidence.json'));assert len(files)==expected,(plate,len(files))
         baseline=args.task/'v1.9_validation'/plate/'6-v1.9'
         ptfolder=(args.task/'v1.8_validation/sample4/3-P1905969_2026-08-28' if plate=='sample4' else args.task/'analysis_v1.7/samples/sample5/3-P1905972_2026-09-01')
+        ptfolder=relocated(args.task,ptfolder)
         manifest=json.loads((folder/'run_manifest.json').read_text())
         sources={Path(r['out']):Path(r['src']) for r in manifest['files'] if r['status']=='ok'}
         rows=[];pairs=[];q20=q30=0
         for file in files:
             data=json.loads(file.read_text());prov=data['provenance'];hashes.add(prov['processor_source_sha256'])
             out=file.with_name(file.name.removesuffix('.evidence.json')+'.ab1')
-            src=sources[out]
+            src=relocated(args.task,sources[out])
             assert hashlib.sha256(src.read_bytes()).hexdigest()==prov['source_sha256']
             a=tags(out);b=tags(baseline/out.name)
             assert json.loads(b['PT181'])['source_sha256']==prov['source_sha256']

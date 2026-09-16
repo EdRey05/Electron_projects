@@ -13,6 +13,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from evaluate_v20 import abi,stats
+from task_paths import relocated
 
 
 def main():
@@ -22,6 +23,7 @@ def main():
     baseline=a.task/f'v1.9_validation/{a.plate}/6-v1.9';candidate=a.task/f'v2.0_validation/{a.plate}/7-v2.0-experimental-qv'
     pt=(a.task/'v1.8_validation/sample4/3-P1905969_2026-08-28' if a.plate=='sample4' else
         a.task/'analysis_v1.7/samples/sample5/3-P1905972_2026-09-01')
+    pt=relocated(a.task,pt)
     manifest=json.loads((candidate/'run_manifest.json').read_text());rows=[];failures=[]
     aggregates={k:dict(bases=0,q20=0,q30=0,n=0) for k in ('v19','v20','pt')}
     bins=[(0,10),(10,20),(20,30),(30,40),(40,94)]
@@ -35,7 +37,7 @@ def main():
         if not path.exists():failures.append(item);continue
         oldpath=baseline/path.name;old=abi(oldpath);new=abi(path)
         oldtags=SeqIO.read(oldpath,'abi').annotations['abif_raw'];tags=SeqIO.read(path,'abi').annotations['abif_raw']
-        source=Path(item['src']);originaltags=SeqIO.read(source,'abi').annotations['abif_raw']
+        source=relocated(a.task,item['src']);originaltags=SeqIO.read(source,'abi').annotations['abif_raw']
         provenance=json.loads(tags['PT181'])
         refpaths=list(pt.rglob(path.name))
         if len(refpaths)!=1:raise ValueError('PT pairing failed: '+path.name)

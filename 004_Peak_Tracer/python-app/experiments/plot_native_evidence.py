@@ -7,6 +7,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from Bio import SeqIO
+from task_paths import archived_path
 
 
 def main():
@@ -24,8 +25,8 @@ def main():
         fig,axes=plt.subplots(len(examples),1,figsize=(11,4*len(examples)),squeeze=False,layout='constrained')
         for ax,row in zip(axes[:,0],examples):
             for stage,path,color in (('original',row['source'],'#6c757d'),('resolved',row['out'],'#087f8c')):
-                tags=SeqIO.read(path,'abi').annotations['abif_raw'];order=tags['FWO_1'].decode()
-                source_tags=SeqIO.read(row['source'],'abi').annotations['abif_raw'];left,right=[source_tags['PLOC2'][i] for i in (row['left_index'],row['right_index'])]
+                tags=SeqIO.read(archived_path(path),'abi').annotations['abif_raw'];order=tags['FWO_1'].decode()
+                source_tags=SeqIO.read(archived_path(row['source']),'abi').annotations['abif_raw'];left,right=[source_tags['PLOC2'][i] for i in (row['left_index'],row['right_index'])]
                 distance=right-left;lo=max(0,left-distance);hi=right+distance+1
                 signal=np.asarray(tags[f'DATA{9+order.index(row["base"])}'],float)[lo:hi]
                 signal=np.maximum(signal-np.percentile(signal,5),0);signal/=max(signal.max(),1)
