@@ -12,11 +12,9 @@ def main():
                  'synthetic-challenge.png','real-pair-examples.png','real-pair-screen.png','tests.log','audit.log',
                  'sample4-refined.log','sample5-refined.log','sample4.log','sample5.log'):
         shutil.copy2(source/name,destination/name)
-    report=(project/'docs/v2.0/NATIVE_EVIDENCE_RESULTS.md').read_text(encoding='utf-8')
-    report=report.replace('(NEXT_STEPS.md)','(Peak_Tracer_v2.0_Next_Steps.md)').replace('(native-evidence/','(v2.0_validation/native_evidence/results/')
-    (args.task/'Peak_Tracer_v2.0_Native_Evidence_Results.md').write_text(report,encoding='utf-8')
-    plan=(project/'docs/v2.0/NEXT_STEPS.md').read_text(encoding='utf-8').replace('(NATIVE_EVIDENCE_RESULTS.md)','(Peak_Tracer_v2.0_Native_Evidence_Results.md)')
-    (args.task/'Peak_Tracer_v2.0_Next_Steps.md').write_text(plan,encoding='utf-8')
+    report=(project/'docs/v2.0/CURRENT_STATE.md').read_text(encoding='utf-8')
+    report=report.replace('(native-evidence/','(v2.0_validation/native_evidence/results/')
+    (args.task/'Peak_Tracer_v2.0_Current_State.md').write_text(report,encoding='utf-8')
     print(destination)
 
 

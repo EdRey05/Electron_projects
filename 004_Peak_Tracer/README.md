@@ -13,9 +13,9 @@ remains under development.
 
 v2.0 remains open for development. TraceTuner integration was removed on
 15 September 2026; the app retains v1.9 signal processing and inherited Seq7 QVs.
-The [revised direction](docs/v2.0/NEXT_STEPS.md) describes the next investigation.
-The [original plan](docs/v2.0/PLAN.md) and [historical results](docs/v2.0/RESULTS.md)
-preserve the completed experiment. Its saved QV outputs are not current app output.
+The [consolidated v2.0 working document](docs/v2.0/CURRENT_STATE.md) records the
+current implementation, evidence, resource locations and next experiments.
+Earlier plans/reports remain historical records, not current scoring instructions.
 
 Use Python with the dependencies in `python-app/requirements.txt`:
 
@@ -33,7 +33,7 @@ Add `--write-evidence` for the v2.0 native diagnostic experiment. It writes one
 sensitivity and isolated same-base pair fits. This is CLI-only, off by default,
 and adds computation and disk usage. It does not change the exported signals,
 basecalls or inherited QVs. Model preferences are not calibrated probabilities.
-See the [native evidence report](docs/v2.0/NATIVE_EVIDENCE_RESULTS.md).
+See the [current evidence and next steps](docs/v2.0/CURRENT_STATE.md).
 
 `--help` lists supported settings. Resolution is enabled by default; experimental
 low-quality substitutions are disabled. Retired v1.7 calling options are rejected.
