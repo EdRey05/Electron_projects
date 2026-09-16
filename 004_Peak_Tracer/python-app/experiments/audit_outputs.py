@@ -10,6 +10,7 @@ from pathlib import Path
 import re
 import numpy as np
 from compare_plate import read, shape_pairs
+from task_paths import archived_path
 
 
 def main():
@@ -25,7 +26,7 @@ def main():
     permitted={'PBAS1','PBAS2','PCON1','PCON2','PLOC1','PLOC2','P1AM1',
                'DATA9','DATA10','DATA11','DATA12','phTR1','phTR2','PT181'}
     for item in manifest['files']:
-        src=args.input/Path(item['src']).name;out=Path(item['out'])
+        src=args.input/Path(item['src']).name;out=archived_path(item['out'])
         original=read(src);candidate=read(out)
         a,b=original['tags'],candidate['tags']
         provenance=json.loads(b['PT181'].decode())
