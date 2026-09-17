@@ -59,6 +59,21 @@ def _templates(distance):
     return np.array(one),np.array(two),one_params,two_params
 
 
+def _fit_diagnostics(result, names, lower, upper):
+    """Report optimizer constraints, not confidence or biological validity.
+
+    The absolute 1e-4 tolerance is in normalized amplitude/base-spacing units;
+    it retains the existing width-boundary convention. An interior solution
+    can still be wrong. Solver-active bounds are included at any tolerance.
+    """
+    boundaries=[]
+    for value,name,lo,hi,active in zip(result.x,names,lower,upper,result.active_mask):
+        if active<0 or abs(value-lo)<1e-4:boundaries.append(name+':lower')
+        if active>0 or abs(value-hi)<1e-4:boundaries.append(name+':upper')
+    return dict(converged=bool(result.success),status=int(result.status),
+                evaluations=int(result.nfev),boundary_parameters=boundaries)
+
+
 def fit_pair(signal,left,right):
     """Grid-initialized continuous fits with a fixed fifth-percentile baseline.
 
@@ -89,18 +104,28 @@ def fit_pair(signal,left,right):
     # gives the more flexible double model a spurious advantage.
     x=np.arange(-d,2*d+1)/d;scale=float(y.max());normalized=y/scale
     def g(center,width):return np.exp(-.5*((x-center)/width)**2)
+    single_bounds=([0,-.25,.20],[3,1.25,1.10])
+    double_bounds=([0,0,-.15,.85,.20],[3,3,.15,1.15,1.10])
     single=least_squares(lambda p:p[0]*g(p[1],p[2])-normalized,
-                         [coef[i]/scale,*p1[i]],bounds=([0,-.25,.20],[3,1.25,1.10]),max_nfev=100)
+                         [coef[i]/scale,*p1[i]],bounds=single_bounds,max_nfev=100)
     double=least_squares(lambda p:p[0]*g(p[2],p[4])+p[1]*g(p[3],p[4])-normalized,
                          [ca[j]/scale,cb[j]/scale,*p2[j]],
-                         bounds=([0,0,-.15,.85,.20],[3,3,.15,1.15,1.10]),max_nfev=100)
+                         bounds=double_bounds,max_nfev=100)
+    diagnostics=dict(
+        single=_fit_diagnostics(single,('amplitude','center','sigma'),*single_bounds),
+        double=_fit_diagnostics(double,('amplitude_left','amplitude_right','center_left','center_right','sigma'),*double_bounds))
+    flags=[model+':'+flag for model,detail in diagnostics.items()
+           for flag in (['not_converged'] if not detail['converged'] else [])+
+           ['bound:'+name for name in detail['boundary_parameters']]]
     if not single.success or not double.success:
-        return dict(available=False,reason='continuous fit did not converge')
+        return dict(available=False,reason='continuous fit did not converge',
+                    fit_diagnostics=diagnostics,diagnostic_flags=flags)
     e1=float(single.fun@single.fun)*scale**2;e2=float(double.fun@double.fun)*scale**2
     floor=energy*1e-12;n=len(y)
     delta=float(n*np.log(max(e1,floor)/max(e2,floor))-2*np.log(n))
     maximum=max(double.x[:2]);ratio=float(min(double.x[:2])/maximum) if maximum>0 else 0.
     return dict(available=True,delta_bic_two_over_one=delta,
+                fit_diagnostics=diagnostics,diagnostic_flags=flags,
                 single_relative_rms=float(np.sqrt(e1/energy)),
                 double_relative_rms=float(np.sqrt(e2/energy)),minor_major_amplitude_ratio=ratio,
                 single_center_base=float(single.x[1]),single_sigma_base=float(single.x[2]),

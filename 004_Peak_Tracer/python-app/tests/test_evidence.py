@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 import numpy as np
 from Bio import SeqIO
 from test_analysis_contract import fixture
@@ -12,6 +13,7 @@ from peaktrace.cli import main
 from peaktrace.config import parse_args
 from peaktrace.read import read_ab1
 from peaktrace.evidence import fit_pair, measure_evidence
+from scipy.optimize import least_squares
 
 
 class EvidenceTests(unittest.TestCase):
@@ -33,6 +35,41 @@ class EvidenceTests(unittest.TestCase):
         for width in (6,9,12):
             signal=np.exp(-.5*((x-61.3)/width)**2)
             self.assertLess(fit_pair(signal,50,70)['delta_bic_two_over_one'],0)
+
+    def test_narrow_peaks_report_width_constraint_without_changing_availability(self):
+        x=np.arange(121)
+        signal=np.exp(-.5*((x-50)/2)**2)+.7*np.exp(-.5*((x-70)/2)**2)
+        result=fit_pair(signal,50,70)
+        self.assertTrue(result['available'])
+        self.assertTrue(result['width_boundary'])
+        self.assertIn('sigma:lower',result['fit_diagnostics']['double']['boundary_parameters'])
+        self.assertIn('double:bound:sigma:lower',result['diagnostic_flags'])
+
+    def test_displaced_pair_reports_center_constraint(self):
+        x=np.arange(121)
+        signal=np.exp(-.5*((x-43)/6)**2)+.7*np.exp(-.5*((x-70)/6)**2)
+        result=fit_pair(signal,50,70)
+        self.assertIn('center_left:lower',result['fit_diagnostics']['double']['boundary_parameters'])
+
+    def test_interior_double_has_no_double_boundary_flags(self):
+        x=np.arange(121)
+        signal=np.exp(-.5*((x-50)/6)**2)+.7*np.exp(-.5*((x-70)/6)**2)
+        result=fit_pair(signal,50,70)
+        self.assertTrue(result['fit_diagnostics']['double']['converged'])
+        self.assertEqual(result['fit_diagnostics']['double']['boundary_parameters'],[])
+
+    def test_nonconvergence_preserves_solver_details_without_model_score(self):
+        def limited(*args,**kwargs):
+            kwargs['max_nfev']=1
+            return least_squares(*args,**kwargs)
+        x=np.arange(121);signal=np.exp(-.5*((x-61.3)/9)**2)
+        with patch('peaktrace.evidence.least_squares',side_effect=limited):
+            result=fit_pair(signal,50,70)
+        self.assertFalse(result['available'])
+        self.assertNotIn('delta_bic_two_over_one',result)
+        self.assertIn('single:not_converged',result['diagnostic_flags'])
+        self.assertEqual(result['fit_diagnostics']['single']['status'],0)
+        self.assertEqual(result['fit_diagnostics']['single']['evaluations'],1)
 
     def test_dye_mapping_and_missing_stability(self):
         with tempfile.TemporaryDirectory() as temp:

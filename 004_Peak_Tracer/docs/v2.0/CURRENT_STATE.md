@@ -1,8 +1,8 @@
 # Peak Tracer v2.0 — current state and next development plan
 
 Updated 16 September 2026. **Open development, not locked or packaged.** Branch:
-`dev-peak-tracer`. Reviewed through code/maintenance commit `20b1463` (latest before
-this documentation-only consolidation). Package version: `2.0.0-dev`.
+`dev-peak-tracer`. Baseline documentation commit: `0967a8c`. The September 16 fit-diagnostic
+checkpoint below describes subsequent implementation. Package version: `2.0.0-dev`.
 
 This is the single active v2.0 working document beside the task wiki, mirrored in
 repository `docs/v2.0/CURRENT_STATE.md`. It replaces the four previous standalone
@@ -15,8 +15,8 @@ claims and implementation plans are intentionally excluded here.
 Continue native signal modeling and evidence diagnostics. Keep v1.9 resolution
 and inherited Seq7 QVs as the active output behavior. No calibrated native scorer
 or replacement basecaller has been demonstrated. Do not lock v2.0 as a QV or
-read-length improvement at this point. No new signal-processing edits are made
-by this documentation consolidation.
+read-length improvement at this point. The September 16 checkpoint adds diagnostic metadata only; model fitting and
+exported signal processing are unchanged.
 
 ## Chronology relevant to today's code
 
@@ -111,7 +111,9 @@ of **both** model families. Width bounds are 0.20–1.10 base spacings. The one-
 center can span -0.25–1.25; double centers lie within ±0.15 of the two source
 anchors. The local fifth-percentile background is held fixed. Edge windows,
 spacing outside 4–100 scans, flat signal and failed convergence are unavailable.
-Width-boundary flags are recorded.
+Width-boundary flags are recorded. The September 16 checkpoint additionally
+records each model's convergence, solver status, evaluation count and named
+amplitude/center/width boundaries. See the checkpoint below.
 
 The reported delta is `n*log(SSE_one/SSE_two) - 2*log(n)`, with a numerical SSE
 floor. It is a descriptive BIC-style comparison with two additional parameters,
@@ -280,7 +282,8 @@ of this increment.
 
 ## Next experiment: executable development sequence
 
-These are proposed tasks, not implemented features. Continue adding v2.0-labelled
+The broader tasks below remain proposed, except for the small diagnostic
+checkpoint explicitly recorded here. Continue adding v2.0-labelled
 commits on the development branch; leave lock, squash, build and packaging for a
 separate user decision.
 
@@ -315,6 +318,47 @@ separate user decision.
    indel/gap uncertainty separately, with reliability plots, confident-error
    counts and correct usable sequence on untouched biological holdouts. Gate:
    demonstrated calibration and improved outcomes before writing new PCON values.
+
+### Small-step execution checklist and restart point — September 16
+
+1. **Done: review baseline and save this checklist.** Baseline `0967a8c` already
+   rejected non-converged fits and recorded a combined width-boundary flag.
+2. **Done: expose optimizer constraints and failures.** Each attempted model now
+   records `fit_diagnostics`: convergence, numeric SciPy termination status,
+   evaluation count and named lower/upper parameter bounds. `diagnostic_flags`
+   identifies model-specific bounds or non-convergence. Solver-active bounds or
+   absolute distance below 1e-4 in normalized amplitude/base-spacing units are
+   reported. This retains the existing width-boundary tolerance. Non-converged
+   comparisons remain unavailable and do not receive a model-preference score.
+   Boundary-constrained fits remain available with flags: reaching a bound does
+   not establish a false fit, and an interior fit does not establish correctness.
+   Bounds, optimizer settings, numerical scores and existing screen are unchanged.
+3. **Next: neighboring same-dye peak interference.** Add a separate seeded
+   synthetic challenge with known single/double truth and controlled neighbor
+   distance/amplitude. Report false splitting and missed pairs, with boundary
+   flags stratified by model. Preserve the original challenge as a regression set.
+   Do not adopt a rejection threshold merely because it increases passing pairs.
+4. **Pending: baseline drift and saturation.** Add these as separate experiments;
+   introduce rejection rules only when measured failure cases support them.
+5. **Pending: real-window audit, then both plates if warranted.** Start with the
+   original issue reads. Use a fresh output folder; retain the old `9-` outputs.
+6. **Ongoing: synchronize this guide and wiki at every checkpoint.** Record tests,
+   source hashes, limitations and the next uncompleted step before stopping.
+
+Validation for checkpoint 2: **9 evidence tests and all 113 suite tests passed**
+using the existing packaged Python runtime. Four new tests cover narrow peaks
+hitting minimum width, displaced peaks hitting center bounds, an interior double,
+and forced evaluation-budget exhaustion without a fabricated comparison score.
+The existing CLI test verifies evidence mode preserves biological arrays and SEQ
+output on its fixture. No new full-plate run was performed at this checkpoint;
+the 146-read figures and source hash above describe the prior implementation.
+This is diagnostic observability, not an additional resolution or QV improvement.
+
+Checkpoint processor source SHA-256: `7bacef458401d72fc44fe4755e5500f082aee9eff6398b0410e1a6e40d43ad33`.
+
+The evidence schema name remains v1 with additive fields. Early unavailable
+windows (edge, zero signal or unsupported spacing) never run the solver and have
+no fit diagnostics. Consumers must tolerate absent diagnostics and unknown fields.
 
 Near-term deliverable: a more discriminating diagnostic model and recorded failure
 cases, not an automatic QV increase. Independent data constrains calibration; it
