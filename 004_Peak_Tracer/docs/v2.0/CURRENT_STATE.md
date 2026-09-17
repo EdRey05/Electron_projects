@@ -1,8 +1,8 @@
 # Peak Tracer v2.0 — current state and next development plan
 
 Updated 16 September 2026. **Open development, not locked or packaged.** Branch:
-`dev-peak-tracer`. Baseline implementation commit: `4862ae1`. The September 16 step-3 neighbor
-challenge below records the latest experiment; production code is unchanged. Package version: `2.0.0-dev`.
+`dev-peak-tracer`. Baseline implementation/experiment commit: `255302e`. Step 4 below records
+the latest baseline-drift and saturation challenges; production code is unchanged. Package version: `2.0.0-dev`.
 
 This is the single active v2.0 working document beside the task wiki, mirrored in
 repository `docs/v2.0/CURRENT_STATE.md`. It replaces the four previous standalone
@@ -338,9 +338,9 @@ separate user decision.
    distance/amplitude. Report false splitting and missed pairs, with boundary
    flags stratified by model. Preserve the original challenge as a regression set.
    Do not adopt a rejection threshold merely because it increases passing pairs.
-4. **Pending: baseline drift and saturation.** Add these as separate experiments;
+4. **Done: baseline drift and saturation (see step-4 results below).** Add these as separate experiments;
    introduce rejection rules only when measured failure cases support them.
-5. **Pending: real-window audit, then both plates if warranted.** Start with the
+5. **Next: real-window audit, then both plates if warranted.** Start with the
    original issue reads. Use a fresh output folder; retain the old `9-` outputs.
 6. **Ongoing: synchronize this guide and wiki at every checkpoint.** Record tests,
    source hashes, limitations and the next uncompleted step before stopping.
@@ -440,10 +440,114 @@ The plotter needs matplotlib. The experiment refuses an existing output director
 Its summary records the processor and experiment source hashes. Current processor
 hash remains the step-2 hash; the experiment is outside production code.
 
-**Restart at step 4:** add baseline-drift and saturation challenges separately.
+**Step-3 handoff (now completed below):** add baseline-drift and saturation challenges separately.
 Use the neighbor results when designing explicit context/residual rejection,
 but do not tune and validate a new rule on the same cases. Joint neighbor modeling
 remains a candidate investigation before any change to biological calls.
+
+### Step 4 completed — separate baseline drift and saturation challenges
+
+Baseline for this checkpoint: `255302e`; production code and processor source hash
+are unchanged. Scripts: `baseline_saturation.py` and `plot_baseline_saturation.py`
+under `python-app/experiments`. No new rejection rule or QV/call change is adopted.
+
+**Fixed design:** 48 controls, 432 drift cases and 144 clipping cases. Single and
+double targets use widths 0.30/0.45/0.60 spacings, noise 2%/8% and new seeds 80–83.
+Targets and pre-artifact noise match their controls. Only the analyzed A channel
+is altered; source anchors and other dyes are unchanged. No combined artifacts.
+
+Baseline rise/fall are smooth positive tanh ramps with scale three spacings;
+the local hump is Gaussian with sigma 1.5 spacings. Amplitudes are 25%/75%/150%
+of the nominal 100-unit peak height. Exact formulas and the actual added local
+min/max baseline are recorded. The drift is added after noise and nonnegative
+clipping, so it is an analyzed-channel perturbation, not a photon-noise model.
+
+Saturation is idealized hard clipping at ceilings of 90/60/35 units, applied
+after noise to the whole A channel. Recorded clipped-sample counts are known
+synthetic truth only; they are never passed to fitting or used as a rejection
+criterion. No raw ADC, instrument ceiling or ABI saturation tag is modeled.
+
+Both stages use the existing app baseline subtraction and fixed illustrative
+screen. Repeated noise/controls are paired conditions, not independent trials.
+
+| Condition | Stage | False target doubles | Missed true doubles | Unavailable (single / double) |
+| --- | --- | ---: | ---: | ---: |
+| control | original | 0/24 | 4/24 | 0 / 0 |
+| control | resolved | 1/24 | 0/24 | 0 / 0 |
+| drift | original | 7/216 | 67/216 | 0 / 0 |
+| drift | resolved | 10/216 | 45/216 | 0 / 0 |
+| clipping | original | 24/72 | 29/72 | 0 / 0 |
+| clipping | resolved | 39/72 | 24/72 | 0 / 0 |
+
+Missed true doubles include unavailable comparisons. Passing the screen remains
+a local model observation, not a biological QC pass.
+
+| Artifact | Stage | Current false / true passes | After excluding double-model bounds | After excluding either-model bounds |
+| --- | --- | ---: | ---: | ---: |
+| drift | original | 7 / 149 | 3 / 128 | 3 / 128 |
+| drift | resolved | 10 / 171 | 2 / 147 | 2 / 147 |
+| clipping | original | 24 / 43 | 15 / 38 | 15 / 38 |
+| clipping | resolved | 39 / 48 | 22 / 36 | 22 / 36 |
+
+**Interpretation:** clipping is the larger warning. False target-double passes
+increase from 24/72 (33.3%) on clipped original signals to 39/72 (54.2%) after
+resolution, even though missed true doubles improve from 29/72 to 24/72.
+Rejecting double-boundary fits still leaves **22 false passes**, while discarding
+12 of 48 passing true doubles. Neither a successful optimizer nor an interior
+solution establishes reliable peak count under this artifact.
+
+The new seeds also produce one false resolved control among 24 single targets.
+Therefore not every artifact-case false pass is newly caused by the artifact.
+Paired comparison shows clipping adds 36 false passes and retains three repeated
+control false passes. Drift adds six and removes five across its 216 paired
+single-target conditions, giving ten total false passes. Controls are repeated
+across conditions; these transitions are not independent observations.
+
+Drift's effect depends on shape: strong falling baseline loses 23/24 resolved
+true doubles; the strongest hump passes six false resolved doubles. Aggregating
+all drift types hides these distinct failure modes. The condition plot and
+JSON preserve this breakdown. Baseline subtraction alone is insufficient on
+these selected artificial signals.
+
+**Decision:** keep the existing diagnostic screen and app outputs unchanged.
+Prioritize inspection of original-signal plateau/ceiling evidence and local
+baseline/model mismatch in the real-window audit. A future clipping detector
+must distinguish flat quantized crests from broad real peaks, work without the
+synthetic known ceiling, and be evaluated on new seeds/shapes. A baseline-aware
+or censoring-aware fit is a candidate experiment, not a validated fix. These
+results do not justify raising QVs or allowing the local screen to edit calls.
+
+These are retrospective counterfactuals, not fitted rejection rules. A new rule
+would need separate development and evaluation cases. An artifact-specific
+constraint cannot be assumed to generalize to all mixtures or biological traces.
+
+![Separate artifact screen](baseline-saturation/artifact-screen.png)
+![Artifact condition breakdown](baseline-saturation/artifact-conditions.png)
+
+[Full summary and paired transitions](baseline-saturation/summary.json) ·
+[All trial records](baseline-saturation/trials.json.gz) · [Test log](baseline-saturation/tests.txt)
+
+**Validation:** all 118 tests passed. Three new tests verify baseline shape,
+paired-source preservation, unaffected other dyes, hard ceiling behavior and
+clipped-window counts. No production code changed; the prior 288-trial numerical
+regression was established at step 3 and was not needlessly rerun here. The
+processor hash matches step 2 and the source hashes include the reused generator.
+Existing validation outputs remain intact. No real-plate rerun occurred in step 4.
+
+```powershell
+python python-app/experiments/baseline_saturation.py --output FRESH_RESULTS
+python python-app/experiments/plot_baseline_saturation.py --results FRESH_RESULTS
+```
+
+Use the existing processing runtime for the experiment and matplotlib for plots.
+The experiment refuses an existing output directory. This documents failure
+conditions; it does not establish improved biological accuracy or calibrated QVs.
+
+**Restart at step 5:** audit the original issue windows against their saved
+evidence and inspect whether the synthetic failure patterns occur in real traces.
+Do not infer actual saturation from this artificial ceiling or fit a rejection
+rule to the same synthetic cases used to claim its success. Evaluate a candidate
+on separate conditions before proposing any change to calls or confidence.
 
 Near-term deliverable: a more discriminating diagnostic model and recorded failure
 cases, not an automatic QV increase. Independent data constrains calibration; it
