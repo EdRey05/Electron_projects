@@ -1,0 +1,7 @@
+{
+  "suite_tests_passed": 115,
+  "regression_trials": 288,
+  "preexisting_fields_exact_match": true,
+  "frozen_sha256": "b39f3fcdb0df3857ec4d42aab804d16e4c96405dbe548c57585e760fb73ee582",
+  "rerun_sha256": "5f7bee72dbea71839ce5793521ff4ffb9f706905a487919ad9f9f4ab93b7565c"
+}

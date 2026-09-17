@@ -14,6 +14,7 @@ def main():
         shutil.copy2(source/name,destination/name)
     report=(project/'docs/v2.0/CURRENT_STATE.md').read_text(encoding='utf-8')
     report=report.replace('(native-evidence/','(v2.0_validation/native_evidence/results/')
+    report=report.replace('(neighbor-interference/','(v2.0_validation/neighbor_interference/')
     (args.task/'Peak_Tracer_v2.0_Current_State.md').write_text(report,encoding='utf-8')
     print(destination)
 

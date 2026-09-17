@@ -1,0 +1,2206 @@
+{
+  "schema": "neighbor-interference-experiment-v1",
+  "processor": {
+    "processor": "Peak Tracer 2.0.0-dev",
+    "processor_source_sha256": "7bacef458401d72fc44fe4755e5500f082aee9eff6398b0410e1a6e40d43ad33"
+  },
+  "experiment_sha256": "ab1bc75b2e6d90f3614d78a72bdbb6c6a5b697773a1136218d0cb673c1f3d40f",
+  "design": {
+    "seeds": [
+      60,
+      61,
+      62,
+      63
+    ],
+    "widths": [
+      0.3,
+      0.45,
+      0.6
+    ],
+    "noise": [
+      0.02,
+      0.08
+    ],
+    "distances": [
+      0.5,
+      1.0,
+      1.5
+    ],
+    "amplitudes": [
+      0.25,
+      0.75,
+      1.5
+    ],
+    "neighbor_sigma": 0.4,
+    "scope": "Target peak count inside candidate pair; extra neighbor outside anchors is nuisance, not a target second base. Source anchors are fixed, including intentionally wrong double anchors for single truth.",
+    "screen": "delta > 10, double relative RMS < .15, minor/major > .15; unchanged, illustrative only",
+    "preprocessing": "Same per-dye slow fifth-percentile subtraction as app evidence before fit_pair; both original and default v1.9-resolved channels.",
+    "limitations": "Paired conditions reuse noise and controls; trials are not independent biological observations. Added neighbor can overlap existing synthetic context; not a full sequence simulation. No saturation, drift, mixtures or empirical QV calibration."
+  },
+  "controls": {
+    "original": {
+      "single": {
+        "n": 24,
+        "unavailable": 0,
+        "screen_pass": 0,
+        "screen_not_pass": 24,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 0,
+        "passing_with_either_bound": 0,
+        "passing_with_no_bounds": 0,
+        "boundaries": {
+          "single": {
+            "flagged": 0,
+            "flagged_pass": 0,
+            "unflagged": 24,
+            "unflagged_pass": 0
+          },
+          "double": {
+            "flagged": 24,
+            "flagged_pass": 0,
+            "unflagged": 0,
+            "unflagged_pass": 0
+          }
+        }
+      },
+      "double": {
+        "n": 24,
+        "unavailable": 0,
+        "screen_pass": 24,
+        "screen_not_pass": 0,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 3,
+        "passing_with_either_bound": 3,
+        "passing_with_no_bounds": 21,
+        "boundaries": {
+          "single": {
+            "flagged": 0,
+            "flagged_pass": 0,
+            "unflagged": 24,
+            "unflagged_pass": 24
+          },
+          "double": {
+            "flagged": 3,
+            "flagged_pass": 3,
+            "unflagged": 21,
+            "unflagged_pass": 21
+          }
+        }
+      }
+    },
+    "resolved": {
+      "single": {
+        "n": 24,
+        "unavailable": 0,
+        "screen_pass": 0,
+        "screen_not_pass": 24,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 0,
+        "passing_with_either_bound": 0,
+        "passing_with_no_bounds": 0,
+        "boundaries": {
+          "single": {
+            "flagged": 0,
+            "flagged_pass": 0,
+            "unflagged": 24,
+            "unflagged_pass": 0
+          },
+          "double": {
+            "flagged": 24,
+            "flagged_pass": 0,
+            "unflagged": 0,
+            "unflagged_pass": 0
+          }
+        }
+      },
+      "double": {
+        "n": 24,
+        "unavailable": 0,
+        "screen_pass": 24,
+        "screen_not_pass": 0,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 1,
+        "passing_with_either_bound": 1,
+        "passing_with_no_bounds": 23,
+        "boundaries": {
+          "single": {
+            "flagged": 0,
+            "flagged_pass": 0,
+            "unflagged": 24,
+            "unflagged_pass": 24
+          },
+          "double": {
+            "flagged": 1,
+            "flagged_pass": 1,
+            "unflagged": 23,
+            "unflagged_pass": 23
+          }
+        }
+      }
+    }
+  },
+  "contaminated": {
+    "original": {
+      "single": {
+        "n": 432,
+        "unavailable": 0,
+        "screen_pass": 0,
+        "screen_not_pass": 432,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 0,
+        "passing_with_either_bound": 0,
+        "passing_with_no_bounds": 0,
+        "boundaries": {
+          "single": {
+            "flagged": 72,
+            "flagged_pass": 0,
+            "unflagged": 360,
+            "unflagged_pass": 0
+          },
+          "double": {
+            "flagged": 432,
+            "flagged_pass": 0,
+            "unflagged": 0,
+            "unflagged_pass": 0
+          }
+        }
+      },
+      "double": {
+        "n": 432,
+        "unavailable": 0,
+        "screen_pass": 167,
+        "screen_not_pass": 265,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 46,
+        "passing_with_either_bound": 46,
+        "passing_with_no_bounds": 121,
+        "boundaries": {
+          "single": {
+            "flagged": 95,
+            "flagged_pass": 0,
+            "unflagged": 337,
+            "unflagged_pass": 167
+          },
+          "double": {
+            "flagged": 263,
+            "flagged_pass": 46,
+            "unflagged": 169,
+            "unflagged_pass": 121
+          }
+        }
+      }
+    },
+    "resolved": {
+      "single": {
+        "n": 432,
+        "unavailable": 6,
+        "screen_pass": 1,
+        "screen_not_pass": 431,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 1,
+        "passing_with_either_bound": 1,
+        "passing_with_no_bounds": 0,
+        "boundaries": {
+          "single": {
+            "flagged": 88,
+            "flagged_pass": 0,
+            "unflagged": 344,
+            "unflagged_pass": 1
+          },
+          "double": {
+            "flagged": 432,
+            "flagged_pass": 1,
+            "unflagged": 0,
+            "unflagged_pass": 0
+          }
+        }
+      },
+      "double": {
+        "n": 432,
+        "unavailable": 1,
+        "screen_pass": 200,
+        "screen_not_pass": 232,
+        "passing_with_single_bound": 0,
+        "passing_with_double_bound": 53,
+        "passing_with_either_bound": 53,
+        "passing_with_no_bounds": 147,
+        "boundaries": {
+          "single": {
+            "flagged": 106,
+            "flagged_pass": 0,
+            "unflagged": 326,
+            "unflagged_pass": 200
+          },
+          "double": {
+            "flagged": 250,
+            "flagged_pass": 53,
+            "unflagged": 182,
+            "unflagged_pass": 147
+          }
+        }
+      }
+    }
+  },
+  "paired_transitions": {
+    "original": {
+      "single": {
+        "n": 432,
+        "new_pass": 0,
+        "lost_pass": 0,
+        "both_pass": 0,
+        "neither_pass": 432
+      },
+      "double": {
+        "n": 432,
+        "new_pass": 0,
+        "lost_pass": 265,
+        "both_pass": 167,
+        "neither_pass": 0
+      }
+    },
+    "resolved": {
+      "single": {
+        "n": 432,
+        "new_pass": 1,
+        "lost_pass": 0,
+        "both_pass": 0,
+        "neither_pass": 431
+      },
+      "double": {
+        "n": 432,
+        "new_pass": 0,
+        "lost_pass": 232,
+        "both_pass": 200,
+        "neither_pass": 0
+      }
+    }
+  },
+  "by_condition": [
+    {
+      "side": "left",
+      "distance": 0.5,
+      "amplitude": 0.25,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 21,
+            "screen_not_pass": 3,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 7,
+            "passing_with_either_bound": 7,
+            "passing_with_no_bounds": 14,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 21
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 7,
+                "unflagged": 16,
+                "unflagged_pass": 14
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 24,
+            "screen_not_pass": 0,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 8,
+            "passing_with_either_bound": 8,
+            "passing_with_no_bounds": 16,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 8,
+                "unflagged": 16,
+                "unflagged_pass": 16
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 0.5,
+      "amplitude": 0.75,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 16,
+            "screen_not_pass": 8,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 16,
+            "passing_with_either_bound": 16,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 16
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 16,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 15,
+            "screen_not_pass": 9,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 15,
+            "passing_with_either_bound": 15,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 15
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 15,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 0.5,
+      "amplitude": 1.5,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 13,
+                "flagged_pass": 0,
+                "unflagged": 11,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 19,
+                "flagged_pass": 0,
+                "unflagged": 5,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 1,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 1.0,
+      "amplitude": 0.25,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 11,
+            "screen_not_pass": 13,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 11,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 11
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 0,
+                "unflagged": 16,
+                "unflagged_pass": 11
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 12,
+            "screen_not_pass": 12,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 12,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 12
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 0,
+                "unflagged": 16,
+                "unflagged_pass": 12
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 1.0,
+      "amplitude": 0.75,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 1,
+                "flagged_pass": 0,
+                "unflagged": 23,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 1,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 1,
+                "flagged_pass": 0,
+                "unflagged": 23,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 1.0,
+      "amplitude": 1.5,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 1.5,
+      "amplitude": 0.25,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 18,
+            "screen_not_pass": 6,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 4,
+            "passing_with_either_bound": 4,
+            "passing_with_no_bounds": 14,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 18
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 4,
+                "unflagged": 16,
+                "unflagged_pass": 14
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 24,
+            "screen_not_pass": 0,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 6,
+            "passing_with_either_bound": 6,
+            "passing_with_no_bounds": 18,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              },
+              "double": {
+                "flagged": 6,
+                "flagged_pass": 6,
+                "unflagged": 18,
+                "unflagged_pass": 18
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 1.5,
+      "amplitude": 0.75,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 6,
+            "screen_not_pass": 18,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 6,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 6
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 0,
+                "unflagged": 16,
+                "unflagged_pass": 6
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 15,
+            "screen_not_pass": 9,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 15,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 15
+              },
+              "double": {
+                "flagged": 8,
+                "flagged_pass": 0,
+                "unflagged": 16,
+                "unflagged_pass": 15
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "left",
+      "distance": 1.5,
+      "amplitude": 1.5,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 16,
+                "flagged_pass": 0,
+                "unflagged": 8,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 11,
+                "flagged_pass": 0,
+                "unflagged": 13,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 0.5,
+      "amplitude": 0.25,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 22,
+            "screen_not_pass": 2,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 22,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 22
+              },
+              "double": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 22
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 1,
+            "screen_not_pass": 23,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 1,
+            "passing_with_either_bound": 1,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 1
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 1,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 24,
+            "screen_not_pass": 0,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 24,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              },
+              "double": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 0.5,
+      "amplitude": 0.75,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 12,
+            "screen_not_pass": 12,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 12,
+            "passing_with_either_bound": 12,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 12
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 12,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 9,
+            "screen_not_pass": 15,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 9,
+            "passing_with_either_bound": 9,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 9
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 9,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 0.5,
+      "amplitude": 1.5,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 10,
+                "flagged_pass": 0,
+                "unflagged": 14,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 14,
+                "flagged_pass": 0,
+                "unflagged": 10,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 21,
+                "flagged_pass": 0,
+                "unflagged": 3,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 22,
+                "flagged_pass": 0,
+                "unflagged": 2,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 1.0,
+      "amplitude": 0.25,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 20,
+            "screen_not_pass": 4,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 20,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 20
+              },
+              "double": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 20
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 23,
+            "screen_not_pass": 1,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 23,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 23
+              },
+              "double": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 23
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 1.0,
+      "amplitude": 0.75,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 1,
+                "flagged_pass": 0,
+                "unflagged": 23,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 8,
+                "flagged_pass": 0,
+                "unflagged": 16,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 5,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 11,
+                "flagged_pass": 0,
+                "unflagged": 13,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 1.0,
+      "amplitude": 1.5,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 1.5,
+      "amplitude": 0.25,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 24,
+            "screen_not_pass": 0,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 4,
+            "passing_with_either_bound": 4,
+            "passing_with_no_bounds": 20,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              },
+              "double": {
+                "flagged": 4,
+                "flagged_pass": 4,
+                "unflagged": 20,
+                "unflagged_pass": 20
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 24,
+            "screen_not_pass": 0,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 3,
+            "passing_with_either_bound": 3,
+            "passing_with_no_bounds": 21,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              },
+              "double": {
+                "flagged": 3,
+                "flagged_pass": 3,
+                "unflagged": 21,
+                "unflagged_pass": 21
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 1.5,
+      "amplitude": 0.75,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 17,
+            "screen_not_pass": 7,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 3,
+            "passing_with_either_bound": 3,
+            "passing_with_no_bounds": 14,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 17
+              },
+              "double": {
+                "flagged": 4,
+                "flagged_pass": 3,
+                "unflagged": 20,
+                "unflagged_pass": 14
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 24,
+            "screen_not_pass": 0,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 7,
+            "passing_with_either_bound": 7,
+            "passing_with_no_bounds": 17,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 24
+              },
+              "double": {
+                "flagged": 7,
+                "flagged_pass": 7,
+                "unflagged": 17,
+                "unflagged_pass": 17
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "side": "right",
+      "distance": 1.5,
+      "amplitude": 1.5,
+      "counts": {
+        "original": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 15,
+                "flagged_pass": 0,
+                "unflagged": 9,
+                "unflagged_pass": 0
+              }
+            }
+          }
+        },
+        "resolved": {
+          "single": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 0,
+            "screen_not_pass": 24,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 0,
+            "passing_with_either_bound": 0,
+            "passing_with_no_bounds": 0,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 0
+              },
+              "double": {
+                "flagged": 24,
+                "flagged_pass": 0,
+                "unflagged": 0,
+                "unflagged_pass": 0
+              }
+            }
+          },
+          "double": {
+            "n": 24,
+            "unavailable": 0,
+            "screen_pass": 6,
+            "screen_not_pass": 18,
+            "passing_with_single_bound": 0,
+            "passing_with_double_bound": 5,
+            "passing_with_either_bound": 5,
+            "passing_with_no_bounds": 1,
+            "boundaries": {
+              "single": {
+                "flagged": 0,
+                "flagged_pass": 0,
+                "unflagged": 24,
+                "unflagged_pass": 6
+              },
+              "double": {
+                "flagged": 7,
+                "flagged_pass": 5,
+                "unflagged": 17,
+                "unflagged_pass": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}

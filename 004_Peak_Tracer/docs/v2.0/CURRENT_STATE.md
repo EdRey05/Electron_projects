@@ -1,8 +1,8 @@
 # Peak Tracer v2.0 — current state and next development plan
 
 Updated 16 September 2026. **Open development, not locked or packaged.** Branch:
-`dev-peak-tracer`. Baseline documentation commit: `0967a8c`. The September 16 fit-diagnostic
-checkpoint below describes subsequent implementation. Package version: `2.0.0-dev`.
+`dev-peak-tracer`. Baseline implementation commit: `4862ae1`. The September 16 step-3 neighbor
+challenge below records the latest experiment; production code is unchanged. Package version: `2.0.0-dev`.
 
 This is the single active v2.0 working document beside the task wiki, mirrored in
 repository `docs/v2.0/CURRENT_STATE.md`. It replaces the four previous standalone
@@ -333,7 +333,7 @@ separate user decision.
    Boundary-constrained fits remain available with flags: reaching a bound does
    not establish a false fit, and an interior fit does not establish correctness.
    Bounds, optimizer settings, numerical scores and existing screen are unchanged.
-3. **Next: neighboring same-dye peak interference.** Add a separate seeded
+3. **Done: neighboring same-dye peak interference (see results below).** Add a separate seeded
    synthetic challenge with known single/double truth and controlled neighbor
    distance/amplitude. Report false splitting and missed pairs, with boundary
    flags stratified by model. Preserve the original challenge as a regression set.
@@ -359,6 +359,91 @@ Checkpoint processor source SHA-256: `7bacef458401d72fc44fe4755e5500f082aee9eff6
 The evidence schema name remains v1 with additive fields. Early unavailable
 windows (edge, zero signal or unsupported spacing) never run the solver and have
 no fit diagnostics. Consumers must tolerate absent diagnostics and unknown fields.
+
+### Step 3 completed — same-dye neighbor interference, September 16
+
+Experiment scripts: `python-app/experiments/neighbor_interference.py` and
+`plot_neighbor_interference.py`. No production processing or fit thresholds changed.
+
+The fixed design has 48 controls and 864 added-neighbor cases: target single or
+double, widths 0.30/0.45/0.60 spacings, Gaussian noise 2%/8%, seeds 60–63,
+left/right neighbors at 0.5/1.0/1.5 spacings outside the nearest target anchor,
+neighbor amplitudes 25%/75%/150% and width 0.4 spacing. The single target is at
+0.44 spacing; true doubles have amplitude ratio 0.65. Both stages use the app’s
+slow baseline subtraction before local fitting. The original screen is unchanged.
+
+The source double anchors are deliberately retained for single-target truth.
+An outside neighbor is nuisance signal, not a second target base. This tests
+misattribution within the fixed fitting window, not de novo calling. A close
+neighbor may be a real extra component in that window; the error is interpreting
+it as evidence for two target calls. Added signal can overlap existing synthetic
+context. The generated trace is a stress fixture, not a complete biological model.
+
+| Condition | Stage | False target doubles | Missed target doubles | Unavailable (single / double) |
+| --- | --- | ---: | ---: | ---: |
+| No added neighbor | original | 0/24 | 0/24 | 0 / 0 |
+| No added neighbor | resolved | 0/24 | 0/24 | 0 / 0 |
+| Added neighbor | original | 0/432 | 265/432 | 0 / 0 |
+| Added neighbor | resolved | 1/432 | 232/432 | 6 / 1 |
+
+Missed doubles include unavailable comparisons; no unavailable fit is treated
+as a pass. Paired conditions reuse controls and noise, so these are descriptive
+counts, not independent samples or biological error-rate estimates.
+
+| Added-neighbor screen | Stage | False target doubles retained | True target doubles retained |
+| --- | --- | ---: | ---: |
+| Current screen | original | 0/432 | 167/432 |
+| Reject double-model bounds | original | 0/432 | 121/432 |
+| Reject either-model bounds | original | 0/432 | 121/432 |
+| Current screen | resolved | 1/432 | 200/432 |
+| Reject double-model bounds | resolved | 0/432 | 147/432 |
+| Reject either-model bounds | resolved | 0/432 | 147/432 |
+
+Interpretation: neighbor contamination raises missed-double counts from zero in
+these controls to 265/432 (61.3%) on original signals and 232/432 (53.7%) after
+resolution. The resolved screen retains 33 more true pairs in aggregate, but also
+admits one false target double (1/432, 0.23%). These percentages describe this
+selected synthetic grid, not expected clinical or sequencing error rates.
+Rejecting double-model bounds removes that one false result but also removes
+53/200 passing true doubles (26.5%). There is no demonstrated basis here for
+turning boundary flags into a blanket rejection rule.
+
+The false target-double fixture is single width 0.60, noise 8%, seed 61, right
+neighbor at 0.5 spacing with amplitude 25%. Its delta rises from 3.22 to 19.89;
+the left double center reaches its upper bound in both stages. The old combined
+width flag is false: the new center flag exposes a limitation it did not capture.
+This is a saved failure case for future context modeling, not a tuned exclusion.
+
+These boundary exclusions are retrospective counterfactuals, **not adopted app
+rules**. A single-model bound can occur because the true signal is a double;
+rejecting it can discard legitimate pairs. The JSON additionally stratifies
+flagged/unflagged fits separately for each model and every distance/amplitude/side.
+
+![Neighbor screen results](neighbor-interference/neighbor-screen.png)
+![Boundary rejection tradeoff](neighbor-interference/neighbor-boundaries.png)
+
+[Full summary](neighbor-interference/summary.json) · [All trials, compressed JSON](neighbor-interference/trials.json.gz)
+
+Validation: **115 tests passed**. The prior 288-trial held-out challenge was rerun;
+all pre-existing fields exactly match the frozen result after excluding the new
+additive diagnostics. The original challenge and old plate outputs were preserved.
+No real-plate reprocessing, call/QV changes or new quality claim is part of step 3.
+
+Reproduce with the existing processing runtime:
+
+```powershell
+python python-app/experiments/neighbor_interference.py --output FRESH_RESULTS
+python python-app/experiments/plot_neighbor_interference.py --results FRESH_RESULTS
+```
+
+The plotter needs matplotlib. The experiment refuses an existing output directory.
+Its summary records the processor and experiment source hashes. Current processor
+hash remains the step-2 hash; the experiment is outside production code.
+
+**Restart at step 4:** add baseline-drift and saturation challenges separately.
+Use the neighbor results when designing explicit context/residual rejection,
+but do not tune and validate a new rule on the same cases. Joint neighbor modeling
+remains a candidate investigation before any change to biological calls.
 
 Near-term deliverable: a more discriminating diagnostic model and recorded failure
 cases, not an automatic QV increase. Independent data constrains calibration; it
