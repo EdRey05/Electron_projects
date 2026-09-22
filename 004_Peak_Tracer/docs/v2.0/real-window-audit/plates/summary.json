@@ -1,0 +1,11 @@
+{
+  "scope": "plates",
+  "files": 146,
+  "source_hashes_verified": true,
+  "high_flat_crest_reads": {
+    "raw": 1,
+    "analyzed": 53
+  },
+  "target_windows": [],
+  "target_pairs": []
+}

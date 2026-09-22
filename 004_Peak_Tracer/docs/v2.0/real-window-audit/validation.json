@@ -1,0 +1,9 @@
+{
+  "tests_passed": 120,
+  "source_hashes_verified": 146,
+  "target_reads": 2,
+  "isolated_pair_comparisons": 294,
+  "prior_fit_fields_exact_match": true,
+  "production_code_unchanged": true,
+  "ab1_outputs_written": false
+}

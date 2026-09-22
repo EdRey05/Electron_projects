@@ -1,8 +1,8 @@
 # Peak Tracer v2.0 — current state and next development plan
 
-Updated 16 September 2026. **Open development, not locked or packaged.** Branch:
-`dev-peak-tracer`. Baseline implementation/experiment commit: `255302e`. Step 4 below records
-the latest baseline-drift and saturation challenges; production code is unchanged. Package version: `2.0.0-dev`.
+Updated 21 September 2026. **Open development, not locked or packaged.** Branch:
+`dev-peak-tracer`. Baseline implementation/experiment commit: `e671a9b`. Step 5 below records
+the latest real-window and plate audit; production code is unchanged. Package version: `2.0.0-dev`.
 
 This is the single active v2.0 working document beside the task wiki, mirrored in
 repository `docs/v2.0/CURRENT_STATE.md`. It replaces the four previous standalone
@@ -340,7 +340,7 @@ separate user decision.
    Do not adopt a rejection threshold merely because it increases passing pairs.
 4. **Done: baseline drift and saturation (see step-4 results below).** Add these as separate experiments;
    introduce rejection rules only when measured failure cases support them.
-5. **Next: real-window audit, then both plates if warranted.** Start with the
+5. **Done: real-window audit and both-plate plateau census (step 5 below).** Start with the
    original issue reads. Use a fresh output folder; retain the old `9-` outputs.
 6. **Ongoing: synchronize this guide and wiki at every checkpoint.** Record tests,
    source hashes, limitations and the next uncompleted step before stopping.
@@ -543,11 +543,116 @@ Use the existing processing runtime for the experiment and matplotlib for plots.
 The experiment refuses an existing output directory. This documents failure
 conditions; it does not establish improved biological accuracy or calibrated QVs.
 
-**Restart at step 5:** audit the original issue windows against their saved
+**Step-4 handoff (now completed below):** audit the original issue windows against their saved
 evidence and inspect whether the synthetic failure patterns occur in real traces.
 Do not infer actual saturation from this artificial ceiling or fit a rejection
 rule to the same synthetic cases used to claim its success. Evaluate a candidate
 on separate conditions before proposing any change to calls or confidence.
+
+### Step 5 completed — original issue windows and two-plate census, September 21
+
+Baseline: `e671a9b`. This is a read-only diagnostic audit, not new processing
+behavior. The earlier attempt stopped at a file-access request when automatic
+approval review hit a usage limit; the resumed run completed. No output AB1/SEQ
+was written and no saved v2.0 output was replaced.
+
+**Coverage:** the exact POS1-G12_G12 and U0827P1A8 / ZV270402-F1 / B01 source
+reads. Motifs match the original v1.8/v1.9 plot definitions uniquely. The audit
+recomputed default floating-point resolution and 294 isolated pair comparisons
+across these two reads. Every pre-existing original/resolved fit field matched
+its saved native-evidence record exactly. Added optimizer fields reveal bounds
+without changing numerical scores. Both full plates also received a source-hash
+verified raw/analyzed flat-crest census (78 + 68 reads); this did not refit every
+pair or rerun full-plate output processing.
+
+**Flat-crest definition:** at least three exactly equal positive samples, with
+lower samples on both sides. The whole-read census additionally requires height
+at least 80% of channel p99; window inspection uses 80% of that window maximum.
+These are fixed descriptive choices, not a validated saturation detector.
+Quantization, processing and low signal can produce such runs. Raw DATA1–4 are
+inspected by tag index only; no raw-to-analyzed coordinate or dye mapping is
+inferred. Absence of a flag does not rule out saturation.
+
+| Original issue | Source call range | Main repeat limitation | High flat crests in inspected repeat windows |
+| --- | --- | --- | ---: |
+| POS1 merged peaks | 760–778 | TTTT at 768–771 and AAAA at 775–778 excluded by two-peak model | 0 |
+| POS1 insertion/GGG region | 1027–1052 | AAA at 1036–1038 and GGG at 1039–1041 excluded | 0 |
+| U0827 F1 repeat region | 758–783 | AAAA at 771–774 excluded | 0 |
+
+**Finding:** the selected original problem repeats have no high exact flat
+crests under this rule. Hard clipping is not established as their cause. The
+more direct gap is model coverage: the current isolated-double fitter cannot
+evaluate the three/four-base repeats we most want to resolve.
+
+The local fifth-percentile/peak ratio is about 10.4% for POS1 TTTT, 19.5% for
+its later AAAA, 27.7% for U0827 AAAA and 46.5% for POS1 GGG. The slow estimated
+background varies by 0% across the first three inspected runs and about 0.71%
+of peak height across GGG. These measurements do **not** identify true baseline:
+overlapping same-dye peaks and neighboring contributions can elevate the local
+floor. Subtracting that floor indiscriminately could remove real signal.
+
+| Read | Isolated comparisons (including unavailable) | Original screen passes | Resolved screen passes | Resolved passes with double-model bounds |
+| --- | ---: | ---: | ---: | ---: |
+| POS1-G12_G12.ab1 | 154 | 138 | 134 | 9 |
+| U0827P1A8._.ZV270402._.ZV270402-F1._.U0827_B01.ab1 | 140 | 117 | 123 | 19 |
+
+These are diagnostic counts, not correct base counts. POS1 has one unavailable
+comparison; all 140 U0827 comparisons are available. In the GGG issue window,
+neighboring CC at source calls 1042–1043 reaches the right-center upper bound;
+its increasing model preference is not independent evidence of accuracy.
+
+| Plate | Reads | Reads with raw high flat crests | Reads with analyzed high flat crests | Analyzed runs |
+| --- | ---: | ---: | ---: | ---: |
+| sample4 | 78 | 1 | 27 | 42 |
+| sample5 | 68 | 0 | 26 | 46 |
+
+The only raw-positive read is U0827P1G8 / XP1660364-F1 / H03: six three-sample
+runs at values 223–254. These relatively low values do not establish detector
+saturation. A distinct analyzed-channel outlier is U0827P1G8 / XP1660364-F2 / H04:
+DATA10 stays at **32767 for 33 scans**, zero-based interval [99,132), reaching
+its channel maximum near source call 8 (QV 4). This is a conspicuous stored
+ceiling/plateau candidate worth a dedicated check, not proof of raw detector
+saturation. It is not either original problem read. The other analyzed runs
+are three to five samples long; the five-sample example is E7 / M13F-108 / D01,
+DATA12 [14736,14741), near source call 1144 (QV 3), below its channel maximum.
+
+![POS1 repeated peaks](real-window-audit/targets/pos1_resolution.png)
+![POS1 GGG region](real-window-audit/targets/pos1_insertions.png)
+![U0827 AAAA region](real-window-audit/targets/u0827_resolution.png)
+
+Plots show source analyzed channels, recomputed floating-point resolution, and
+PT on each file’s own motif-relative scan grid. Each panel uses a common gain
+across its four dyes, but gains differ between panels. Dotted lines show the
+estimated slow baseline in the source panel. Source letters/positions are
+overlaid on the recomputed panel; no new calls are implied. PT guides comparison
+only and is not supplied to fitting or treated as biological truth.
+
+**Decision and next step:** implement the already-planned joint three/four-peak
+diagnostic model with neighboring contributions and explicit local baseline
+hypotheses. Start on independent synthetic known counts (including artifacts
+and deliberately imperfect anchors), then revisit these exact windows without
+choosing counts to match PT or the construct. Keep boundary/plateau warnings
+descriptive until separately evaluated; do not turn the census threshold into
+a blanket rejection rule. Inspect the H04 stored ceiling case as an additional
+failure fixture. No basis for increased QVs or automatic call edits was found.
+
+**Validation:** 120 tests passed. Two new tests cover positive bracketed plateaus,
+edge/zero exclusions and window-relative reporting. All 146 source hashes
+matched saved provenance. Production hash remains
+`7bacef458401d72fc44fe4755e5500f082aee9eff6398b0410e1a6e40d43ad33`.
+
+[Target summary](real-window-audit/targets/summary.json) · [Full target records](real-window-audit/targets/audit.json.gz) ·
+[Plate summary](real-window-audit/plates/summary.json) · [Full census](real-window-audit/plates/audit.json.gz) · [Validation](real-window-audit/validation.json)
+
+```powershell
+python python-app/experiments/real_window_audit.py --task TASK_ROOT --output FRESH_TARGETS --scope targets
+python python-app/experiments/real_window_audit.py --task TASK_ROOT --output FRESH_CENSUS --scope plates
+python python-app/experiments/plot_real_window_audit.py --results FRESH_TARGETS
+```
+
+**Checkpoint complete:** small steps 1–5 are done, and step 6 documentation is
+updated here and in the wiki. The next development increment is the joint-repeat
+model above, not another blanket rerun of unchanged processing. v2.0 remains open.
 
 Near-term deliverable: a more discriminating diagnostic model and recorded failure
 cases, not an automatic QV increase. Independent data constrains calibration; it
