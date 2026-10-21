@@ -20,6 +20,7 @@ import type {
   DiffPlan,
   Job,
   JobFilters,
+  OverrideMap,
   SyncDirection,
   WalkRequest,
   WalkResult,
@@ -114,6 +115,8 @@ export function registerIpcHandlers(): void {
         filters?: JobFilters;
         policy?: ConflictPolicy;
         followSymlinks?: boolean;
+        deleteExtraneous?: boolean;
+        overrides?: OverrideMap;
       },
     ): Promise<DryRunResult> => {
       const dbDir = join(app.getPath("userData"), "jobs");
@@ -128,6 +131,8 @@ export function registerIpcHandlers(): void {
         filters: req.filters,
         policy: req.policy,
         followSymlinks: req.followSymlinks,
+        deleteExtraneous: req.deleteExtraneous,
+        overrides: req.overrides,
       });
     },
   );

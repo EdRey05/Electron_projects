@@ -3,10 +3,12 @@ import type {
   DiffPlan,
   Job,
   JobFilters,
+  OverrideMap,
   SyncDirection,
   WalkRequest,
   WalkResult,
 } from "./types";
+import type { SyncItem } from "./inventory";
 
 export interface DryRunRequest {
   /** Omit for ad-hoc Workspace runs — main derives a stable id from the path pair. */
@@ -17,6 +19,10 @@ export interface DryRunRequest {
   filters?: JobFilters;
   policy?: ConflictPolicy;
   followSymlinks?: boolean;
+  /** Mirror modes only: delete destination-only files. Defaults to true. */
+  deleteExtraneous?: boolean;
+  /** Per-path user action overrides from the sync table. */
+  overrides?: OverrideMap;
 }
 
 export interface DryRunResponse {
@@ -28,6 +34,8 @@ export interface DryRunResponse {
   walkB: { fileCount: number; totalBytes: number; durationMs: number };
   stateLoadedRows: number;
   plan: DiffPlan;
+  /** The full sync table: one row per file AND per folder across both sides. */
+  inventory: SyncItem[];
   totalDurationMs: number;
 }
 

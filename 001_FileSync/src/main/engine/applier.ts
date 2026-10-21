@@ -1,6 +1,6 @@
 import { stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { join } from "node:path";
+import { join, extname } from "node:path";
 import { copyAtomic } from "./copier";
 import {
   cleanupStaleTemps,
@@ -122,6 +122,10 @@ export async function apply(opts: ApplyOptions): Promise<ApplyResult> {
           break;
         case "conflict":
           conflicts++;
+          break;
+        case "keep-both":
+          filesCopied++;
+          bytesTransferred += action.bytes;
           break;
       }
     } catch (err) {
@@ -308,6 +312,55 @@ async function runAction(
         0,
         false,
         `conflict skipped (policy=${action.conflict?.suggested}); apply does not yet auto-resolve rename-both/ask`,
+      );
+      return;
+    }
+
+    case "keep-both": {
+      // Both versions survive side by side. The losing side is renamed with
+      // an .A./.B. suffix instead of being overwritten or trashed.
+      const src = join(opts.sideA, action.path);
+      const dest = join(opts.sideB, action.path);
+      const ext = extname(action.path);
+      const stem = action.path.slice(0, action.path.length - ext.length);
+      const stampShort = stamp.replace(/[^0-9]/g, "").slice(0, 14);
+
+      // A is preserved under .A.<stamp>, B is copied over the original.
+      const aKept = join(opts.sideA, `${stem}.A${stampShort}${ext}`);
+      if (existsSync(src)) {
+        await copyAtomic({ src, dest: aKept, preserveTimestamps: opts.preserveTimestamps });
+      }
+      // B is preserved under .B.<stamp> and also copied over the original.
+      if (existsSync(dest)) {
+        const bKept = join(opts.sideB, `${stem}.B${stampShort}${ext}`);
+        await copyAtomic({ src: dest, dest: bKept, preserveTimestamps: opts.preserveTimestamps });
+      }
+      // Now A's content wins the original name on B.
+      if (existsSync(src)) {
+        await copyAtomic({ src, dest, preserveTimestamps: opts.preserveTimestamps });
+      }
+
+      const aStat = existsSync(src) ? await stat(src) : null;
+      const bStat = existsSync(dest) ? await stat(dest) : null;
+      if (aStat && bStat) {
+        upsertBothSides(
+          db,
+          action.path,
+          aStat.size,
+          aStat.mtimeMs,
+          bStat.size,
+          bStat.mtimeMs,
+          Date.now(),
+        );
+      }
+      insertRunAction(
+        db,
+        runId,
+        action.path,
+        action.kind,
+        action.bytes,
+        true,
+        `kept both versions (${stem}.A${stampShort}${ext} / ${stem}.B${stampShort}${ext})`,
       );
       return;
     }

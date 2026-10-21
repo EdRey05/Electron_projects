@@ -7,22 +7,51 @@ A self-built free replacement for AllwaySync / GoodSync, scoped to v1.
 ## Status
 
 | Week | Scope                                                  | State        |
-|------|--------------------------------------------------------|--------------|
+|------|---------------------------------------------------------|--------------|
 | 1    | Scaffold + walker + state DB                           | ✅ **Done** |
 | 2    | Differ + dry-run UI                                    | ✅ **Done** |
 | 3    | Copier + trash + atomic writes + Apply UI              | ✅ **Done** |
 | 4    | Polish + history view + Windows installer              | ✅ **Done** |
+| 5    | AllwaySync-style sync table (v0.0.6)                   | ✅ **Done** |
 
-**v1 feature-complete + Workspace UX redesign (v0.0.5).** 89 unit tests passing; typecheck clean both sides. The app is end-to-end usable for the locked v1 scope (local + mapped network drives) with both one-way mirror and bidirectional sync directions.
+**v1 feature-complete + AllwaySync-style sync table (v0.0.6).** 135 unit
+tests passing; typecheck clean both sides. The app is end-to-end usable for
+the locked v1 scope (local + mapped network drives) with both one-way mirror
+and bidirectional sync directions, and the plan for each run is now
+reviewable and editable **per item** in a sync table.
 
 ### What works
 
-- **Workspace** is the default home screen — pick two folders, choose a direction (Mirror →, Mirror ←, Sync ↔), click **Analyze**, review the per-file plan in a directory tree with per-row include/exclude checkboxes, click **Run**. Modeled after AllwaySync's analyze-then-run flow. No need to save a job upfront.
+- **The sync table** is the default home screen. Pick two folders, choose a
+  direction (Mirror →, Mirror ←, Sync ↔), click **Analyze**, and every file
+  *and folder* on both sides appears as a row in an Explorer-style tree
+  (▶/▼ triangles). Each row has an **Action dropdown** that decides what
+  happens to that item:
+
+  | Action | Effect |
+  |--------|--------|
+  | Auto (use diff) | Use whatever the differ decided for this path |
+  | Copy A → B | Force A onto B |
+  | Copy B → A | Force B onto A |
+  | Keep both | Both versions survive as timestamped siblings |
+  | Keep A / Keep B | Conflict resolution — that side wins |
+  | Delete on A / Delete on B | Move that side's file to the trash |
+  | Skip this item | Leave it alone (and, for a folder, its whole subtree) |
+
+  A folder's action covers its entire subtree; a more specific row wins
+  over the folder it sits in. An **Apply to all** bar sets one action for
+  every item at once. **Only changes** hides in-sync rows (on by default);
+  folder counts always reflect the full tree. Clicking a row opens a
+  side-by-side detail pane with size, timestamp and the effective action.
 - **Three sync directions:**
-  - `Mirror →` (a-to-b): make B match A. Stateless. New/changed files copy A→B; files only on B are deleted (to trash).
+  - `Mirror →` (a-to-b): make B match A. Stateless. New/changed files copy A→B; files only on B are deleted — unless **"Delete files only on the destination"** is turned off.
   - `Mirror ←` (b-to-a): inverse mirror.
   - `Sync ↔`: bidirectional three-way merge using a per-pair state DB. Detects deletes vs new files; conflicts auto-resolved by newer-wins.
-- **Per-file include/exclude** in the analysis tree. Folder rows toggle every leaf in their subtree at once. Excluded actions are filtered out before Run; the rest of the plan executes.
+- **Per-side ignore lists.** Each side of the pair can have its own extra
+  ignore globs (`filters.excludeA` / `filters.excludeB`), on top of the
+  shared exclude list.
+- **Windows long-path support.** Copies and trashes resolve through the
+  `\\?\` prefix, so paths past the classic 260-character limit work.
 - **Run** behavior: atomic copies (`<dest>.tmp.<rand>` + rename), trash for every destructive op (`<sideRoot>/.filesync-trash/<adhoc-id>/<runStamp>/<relPath>`), per-action `run_action` log, `run_log` summary with `ok` / `partial` / `error`, automatic stale-temp cleanup at the start of every run, automatic trash sweep at end.
 - **Saved jobs** (secondary screen, accessed via the "Saved jobs →" link on the Workspace) — for repeat workflows you want named and reusable. Includes the original RunView/History pages.
 - **Stable per-pair state DB** for ad-hoc Workspace runs: main derives an id from `sha1(sideA|sideB)` so the same folder pair always uses the same state DB and trash directory across sessions.
@@ -32,8 +61,7 @@ A self-built free replacement for AllwaySync / GoodSync, scoped to v1.
 
 - Real-time watcher, scheduler, drive-mount triggers (all Week 2+ in PLAN's "Future scope").
 - SFTP / cloud / WebDAV backends.
-- Per-conflict UI under `ask` policy: differ records the conflict and applier currently skips with a logged reason (manual resolution = edit one side and re-run). UI to override per-row is a small follow-up.
-- `rename-both` policy execution (differ flags it; applier currently records and skips).
+- The legacy `rename-both` and `ask` **conflict policies** are still recorded-and-skipped by the applier. The UI path supersedes them: the per-row "Keep both" action and "Keep A"/"Keep B" dropdown entries handle the same cases and *do* execute.
 - Code signing for the Windows installer (the NSIS config produces an installer; signing requires a cert).
 
 ### How to use it

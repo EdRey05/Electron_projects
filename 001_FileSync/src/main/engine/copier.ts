@@ -1,5 +1,5 @@
 import { mkdir, copyFile, rename, stat, unlink, utimes } from "node:fs/promises";
-import { dirname } from "node:path";
+import { dirname, isAbsolute, sep } from "node:path";
 import { randomUUID } from "node:crypto";
 
 export interface CopyOptions {
@@ -19,6 +19,34 @@ export interface CopyResult {
 }
 
 const RETRY_CODES = new Set(["EBUSY", "EPERM", "EACCES", "EMFILE", "ENFILE"]);
+
+/**
+ * Windows extended-length path prefix.
+ *
+ * Win32 APIs without the `\\?\` prefix fail past MAX_PATH (260 chars) unless
+ * the process opts into long-path support. The prefix bypasses that limit
+ * entirely. `path.relative` does NOT understand the prefix, so it is applied
+ * only at the syscall boundary — never to paths used for relative() or join().
+ *
+ * UNC paths (`\\server\share`) need the prefix as `\\?\UNC\server\share`.
+ */
+export function toLongPath(p: string): string {
+  if (!isAbsolute(p)) return p;
+  if (p.startsWith("\\\\?\\")) return p;
+  if (p.startsWith("\\\\")) {
+    return `\\\\?\\UNC\\${p.slice(2)}`;
+  }
+  return `\\\\?\\${p}`;
+}
+
+/**
+ * Resolve a path for a syscall, using the long-path form on Windows.
+ * Non-Windows platforms get the path unchanged.
+ */
+export function syscallPath(p: string): string {
+  if (process.platform !== "win32") return p;
+  return toLongPath(p);
+}
 
 function tmpName(dest: string): string {
   return `${dest}.tmp.${process.pid}.${randomUUID().slice(0, 8)}`;
@@ -46,27 +74,33 @@ async function sleep(ms: number): Promise<void> {
  *
  * Retries transient EBUSY/EPERM/EACCES/EMFILE/ENFILE with exponential backoff.
  * Other errors propagate to the applier, which records them in run_action.
+ *
+ * All paths are resolved through `syscallPath`, so files deeper than 260
+ * characters copy correctly on Windows.
  */
 export async function copyAtomic(opts: CopyOptions): Promise<CopyResult> {
   const initialBackoff = opts.initialBackoffMs ?? 50;
   const maxRetries = opts.maxRetries ?? 5;
 
-  await mkdir(dirname(opts.dest), { recursive: true });
+  const src = syscallPath(opts.src);
+  const dest = syscallPath(opts.dest);
+
+  await mkdir(dirname(dest), { recursive: true });
 
   let attempt = 0;
   let backoff = initialBackoff;
   let retried = false;
 
   while (true) {
-    const tmp = tmpName(opts.dest);
+    const tmp = tmpName(dest);
     try {
-      await copyFile(opts.src, tmp);
+      await copyFile(src, tmp);
       if (opts.preserveTimestamps) {
-        const st = await stat(opts.src);
+        const st = await stat(src);
         await utimes(tmp, st.atime, st.mtime);
       }
-      await rename(tmp, opts.dest);
-      const finalStat = await stat(opts.dest);
+      await rename(tmp, dest);
+      const finalStat = await stat(dest);
       return { bytes: finalStat.size, retried };
     } catch (err) {
       // Best-effort cleanup of the temp file we may have created.
@@ -82,3 +116,11 @@ export async function copyAtomic(opts: CopyOptions): Promise<CopyResult> {
     }
   }
 }
+
+/**
+ * The temp-file suffix pattern used by `copyAtomic`. Shared with the trash
+ * sweeper so stale temps from interrupted runs get cleaned up.
+ */
+export const TEMP_SUFFIX_RE = /\.tmp\.\d+\.[0-9a-f]+$/i;
+
+export { sep };

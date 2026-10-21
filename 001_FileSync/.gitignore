@@ -9,3 +9,13 @@ dist
 .env.*
 coverage
 tests/.tmp
+
+# Local design-decision notes — not part of the repo history.
+# The durable version of these decisions lives in PLAN.md, README.md and
+# the commit messages.
+docs/
+
+# Build output
+build
+release
+*.exe

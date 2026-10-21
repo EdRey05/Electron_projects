@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
-import type { Job } from "@shared/types";
+import type { Job, SyncDirection } from "@shared/types";
 import { Button } from "../components/Button";
+
+const DIRECTION_LABELS: Record<SyncDirection, string> = {
+  "a-to-b": "Mirror →",
+  "b-to-a": "Mirror ←",
+  sync: "Sync ↔",
+};
 
 export function JobList({
   onNew,
@@ -85,6 +91,7 @@ export function JobList({
                 <th className="text-left px-4 py-2 font-medium">Name</th>
                 <th className="text-left px-4 py-2 font-medium">Side A</th>
                 <th className="text-left px-4 py-2 font-medium">Side B</th>
+                <th className="text-left px-4 py-2 font-medium">Direction</th>
                 <th className="text-left px-4 py-2 font-medium">Conflict</th>
                 <th className="text-right px-4 py-2 font-medium">Actions</th>
               </tr>
@@ -95,6 +102,9 @@ export function JobList({
                   <td className="px-4 py-2 text-slate-100">{j.name}</td>
                   <td className="px-4 py-2 text-slate-300 font-mono text-xs">{j.sideA}</td>
                   <td className="px-4 py-2 text-slate-300 font-mono text-xs">{j.sideB}</td>
+                  <td className="px-4 py-2 text-slate-400 text-xs">
+                    {DIRECTION_LABELS[j.direction] ?? j.direction}
+                  </td>
                   <td className="px-4 py-2 text-slate-400 text-xs">{j.onConflict}</td>
                   <td className="px-4 py-2 text-right space-x-1">
                     <Button variant="primary" onClick={() => onRun(j)}>

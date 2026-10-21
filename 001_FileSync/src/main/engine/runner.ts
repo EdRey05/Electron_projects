@@ -3,10 +3,13 @@ import { walk } from "./walker";
 import { diff } from "./differ";
 import { oneWayDiff } from "./oneway-diff";
 import { openStateDb, loadStateMap } from "./state-db";
+import { buildInventory, type SyncItem } from "@shared/inventory";
+import { applyOverrides } from "@shared/overrides";
 import type {
   ConflictPolicy,
   DiffPlan,
   JobFilters,
+  OverrideMap,
   SideMeta,
   StateRecord,
   SyncDirection,
@@ -25,6 +28,10 @@ export interface DryRunOptions {
   policy?: ConflictPolicy;
   followSymlinks?: boolean;
   toleranceMs?: number;
+  /** Mirror modes only: delete destination-only files. Defaults to true. */
+  deleteExtraneous?: boolean;
+  /** Per-path user action overrides from the sync table. */
+  overrides?: OverrideMap;
 }
 
 export interface DryRunResult {
@@ -36,6 +43,12 @@ export interface DryRunResult {
   walkB: { fileCount: number; totalBytes: number; durationMs: number };
   stateLoadedRows: number;
   plan: DiffPlan;
+  /**
+   * The full sync table: one row per file AND per folder across both sides,
+   * with the per-side metadata the table renders. Includes rows that need no
+   * action, because AllwaySync shows the whole tree, not just the diff.
+   */
+  inventory: SyncItem[];
   totalDurationMs: number;
 }
 
@@ -51,15 +64,25 @@ function entriesToMap(walk: WalkResult): Map<string, SideMeta> {
 /**
  * Compute a dry-run plan for one job: walk both sides in parallel, load the
  * persisted state, and run the differ. Pure read — never writes the state DB
- * or touches either side. The Apply phase (week 3) consumes the returned plan.
+ * or touches either side. The Apply phase consumes the returned plan.
  */
 export async function dryRun(opts: DryRunOptions): Promise<DryRunResult> {
   const t0 = Date.now();
   const direction: SyncDirection = opts.direction ?? "sync";
 
   const [walkA, walkB] = await Promise.all([
-    walk({ root: opts.sideA, filters: opts.filters, followSymlinks: opts.followSymlinks }),
-    walk({ root: opts.sideB, filters: opts.filters, followSymlinks: opts.followSymlinks }),
+    walk({
+      root: opts.sideA,
+      filters: opts.filters,
+      followSymlinks: opts.followSymlinks,
+      sideExcludes: opts.filters?.excludeA,
+    }),
+    walk({
+      root: opts.sideB,
+      filters: opts.filters,
+      followSymlinks: opts.followSymlinks,
+      sideExcludes: opts.filters?.excludeB,
+    }),
   ]);
 
   let plan: DiffPlan;
@@ -90,7 +113,16 @@ export async function dryRun(opts: DryRunOptions): Promise<DryRunResult> {
       walkB: entriesToMap(walkB),
       direction,
       toleranceMs: opts.toleranceMs,
+      deleteExtraneous: opts.deleteExtraneous,
     });
+  }
+
+  // Build the full sync table, then fold the user's per-item overrides into
+  // the runnable plan so the table, the counters and the Run button agree.
+  const inventory = buildInventory(walkA, walkB, plan.actions);
+  const overrides = opts.overrides ?? {};
+  if (Object.keys(overrides).length > 0) {
+    plan = applyOverrides(plan, overrides);
   }
 
   return {
@@ -110,6 +142,7 @@ export async function dryRun(opts: DryRunOptions): Promise<DryRunResult> {
     },
     stateLoadedRows,
     plan,
+    inventory,
     totalDurationMs: Date.now() - t0,
   };
 }

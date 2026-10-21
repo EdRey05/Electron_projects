@@ -60,6 +60,13 @@ export async function walk(req: WalkRequest): Promise<WalkResult> {
   const filters = compileFilters(req.filters);
   const followSymlinks = req.followSymlinks ?? false;
 
+  // Per-side ignores are compiled separately so the walker can honour them
+  // without the caller having to build two filter sets by hand.
+  const sideExtras = compileFilters({
+    include: [],
+    exclude: req.sideExcludes ?? [],
+  });
+
   const entries: WalkEntry[] = [];
   let fileCount = 0;
   let dirCount = 0;
@@ -76,12 +83,15 @@ export async function walk(req: WalkRequest): Promise<WalkResult> {
           const rel = toPosix(relative(req.root, entry.path));
           if (rel.startsWith(TRASH_DIR)) return false;
           if (rel === "") return true;
-          return !filters.exclude.some((rx) => rx.test(rel));
+          if (filters.exclude.some((rx) => rx.test(rel))) return false;
+          if (sideExtras.exclude.some((rx) => rx.test(rel))) return false;
+          return true;
         },
         entryFilter: (entry) => {
           const rel = toPosix(relative(req.root, entry.path));
           if (rel === "") return false;
           if (rel.startsWith(TRASH_DIR)) return false;
+          if (sideExtras.exclude.some((rx) => rx.test(rel))) return false;
           return matchesFilters(rel, filters);
         },
       },

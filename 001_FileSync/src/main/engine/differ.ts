@@ -85,7 +85,33 @@ function pushAction(actions: Action[], summary: DiffSummary, action: Action): vo
     case "drop-from-state":
       summary.noops++;
       break;
+    case "keep-both":
+      summary.copyAToB++;
+      summary.copyBToA++;
+      summary.bytesToTransfer += action.bytes;
+      break;
   }
+}
+
+/**
+ * Attach per-side existence and metadata to an action.
+ *
+ * The sync table needs to show "A: 1.2 MB, 3 min ago / B: missing" per row,
+ * and the override logic needs to know which side the file is on so it can
+ * decide whether "copy A→B" is even possible.
+ */
+function decorate(
+  action: Action,
+  a: SideMeta | undefined,
+  b: SideMeta | undefined,
+): Action {
+  action.aExists = !!a;
+  action.bExists = !!b;
+  action.aSize = a?.size;
+  action.bSize = b?.size;
+  action.aMtime = a?.mtimeMs;
+  action.bMtime = b?.mtimeMs;
+  return action;
 }
 
 function buildConflict(
@@ -319,6 +345,13 @@ export function diff(input: DiffInput): DiffPlan {
         reason: "deleted on both sides; clearing state",
       });
     }
+  }
+
+  // Attach per-side existence + metadata to every action. Doing it as a
+  // post-pass keeps the call sites above readable and guarantees no action
+  // escapes without its A/B metadata.
+  for (const action of actions) {
+    decorate(action, input.walkA.get(action.path), input.walkB.get(action.path));
   }
 
   return { actions, summary };

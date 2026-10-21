@@ -1,6 +1,6 @@
 {
   "name": "filesync",
-  "version": "0.1.0",
+  "version": "0.0.6",
   "private": true,
   "description": "Bidirectional file sync — self-built replacement for AllwaySync / GoodSync",
   "main": "out/main/index.js",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { ConflictPolicy, Job } from "@shared/types";
+import type { ConflictPolicy, Job, SyncDirection } from "@shared/types";
 import { Button } from "../components/Button";
 import { Field, NumberInput, TextArea, TextInput } from "../components/Field";
 
@@ -21,6 +21,25 @@ const POLICIES: { value: ConflictPolicy; label: string; help: string }[] = [
   },
 ];
 
+const DIRECTIONS: { value: SyncDirection; label: string; help: string }[] = [
+  {
+    value: "a-to-b",
+    label: "Mirror → (A overwrites B)",
+    help: "Make B match A. Files that exist only on B are deleted.",
+  },
+  {
+    value: "b-to-a",
+    label: "Mirror ← (B overwrites A)",
+    help: "Make A match B. Files that exist only on A are deleted.",
+  },
+  {
+    value: "sync",
+    label: "Sync ↔ (bidirectional)",
+    help:
+      "Three-way merge using the per-pair state DB. Detects deletes vs new files; conflicts auto-resolved by newer-wins.",
+  },
+];
+
 function defaultDraft(initial?: Job): Job {
   if (initial) return initial;
   return {
@@ -28,8 +47,16 @@ function defaultDraft(initial?: Job): Job {
     name: "",
     sideA: "",
     sideB: "",
-    filters: { include: [], exclude: [".filesync-trash/", "node_modules/", ".git/"] },
+    filters: {
+      include: [],
+      exclude: [".filesync-trash/", "node_modules/", ".git/"],
+      excludeA: [],
+      excludeB: [],
+    },
     onConflict: "newer-wins",
+    direction: "sync",
+    deleteExtraneous: true,
+    overrides: {},
     trash: { enabled: true, retainDays: 30 },
     followSymlinks: false,
     preserveTimestamps: true,
@@ -48,6 +75,12 @@ export function JobBuilder({
   const [draft, setDraft] = useState<Job>(defaultDraft(initial));
   const [includeText, setIncludeText] = useState(draft.filters.include.join("\n"));
   const [excludeText, setExcludeText] = useState(draft.filters.exclude.join("\n"));
+  const [excludeAText, setExcludeAText] = useState(
+    (draft.filters.excludeA ?? []).join("\n"),
+  );
+  const [excludeBText, setExcludeBText] = useState(
+    (draft.filters.excludeB ?? []).join("\n"),
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -72,11 +105,19 @@ export function JobBuilder({
         .split("\n")
         .map((s) => s.trim())
         .filter((s) => s.length > 0);
+      const excludeA = excludeAText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+      const excludeB = excludeBText
+        .split("\n")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
       const payload: Partial<Job> = {
         ...draft,
         // Don't send empty id for new jobs — let the store assign one.
         id: draft.id || undefined,
-        filters: { include, exclude },
+        filters: { include, exclude, excludeA, excludeB },
       };
       const saved = await window.api.jobs.upsert(payload);
       onSaved(saved);
@@ -126,6 +167,49 @@ export function JobBuilder({
             </div>
           </Field>
         </div>
+
+        <Field
+          label="Sync direction"
+          hint="Which way the sync runs. Mirror modes are stateless; Sync keeps a state file to detect deletions."
+        >
+          <div className="space-y-2">
+            {DIRECTIONS.map((d) => (
+              <label key={d.value} className="flex gap-3 items-start cursor-pointer">
+                <input
+                  type="radio"
+                  name="direction"
+                  value={d.value}
+                  checked={draft.direction === d.value}
+                  onChange={() => patch("direction", d.value)}
+                  className="mt-1"
+                />
+                <span>
+                  <span className="block text-sm text-slate-200">{d.label}</span>
+                  <span className="block text-xs text-slate-500">{d.help}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </Field>
+
+        {draft.direction !== "sync" && (
+          <label className="flex gap-2 items-start text-sm">
+            <input
+              type="checkbox"
+              checked={draft.deleteExtraneous}
+              onChange={(e) => patch("deleteExtraneous", e.target.checked)}
+              className="mt-1"
+            />
+            <span>
+              <span className="block text-slate-200">
+                Delete files that exist only on the destination side
+              </span>
+              <span className="block text-xs text-slate-500">
+                Turn this off to copy without ever removing anything from the destination.
+              </span>
+            </span>
+          </label>
+        )}
 
         <Field
           label="Conflict policy"
@@ -207,12 +291,35 @@ export function JobBuilder({
             />
           </Field>
           <Field
-            label="Exclude patterns"
+            label="Exclude patterns (both sides)"
             hint="Always-applied. Defaults skip trash, node_modules, .git."
           >
             <TextArea
               value={excludeText}
               onChange={(e) => setExcludeText(e.target.value)}
+            />
+          </Field>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Field
+            label="Ignore on side A only"
+            hint="Extra globs ignored when reading side A. Empty = nothing extra."
+          >
+            <TextArea
+              value={excludeAText}
+              onChange={(e) => setExcludeAText(e.target.value)}
+              placeholder="*.tmp"
+            />
+          </Field>
+          <Field
+            label="Ignore on side B only"
+            hint="Extra globs ignored when reading side B. Empty = nothing extra."
+          >
+            <TextArea
+              value={excludeBText}
+              onChange={(e) => setExcludeBText(e.target.value)}
+              placeholder="*.bak"
             />
           </Field>
         </div>

@@ -1,16 +1,18 @@
-import { useEffect, useRef, useState } from "react";
-import type { Action, Job } from "@shared/types";
+import { useEffect, useMemo, useRef, useState } from "react";
+import type { Action, ItemAction, Job } from "@shared/types";
 import type {
   ApplyProgressEvent,
   ApplyResponse,
   DryRunResponse,
 } from "@shared/api";
+import { applyOverrides } from "@shared/overrides";
 import { Button } from "../components/Button";
+import { SyncTable } from "../components/SyncTable";
 import { formatBytes, formatDuration } from "../lib/format";
 
-type Tab = "a-to-b" | "b-to-a" | "deletes" | "conflicts" | "noops";
+type Tab = "tree" | "a-to-b" | "b-to-a" | "deletes" | "conflicts" | "noops";
 
-const TABS: { key: Tab; label: string; pred(a: Action): boolean }[] = [
+const TABS: { key: Exclude<Tab, "tree">; label: string; pred(a: Action): boolean }[] = [
   { key: "a-to-b", label: "Copy A→B", pred: (a) => a.kind === "copy-a-to-b" },
   { key: "b-to-a", label: "Copy B→A", pred: (a) => a.kind === "copy-b-to-a" },
   {
@@ -40,7 +42,11 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
   const [applyResult, setApplyResult] = useState<ApplyResponse | null>(null);
   const [progress, setProgress] = useState<ApplyProgressEvent | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("a-to-b");
+  const [tab, setTab] = useState<Tab>("tree");
+  const [overrides, setOverrides] = useState<Record<string, ItemAction>>({});
+  const [showOnlyChanges, setShowOnlyChanges] = useState(true);
+  const [filter, setFilter] = useState("");
+  const [selected, setSelected] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
   async function scan() {
@@ -54,9 +60,12 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         jobId: job.id,
         sideA: job.sideA,
         sideB: job.sideB,
+        direction: job.direction,
         filters: job.filters,
         policy: job.onConflict,
         followSymlinks: job.followSymlinks,
+        deleteExtraneous: job.deleteExtraneous,
+        overrides: job.overrides,
       });
       setDryRun(r);
       setPhase("ready");
@@ -67,15 +76,15 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
   }
 
   async function applyPlan() {
-    if (!dryRun) return;
+    if (!dryRun || !effectivePlan) return;
     setPhase("applying");
     setError(null);
     setProgress({
       jobId: job.id,
       doneActions: 0,
-      totalActions: dryRun.plan.actions.length,
+      totalActions: effectivePlan.actions.length,
       bytesTransferred: 0,
-      bytesTotal: dryRun.plan.summary.bytesToTransfer,
+      bytesTotal: effectivePlan.summary.bytesToTransfer,
       currentPath: "",
       errors: 0,
     });
@@ -88,13 +97,14 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         jobId: job.id,
         sideA: job.sideA,
         sideB: job.sideB,
-        plan: dryRun.plan,
+        plan: effectivePlan,
         trash: job.trash,
         preserveTimestamps: job.preserveTimestamps,
       });
       setApplyResult(result);
       setPhase("applied");
-      // Re-scan to show the post-apply state (should be all noops).
+      // Re-scan to show the post-apply state (should be all noops). The
+      // user's per-item decisions survive, so a second Apply honours them.
       await scan();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -113,23 +123,52 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [job.id]);
 
-  const filtered = dryRun?.plan.actions.filter(
+  // The runnable plan: the differ's plan with the per-item choices applied.
+  const effectivePlan = useMemo(() => {
+    if (!dryRun) return null;
+    if (Object.keys(overrides).length === 0) return dryRun.plan;
+    return applyOverrides(dryRun.plan, overrides);
+  }, [dryRun, overrides]);
+
+  const filtered = effectivePlan?.actions.filter(
     TABS.find((t) => t.key === tab)?.pred ?? (() => true),
   );
-  const counts = TABS.map((t) => ({
-    key: t.key,
-    label: t.label,
-    n: dryRun?.plan.actions.filter(t.pred).length ?? 0,
-  }));
 
-  const actionable = dryRun
-    ? dryRun.plan.summary.copyAToB +
-        dryRun.plan.summary.copyBToA +
-        dryRun.plan.summary.deleteA +
-        dryRun.plan.summary.deleteB +
-        dryRun.plan.summary.conflicts >
-      0
+  const actionable = effectivePlan
+    ? effectivePlan.actions.filter(
+        (a) => a.kind !== "noop" && a.kind !== "drop-from-state",
+      ).length > 0
     : false;
+
+  function setAction(path: string, action: ItemAction) {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      if (action === "auto") delete next[path];
+      else next[path] = action;
+      return next;
+    });
+  }
+
+  function applyToSubtree(path: string, action: ItemAction) {
+    setOverrides((prev) => {
+      const next: Record<string, ItemAction> = {};
+      for (const [key, value] of Object.entries(prev)) {
+        if (key === path || key.startsWith(`${path}/`)) continue;
+        next[key] = value;
+      }
+      if (action !== "auto") next[path] = action;
+      return next;
+    });
+  }
+
+  function applyToAll(action: ItemAction) {
+    setOverrides((prev) => {
+      const next = { ...prev };
+      if (action === "auto") delete next[""];
+      else next[""] = action;
+      return next;
+    });
+  }
 
   return (
     <div className="p-8 max-w-6xl mx-auto">
@@ -182,12 +221,22 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         </div>
       )}
 
-      {(phase === "ready" || phase === "applied") && dryRun && (
+      {(phase === "ready" || phase === "applied") && dryRun && effectivePlan && (
         <>
           <SummaryStats result={dryRun} />
 
           <div className="mt-6 border-b border-slate-800 flex gap-1 overflow-x-auto">
-            {counts.map((c) => (
+            <button
+              onClick={() => setTab("tree")}
+              className={`px-3 py-2 text-sm border-b-2 -mb-px whitespace-nowrap ${
+                tab === "tree"
+                  ? "border-emerald-500 text-emerald-300"
+                  : "border-transparent text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              Sync table
+            </button>
+            {TABS.map((c) => (
               <button
                 key={c.key}
                 onClick={() => setTab(c.key)}
@@ -198,12 +247,30 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
                 }`}
               >
                 {c.label}{" "}
-                <span className="text-xs text-slate-500 tabular-nums">({c.n})</span>
+                <span className="text-xs text-slate-500 tabular-nums">
+                  ({effectivePlan.actions.filter(c.pred).length})
+                </span>
               </button>
             ))}
           </div>
 
-          <ActionTable actions={filtered ?? []} />
+          {tab === "tree" ? (
+            <SyncTable
+              items={dryRun.inventory}
+              overrides={overrides}
+              onSetAction={setAction}
+              onApplyToSubtree={applyToSubtree}
+              onApplyToAll={applyToAll}
+              showOnlyChanges={showOnlyChanges}
+              onToggleShowOnlyChanges={setShowOnlyChanges}
+              filter={filter}
+              onChangeFilter={setFilter}
+              selected={selected}
+              onSelect={setSelected}
+            />
+          ) : (
+            <ActionTable actions={filtered ?? []} />
+          )}
         </>
       )}
     </div>

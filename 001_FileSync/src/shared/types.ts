@@ -11,9 +11,68 @@ export type ConflictPolicy = "newer-wins" | "rename-both" | "ask";
  */
 export type SyncDirection = "a-to-b" | "b-to-a" | "sync";
 
+/**
+ * Per-item action the user can pick in the sync table.
+ *
+ * This is the AllwaySync "action widget": every row (file or folder) exposes a
+ * dropdown that decides what happens to that item during the next Run.
+ *
+ * - `auto` — no override; use whatever the differ decided.
+ * - `skip` — ignore this item (and, for a folder, its whole subtree).
+ * - `copy-a-to-b` — force A to overwrite B for this item.
+ * - `copy-b-to-a` — force B to overwrite A for this item.
+ * - `keep-both` — keep both versions side by side; the loser is preserved
+ *   under a timestamped sibling name instead of being overwritten.
+ * - `delete-a` / `delete-b` — move the file on that side to the trash.
+ * - `keep-a` / `keep-b` — conflict resolutions: the named side wins and the
+ *   other side is replaced (or removed when the winner is missing).
+ */
+export type ItemAction =
+  | "auto"
+  | "skip"
+  | "copy-a-to-b"
+  | "copy-b-to-a"
+  | "keep-both"
+  | "delete-a"
+  | "delete-b"
+  | "keep-a"
+  | "keep-b";
+
+/** Every valid ItemAction, in menu order. */
+export const ITEM_ACTIONS: readonly ItemAction[] = [
+  "auto",
+  "copy-a-to-b",
+  "copy-b-to-a",
+  "keep-both",
+  "keep-a",
+  "keep-b",
+  "delete-a",
+  "delete-b",
+  "skip",
+];
+
+/**
+ * Map of relative path -> ItemAction.
+ *
+ * The key is a POSIX-style relative path. The empty string is the reserved key
+ * for "apply to everything" (the root row). A folder path applies to every
+ * descendant of that folder. A file path applies only to that file.
+ */
+export type OverrideMap = Record<string, ItemAction>;
+
 export interface JobFilters {
   include: string[];
   exclude: string[];
+  /**
+   * Per-side ignore lists. AllwaySync lets each side of the pair have its
+   * own ignore rules — useful when one folder is a mixed dump and the other
+   * is a curated set. Patterns are gitignore-style globs.
+   *
+   * Optional so callers that only care about the shared list (and older
+   * saved jobs) do not have to spell them out.
+   */
+  excludeA?: string[];
+  excludeB?: string[];
 }
 
 export interface Job {
@@ -23,6 +82,12 @@ export interface Job {
   sideB: string;
   filters: JobFilters;
   onConflict: ConflictPolicy;
+  /** Default direction used when this job is run. */
+  direction: SyncDirection;
+  /** Mirror modes: delete files that exist only on the destination side. */
+  deleteExtraneous: boolean;
+  /** Per-path action overrides, persisted with the job. */
+  overrides: OverrideMap;
   trash: { enabled: boolean; retainDays: number };
   followSymlinks: boolean;
   preserveTimestamps: boolean;
@@ -48,6 +113,12 @@ export interface WalkRequest {
   root: string;
   filters?: JobFilters;
   followSymlinks?: boolean;
+  /**
+   * Extra ignore globs applied to THIS side only. The runner passes
+   * `filters.excludeA` when walking side A and `filters.excludeB` when
+   * walking side B.
+   */
+  sideExcludes?: string[];
 }
 
 // ---------- Differ ----------
@@ -59,7 +130,8 @@ export type ActionKind =
   | "delete-b"
   | "conflict"
   | "noop"
-  | "drop-from-state";
+  | "drop-from-state"
+  | "keep-both";
 
 export type ConflictType = "edit-edit" | "edit-delete" | "delete-edit";
 
@@ -81,6 +153,16 @@ export interface Action {
   /** Human-readable reason — surfaced in the dry-run table. */
   reason: string;
   conflict?: ConflictDetail;
+  /** Which side the file currently exists on. */
+  aExists?: boolean;
+  bExists?: boolean;
+  /** Size / mtime of the file on each side, when it exists. */
+  aSize?: number;
+  bSize?: number;
+  aMtime?: number;
+  bMtime?: number;
+  /** True when the path is a directory on at least one side. */
+  isDirectory?: boolean;
 }
 
 export interface DiffSummary {

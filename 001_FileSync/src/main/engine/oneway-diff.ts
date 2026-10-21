@@ -14,6 +14,13 @@ export interface OneWayDiffInput {
   /** Must be "a-to-b" or "b-to-a" — pass to the bidirectional differ for "sync". */
   direction: Exclude<SyncDirection, "sync">;
   toleranceMs?: number;
+  /**
+   * When false, files that exist only on the destination side are left alone
+   * instead of being deleted. This is AllwaySync's "mirror without deleting
+   * extraneous files" mode — safer for a first run against a folder that
+   * already holds unrelated content.
+   */
+  deleteExtraneous?: boolean;
 }
 
 /**
@@ -64,6 +71,17 @@ export function oneWayDiff(input: OneWayDiffInput): DiffPlan {
     }
 
     if (!src && dst) {
+      if (input.deleteExtraneous === false) {
+        // Keep the destination-only file; it is not part of the source set.
+        actions.push({
+          kind: "noop",
+          path,
+          bytes: 0,
+          reason: `not on ${sourceLabel} — extraneous files are kept (delete off)`,
+        });
+        summary.noops++;
+        continue;
+      }
       actions.push({
         kind: deleteKind,
         path,
@@ -100,6 +118,19 @@ export function oneWayDiff(input: OneWayDiffInput): DiffPlan {
         summary.bytesToTransfer += src.size;
       }
     }
+  }
+
+  // Attach per-side existence + metadata so the sync table can render both
+  // columns and the override logic can see which side holds the file.
+  for (const action of actions) {
+    const a = input.walkA.get(action.path);
+    const b = input.walkB.get(action.path);
+    action.aExists = !!a;
+    action.bExists = !!b;
+    action.aSize = a?.size;
+    action.bSize = b?.size;
+    action.aMtime = a?.mtimeMs;
+    action.bMtime = b?.mtimeMs;
   }
 
   return { actions, summary };

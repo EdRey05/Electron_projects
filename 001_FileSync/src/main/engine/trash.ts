@@ -9,6 +9,7 @@ import {
 } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
+import { syscallPath } from "./copier";
 
 export const TRASH_DIR_NAME = ".filesync-trash";
 
@@ -52,16 +53,16 @@ export async function moveToTrash(opts: MoveToTrashOptions): Promise<MoveToTrash
     opts.runTimestamp,
     opts.relPath,
   );
-  const st = await stat(opts.filePath);
-  await mkdir(dirname(target), { recursive: true });
+  const st = await stat(syscallPath(opts.filePath));
+  await mkdir(dirname(syscallPath(target)), { recursive: true });
 
   try {
-    await rename(opts.filePath, target);
+    await rename(syscallPath(opts.filePath), syscallPath(target));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "EXDEV") {
       // Cross-device rename — fall back to copy + unlink.
-      await copyFile(opts.filePath, target);
-      await unlink(opts.filePath);
+      await copyFile(syscallPath(opts.filePath), syscallPath(target));
+      await unlink(syscallPath(opts.filePath));
     } else {
       throw err;
     }

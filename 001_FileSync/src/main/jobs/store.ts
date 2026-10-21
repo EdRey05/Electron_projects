@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { dirname, isAbsolute, resolve, sep } from "node:path";
 import { randomUUID } from "node:crypto";
-import type { Job } from "@shared/types";
+import type { Job, JobFilters } from "@shared/types";
 
 const SCHEMA_VERSION = 1;
 
@@ -14,9 +14,26 @@ interface JobsFile {
 const DEFAULT_FILTERS = {
   include: [] as string[],
   exclude: [".filesync-trash/", "node_modules/", ".git/"] as string[],
+  excludeA: [] as string[],
+  excludeB: [] as string[],
 };
 
 const DEFAULT_TRASH = { enabled: true, retainDays: 30 };
+
+/**
+ * Normalize a filter record, filling in fields that older saved jobs lack.
+ * `jobs.json` files written before v0.0.6 have no per-side ignore lists.
+ */
+export function normalizeFilters(
+  input: Partial<JobFilters> | undefined,
+): JobFilters {
+  return {
+    include: input?.include ?? [...DEFAULT_FILTERS.include],
+    exclude: input?.exclude ?? [...DEFAULT_FILTERS.exclude],
+    excludeA: input?.excludeA ?? [],
+    excludeB: input?.excludeB ?? [],
+  };
+}
 
 /** Fill in defaults for fields the caller may have omitted. */
 export function applyJobDefaults(input: Partial<Job>): Job {
@@ -25,8 +42,11 @@ export function applyJobDefaults(input: Partial<Job>): Job {
     name: (input.name ?? "").trim(),
     sideA: input.sideA ?? "",
     sideB: input.sideB ?? "",
-    filters: input.filters ?? { ...DEFAULT_FILTERS },
+    filters: normalizeFilters(input.filters),
     onConflict: input.onConflict ?? "newer-wins",
+    direction: input.direction ?? "sync",
+    deleteExtraneous: input.deleteExtraneous ?? true,
+    overrides: input.overrides ?? {},
     trash: input.trash ?? { ...DEFAULT_TRASH },
     followSymlinks: input.followSymlinks ?? false,
     preserveTimestamps: input.preserveTimestamps ?? true,
@@ -86,6 +106,14 @@ export function validateJob(job: Job, opts: ValidationOptions = {}): string[] {
     job.onConflict !== "ask"
   ) {
     errors.push("Invalid conflict policy.");
+  }
+
+  if (
+    job.direction !== "a-to-b" &&
+    job.direction !== "b-to-a" &&
+    job.direction !== "sync"
+  ) {
+    errors.push("Invalid sync direction.");
   }
 
   if (
