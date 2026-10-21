@@ -1,0 +1,92 @@
+{
+  "name": "km-plotter",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop Kaplan-Meier plot generator. Reads clinical (and optional RNA) tab-separated files and produces Kaplan-Meier curves with confidence bands, at-risk tables and an Excel export.",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev:vite": "vite",
+    "dev:electron": "electron .",
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
+    "build": "vite build",
+    "start": "electron .",
+    "package": "npm run build && electron-builder",
+    "package:win": "npm run build && electron-builder --win",
+    "package:portable": "npm run build && electron-builder --win portable",
+    "stage-python": "node scripts/stage-python.js",
+    "test:python": "node scripts/test-python.js",
+    "test:e2e": "node scripts/run-e2e.js portable",
+    "test:e2e:unpacked": "node scripts/run-e2e.js win-unpacked"
+  },
+  "dependencies": {
+    "lucide-react": "^0.460.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "electron": "^33.3.0",
+    "electron-builder": "^25.1.8",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "vite": "^5.4.11",
+    "wait-on": "^8.0.1"
+  },
+  "build": {
+    "appId": "com.edrey05.kmplotter",
+    "productName": "KM Plotter",
+    "copyright": "Copyright © 2026 EdRey05",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/*.tsx",
+      "!**/{.eslintrc,.prettierrc,.editorconfig}",
+      "!**/{__tests__,test,tests}/**",
+      "!**/{.DS_Store,.git,.github,docs,node_modules}/**"
+    ],
+    "extraResources": [
+      {
+        "from": "python-app",
+        "to": "python-app",
+        "filter": [
+          "km_core.py",
+          "kmplot/**/*",
+          "requirements.txt",
+          "runtime/**/*",
+          "runtime-venv/**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage"],
+      "category": "Utility"
+    }
+  }
+}

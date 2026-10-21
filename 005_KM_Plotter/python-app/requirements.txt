@@ -1,0 +1,13 @@
+# Python dependencies for the KM Plotter analysis core.
+#
+# The Kaplan-Meier estimator itself is implemented in pure NumPy
+# (kmplot/kmlib.py) and validated against lifelines 0.27.8 — see
+# tests/validate_against_lifelines.py — so lifelines is NOT needed at runtime.
+#
+# pandas  : data loading / reshaping
+# numpy   : the estimator
+# openpyxl: Excel export
+
+numpy==1.26.4
+pandas==2.2.3
+openpyxl==3.1.5
