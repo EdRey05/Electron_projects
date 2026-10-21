@@ -84,3 +84,25 @@ export function buildSgCheckSummary({ valid, invalid }) {
     `'Skip' = exclude incomplete folders from the Excel\n` +
     `'Process All' = include all folders (remove extras manually later)`;
 }
+
+/**
+ * Apply the user's pre-scan choice to the folder list.
+ *
+ * Mirrors the Python (`_start_generate_sg_check`):
+ *   - "abort" → the caller must return WITHOUT writing anything.
+ *   - "skip"  → only the valid folders are written to the Excel.
+ *   - "all"   → the folder list is left UNCHANGED, so the incomplete
+ *                folders are written to the Excel too ("remove extras
+ *                manually later").
+ *
+ * @param {{valid: string[], invalid: Array}} plan  from planSgCheck()
+ * @param {string[]} allFolders   every folder that was scanned
+ * @param {"abort"|"skip"|"all"} action
+ * @returns {{aborted: boolean, folders: string[]}}
+ */
+export function selectSgCheckFolders(plan, allFolders, action) {
+  if (action === "abort") return { aborted: true, folders: [] };
+  if (action === "skip") return { aborted: false, folders: [...plan.valid] };
+  // "all" (and anything else) keeps the full list.
+  return { aborted: false, folders: [...allFolders] };
+}

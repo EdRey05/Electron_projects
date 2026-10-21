@@ -1,16 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   FlaskConical,
   FolderOpen,
   Play,
   Plus,
   X,
-  Settings,
 } from "lucide-react";
 import {
   readLigationLayout,
@@ -19,7 +14,18 @@ import {
   uniqueJobDetails,
 } from "./extractor.js";
 import { planPlates } from "./platePlanner.js";
-import { buildWorkbook, buildOutputFilename, serializeWorkbook } from "./workbookBuilder.js";
+import { buildWorkbookBytes, buildOutputFilename } from "./workbookBuilder.js";
+import {
+  C,
+  AppHeader,
+  Button,
+  Panel,
+  PathInput,
+  StatusLine,
+  LogPanel,
+  Modal,
+  FONT_MONO,
+} from "../../ui/kit.jsx";
 
 /**
  * Colony PCR Layout — React port.
@@ -29,7 +35,7 @@ import { buildWorkbook, buildOutputFilename, serializeWorkbook } from "./workboo
  *   2. Pick a Primer Log (sheet 'input addon') — auto-detected by the hub.
  *   3. Pick a Colony PCR Layout template — auto-detected by the hub.
  *   4. App reads files, builds summary data, shows a modal with a
- *      clone-count spinner per (JobID, SourceFile).
+ *      clone-count spinner per (Work No., SourceFile).
  *   5. On confirm, runs planPlates() + buildWorkbook() + writes the .xlsx
  *      to <output_dir>/<output_filename>.
  */
@@ -67,9 +73,6 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
 
   // -------- file pickers --------
   const chooseLigationFiles = async () => {
-    if (!window.api.chooseFile) return;
-    // Show native multi-select; the IPC returns just one path. Use the
-    // hidden <input type=file multiple> as a fallback for multi-pick.
     ligationInputRef.current?.click();
   };
   const onLigationInputChange = (e) => {
@@ -100,14 +103,16 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
     try {
       // Step 1: read primer log
       const plFile = await readFileAsArrayBuffer(primerLogPath);
-      const primerMap = readPrimerLog(plFile);
-      appendLog(`Primer Log loaded (${Object.keys(primerMap).length} JobIDs).`);
+      const { map: primerMap, log: primerLog } = readPrimerLog(plFile);
+      appendLog(primerLog);
+      appendLog(`Primer Log loaded (${Object.keys(primerMap).length} Work Nos.).`);
 
       // Step 2: read each ligation file
       let allRows = [];
       for (const lf of ligationFiles) {
         const lfBuf = await readFileAsArrayBuffer(lf.path);
-        const rows = readLigationLayout(lfBuf, lf.path);
+        const { rows, log } = readLigationLayout(lfBuf, lf.path);
+        appendLog(log);
         appendLog(`Loaded ${rows.length} rows from ${baseName(lf.path)}.`);
         allRows = allRows.concat(rows);
       }
@@ -127,7 +132,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
       // Step 4: ask the user for clone counts via the modal.
       const details = uniqueJobDetails(summaryRows);
       const initial = {};
-      for (const d of details) initial[makeKey(d.JobID, d.SourceFile)] = 4;
+      for (const d of details) initial[makeKey(d["Work No."], d.SourceFile)] = 4;
       setPendingJobDetails(details);
       setPendingCloneCounts(initial);
       setRunning(false);
@@ -147,12 +152,12 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
     try {
       // Re-read everything (state was cleared during the modal).
       const plFile = await readFileAsArrayBuffer(primerLogPath);
-      const primerMap = readPrimerLog(plFile);
+      const { map: primerMap } = readPrimerLog(plFile);
 
       let allRows = [];
       for (const lf of ligationFiles) {
         const lfBuf = await readFileAsArrayBuffer(lf.path);
-        const rows = readLigationLayout(lfBuf, lf.path);
+        const { rows } = readLigationLayout(lfBuf, lf.path);
         allRows = allRows.concat(rows);
       }
       const { rows: summaryRows } = buildSummary(allRows, primerMap);
@@ -171,9 +176,21 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
         appendLog(`  Plate ${i + 1}: ${p.jobs.length} clones + ${p.controls.length} controls.`);
       }
 
-      // Build workbook
-      const wb = buildWorkbook(plan, summaryRows);
-      const bytes = serializeWorkbook(wb);
+      // Build the workbook FROM the Colony PCR template, the way the Python
+      // does (`openpyxl.load_workbook(template)` then mutate). The template
+      // carries the printed plate frame (row letters A-H, column numbers
+      // 1-12), the borders and the merged section headers — a from-scratch
+      // workbook has none of that, so a printed plate cannot be read.
+      const templateBytes = await readTemplateBytes(templatePath);
+      if (!templateBytes) {
+        appendLog("ERROR: could not read the Colony PCR template.");
+        setStatus({ text: "Template read failed.", color: "bad" });
+        setRunning(false);
+        return;
+      }
+      // The mix calculation table uses the REQUESTED clone counts (the
+      // `counts` map), matching the Python's `all_clone_counts`.
+      const bytes = await buildWorkbookBytes(plan, summaryRows, counts, templateBytes, new Date());
 
       // Choose output dir if user didn't pick one
       let destDir = outputDir;
@@ -219,172 +236,152 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
   };
 
   // -------- render --------
-  const statusColors = {
-    info: "text-accent-400",
-    good: "text-good",
-    warn: "text-warn",
-    bad: "text-bad",
-  };
-
   return (
-    <div className="h-full flex flex-col bg-ink-900 text-slate-100">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-ink-700 bg-ink-800/60">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-sm"
-          >
-            <ArrowLeft size={14} /> Hub
-          </button>
-          <div className="w-9 h-9 rounded-lg bg-accent-500/15 flex items-center justify-center">
-            <FlaskConical size={18} className="text-accent-400" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg leading-tight">Colony PCR Layout</h1>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              Reads Ligation Layouts, fills Colony PCR template.
-            </p>
-          </div>
-        </div>
-      </header>
+    <div className="h-full flex flex-col" style={{ background: C.paper, color: C.ink }}>
+      <AppHeader
+        onBack={onBack}
+        icon={<FlaskConical size={18} color="#fff" />}
+        title="Colony PCR Layout"
+        subtitle="Reads Ligation Layouts, fills the Colony PCR template"
+      />
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-5">
-        {/* Ligation files */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FileSpreadsheet size={16} className="text-accent-400" /> Ligation Layout Files
-          </h2>
-          <div className="flex gap-2 items-start">
-            <div className="flex-1 bg-ink-900/60 border border-ink-700 rounded p-2 text-xs min-h-[80px]">
-              {ligationFiles.length === 0 ? (
-                <div className="text-slate-500 italic">No files selected</div>
-              ) : (
-                ligationFiles.map((f, i) => (
-                  <div key={i} className="flex items-center justify-between py-0.5">
-                    <span className="font-mono">{baseName(f.path)}</span>
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-5">
+          {/* Ligation files */}
+          <Panel
+            icon={<FileSpreadsheet size={15} style={{ color: C.teal }} />}
+            title="Ligation Layout Files"
+            subtitle="One or more .xlsx files with a 'Layout' sheet"
+            actions={
+              <>
+                <input
+                  ref={ligationInputRef}
+                  type="file"
+                  accept=".xlsx,.xlsm"
+                  multiple
+                  className="hidden"
+                  onChange={onLigationInputChange}
+                />
+                <Button variant="primary" size="sm" onClick={chooseLigationFiles}>
+                  <Plus size={13} /> Add…
+                </Button>
+                {ligationFiles.length > 0 && (
+                  <Button variant="ghost" size="sm" onClick={() => setLigationFiles([])}>
+                    Clear
+                  </Button>
+                )}
+              </>
+            }
+          >
+            {ligationFiles.length === 0 ? (
+              <p className="text-xs italic" style={{ color: C.inkFaint }}>
+                No files selected
+              </p>
+            ) : (
+              <div
+                className="rounded-md px-3 py-2 space-y-1"
+                style={{ background: C.subtle, border: "1px solid " + C.border }}
+              >
+                {ligationFiles.map((f, i) => (
+                  <div key={i} className="flex items-center justify-between gap-2">
+                    <span className="text-xs truncate" style={{ fontFamily: FONT_MONO }}>
+                      {baseName(f.path)}
+                    </span>
                     <button
                       onClick={() => setLigationFiles((prev) => prev.filter((_, j) => j !== i))}
-                      className="text-slate-400 hover:text-bad"
+                      style={{ color: C.inkFaint }}
                     >
-                      <X size={12} />
+                      <X size={13} />
                     </button>
                   </div>
-                ))
-              )}
-            </div>
-            <div className="flex flex-col gap-1">
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          {/* Primer Log */}
+          <Panel
+            icon={<FileSpreadsheet size={15} style={{ color: C.teal }} />}
+            title="Primer Log"
+            subtitle="Sheet 'input addon'"
+          >
+            <div className="flex items-center gap-2">
+              <PathInput value={primerLogPath} style={{ flex: 1 }} />
               <input
-                ref={ligationInputRef}
+                ref={primerLogInputRef}
                 type="file"
                 accept=".xlsx,.xlsm"
-                multiple
                 className="hidden"
-                onChange={onLigationInputChange}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setPrimerLogPath(f.path);
+                  e.target.value = "";
+                }}
               />
-              <button
-                onClick={chooseLigationFiles}
-                className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm inline-flex items-center gap-1"
-              >
-                <Plus size={12} /> Add...
-              </button>
-              <button
-                onClick={() => setLigationFiles([])}
-                className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-              >
-                Clear
-              </button>
+              <Button variant="primary" onClick={choosePrimerLog}>
+                Select…
+              </Button>
             </div>
-          </div>
-        </section>
+          </Panel>
 
-        {/* Primer Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FileSpreadsheet size={16} className="text-accent-400" /> Primer Log
-          </h2>
-          <FilePickerRow
-            inputRef={primerLogInputRef}
-            value={primerLogPath}
-            onPick={(f) => setPrimerLogPath(f.path)}
-            onBrowse={choosePrimerLog}
-          />
-        </section>
-
-        {/* Colony PCR Template */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FileSpreadsheet size={16} className="text-accent-400" /> Colony PCR Layout Template
-          </h2>
-          <FilePickerRow
-            inputRef={templateInputRef}
-            value={templatePath}
-            onPick={(f) => setTemplatePath(f.path)}
-            onBrowse={chooseTemplate}
-          />
-        </section>
-
-        {/* Output Folder */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FolderOpen size={16} className="text-accent-400" /> Output Folder
-          </h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={outputDir}
-              onChange={(e) => setOutputDir(e.target.value)}
-              placeholder="Defaults to the same folder as your first ligation file"
-              className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-            />
-            <button onClick={chooseOutputDir} className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm">
-              Browse
-            </button>
-          </div>
-        </section>
-
-        {/* Generate */}
-        <section className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <div className={`text-sm font-medium ${statusColors[status.color]}`}>
-              {running && <Loader2 size={14} className="inline animate-spin mr-1" />}
-              {status.text}
-            </div>
-          </div>
-          <button
-            disabled={!canGenerate}
-            onClick={handleGenerate}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded font-medium ${
-              canGenerate
-                ? "bg-good hover:bg-good/90 text-white"
-                : "bg-ink-700 text-slate-500 cursor-not-allowed"
-            }`}
+          {/* Colony PCR Template */}
+          <Panel
+            icon={<FileSpreadsheet size={15} style={{ color: C.teal }} />}
+            title="Colony PCR Layout Template"
+            subtitle="Detected automatically from the bundled Templates folder"
           >
-            <Play size={14} />
-            {running ? "Working..." : "Generate Layout"}
-          </button>
-        </section>
+            <div className="flex items-center gap-2">
+              <PathInput value={templatePath} style={{ flex: 1 }} />
+              <input
+                ref={templateInputRef}
+                type="file"
+                accept=".xlsx,.xlsm"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) setTemplatePath(f.path);
+                  e.target.value = "";
+                }}
+              />
+              <Button variant="secondary" onClick={chooseTemplate}>
+                Replace…
+              </Button>
+            </div>
+          </Panel>
 
-        {/* Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
-            <h2 className="font-semibold">Log</h2>
-            <button
-              disabled={logs.length === 0}
-              onClick={() => setLogs([])}
-              className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-30"
-            >
-              Clear
-            </button>
+          {/* Output Folder */}
+          <Panel
+            icon={<FolderOpen size={15} style={{ color: C.teal }} />}
+            title="Output Folder"
+            subtitle="Defaults to the same folder as your first ligation file"
+          >
+            <div className="flex items-center gap-2">
+              <PathInput
+                value={outputDir}
+                readOnly={false}
+                onChange={(e) => setOutputDir(e.target.value)}
+                placeholder="Defaults to the same folder as your first ligation file"
+                style={{ flex: 1 }}
+              />
+              <Button variant="primary" onClick={chooseOutputDir}>
+                Browse…
+              </Button>
+            </div>
+          </Panel>
+
+          {/* Generate */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <StatusLine status={status} running={running} />
+            </div>
+            <Button variant="primary" size="lg" disabled={!canGenerate} onClick={handleGenerate}>
+              <Play size={15} />
+              {running ? "Working…" : "Generate Layout"}
+            </Button>
           </div>
-          <div className="bg-black/30 font-mono text-xs text-slate-200 p-3 max-h-80 overflow-y-auto whitespace-pre-wrap">
-            {logs.length === 0 ? (
-              <span className="text-slate-500">Log output will appear here.</span>
-            ) : (
-              logs.map((l, i) => <div key={i}>{l.msg}</div>)
-            )}
-            <div ref={logEndRef} />
-          </div>
-        </section>
+
+          <LogPanel logs={logs} onClear={() => setLogs([])} endRef={logEndRef} />
+        </div>
       </main>
 
       {modalOpen && (
@@ -404,118 +401,112 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
 // Clone Count modal — replaces the Tkinter CloneCountDialog + CTkSpinBox.
 // =============================================================================
 function CloneCountModal({ jobDetails, values, onChange, onConfirm, onCancel }) {
+  const totalClones = useMemo(
+    () => Object.values(values).reduce((a, b) => a + (Number(b) || 0), 0),
+    [values]
+  );
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-ink-800 border border-ink-700 rounded-lg max-w-3xl w-full max-h-[80vh] flex flex-col">
-        <header className="px-5 py-3 border-b border-ink-700 flex items-center gap-2">
-          <Settings size={16} className="text-accent-400" />
-          <h2 className="font-semibold">Number of Clones per Job</h2>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-3">
-          {/* Header */}
-          <div className="grid grid-cols-[90px_80px_80px_60px_180px_100px] gap-2 px-2 py-1 text-xs font-bold text-slate-300 border-b border-ink-700 mb-2">
-            <div>JobID</div>
-            <div>BBID</div>
-            <div>Vector</div>
-            <div>Length</div>
-            <div>Ligation File</div>
-            <div># Clones</div>
-          </div>
-
-          {jobDetails.map((d, i) => {
-            const key = makeKey(d.JobID, d.SourceFile);
-            const val = values[key] ?? 4;
-            return (
-              <div
-                key={i}
-                className={`grid grid-cols-[90px_80px_80px_60px_180px_100px] gap-2 px-2 py-1 text-xs items-center ${
-                  i % 2 === 0 ? "bg-ink-900/30" : ""
-                }`}
-              >
-                <div className="font-mono">{d.JobID}</div>
-                <div className="font-mono">{d.BBID}</div>
-                <div className="font-mono">{d.Vector}</div>
-                <div className="font-mono">{d.Length}</div>
-                <div className="font-mono truncate" title={d.SourceFile}>
-                  {truncate(baseName(d.SourceFile), 25)}
-                </div>
-                <div className="inline-flex items-center gap-1">
-                  <button
-                    onClick={() => onChange({ ...values, [key]: Math.max(0, val - 1) })}
-                    className="w-7 h-7 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-                  >
-                    -
-                  </button>
-                  <input
-                    type="number"
-                    min={0}
-                    max={96}
-                    value={val}
-                    onChange={(e) => {
-                      const n = Math.max(0, Math.min(96, parseInt(e.target.value, 10) || 0));
-                      onChange({ ...values, [key]: n });
-                    }}
-                    className="w-14 text-center px-1 py-1 rounded bg-ink-900/60 border border-ink-700 text-xs"
-                  />
-                  <button
-                    onClick={() => onChange({ ...values, [key]: Math.min(96, val + 1) })}
-                    className="w-7 h-7 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-
-        <footer className="px-5 py-3 border-t border-ink-700 flex justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm">
+    <Modal
+      open
+      title="Number of Clones per Job"
+      subtitle={`${jobDetails.length} job entries · ${totalClones} clones total`}
+      onCancel={onCancel}
+      width={860}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded bg-good hover:bg-good/90 text-white font-medium"
-          >
+          </Button>
+          <Button variant="primary" onClick={onConfirm}>
             Confirm
-          </button>
-        </footer>
+          </Button>
+        </>
+      }
+    >
+      <div
+        className="grid gap-2 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+        style={{
+          gridTemplateColumns: "90px 80px 90px 70px 1fr 120px",
+          color: C.inkMuted,
+          borderBottom: "1px solid " + C.border,
+        }}
+      >
+        <div>Work No.</div>
+        <div>BBI ID</div>
+        <div>Vector</div>
+        <div>Length (bp)</div>
+        <div>Ligation File</div>
+        <div># Clones</div>
       </div>
-    </div>
+      <div className="mt-1">
+        {jobDetails.map((d, i) => {
+          const key = makeKey(d.JobID, d.SourceFile);
+          const val = values[key] ?? 4;
+          return (
+            <div
+              key={i}
+              className="grid gap-2 px-2 py-1 text-xs items-center"
+              style={{
+                gridTemplateColumns: "90px 80px 90px 70px 1fr 120px",
+                background: i % 2 === 0 ? C.subtle2 : "transparent",
+              }}
+            >
+              <div style={{ fontFamily: FONT_MONO }}>{d["Work No."]}</div>
+              <div style={{ fontFamily: FONT_MONO }}>{d["BBI ID"]}</div>
+              <div style={{ fontFamily: FONT_MONO }} className="truncate">
+                {d.Vector}
+              </div>
+              <div style={{ fontFamily: FONT_MONO }}>{d["Length (bp)"]}</div>
+              <div style={{ fontFamily: FONT_MONO }} className="truncate" title={d.SourceFile}>
+                {truncate(baseName(d.SourceFile), 28)}
+              </div>
+              <div className="inline-flex items-center gap-1">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onChange({ ...values, [key]: Math.max(0, val - 1) })}
+                  style={{ width: 26, padding: "3px 0" }}
+                >
+                  −
+                </Button>
+                <input
+                  type="number"
+                  min={0}
+                  max={96}
+                  value={val}
+                  onChange={(e) => {
+                    const n = Math.max(0, Math.min(96, parseInt(e.target.value, 10) || 0));
+                    onChange({ ...values, [key]: n });
+                  }}
+                  className="w-12 text-center px-1 py-1 rounded text-xs outline-none"
+                  style={{
+                    background: C.surface,
+                    border: "1px solid " + C.border,
+                    borderRadius: 5,
+                    fontFamily: FONT_MONO,
+                    color: C.ink,
+                  }}
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onChange({ ...values, [key]: Math.min(96, val + 1) })}
+                  style={{ width: 26, padding: "3px 0" }}
+                >
+                  +
+                </Button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
 
 // =============================================================================
 // Helpers
 // =============================================================================
-function FilePickerRow({ inputRef, value, onPick, onBrowse }) {
-  return (
-    <div className="flex items-center gap-2">
-      <input
-        type="text"
-        readOnly
-        value={value}
-        placeholder="No file selected"
-        className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-      />
-      <input
-        ref={inputRef}
-        type="file"
-        accept=".xlsx,.xlsm"
-        className="hidden"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onPick(f);
-          e.target.value = "";
-        }}
-      />
-      <button onClick={onBrowse} className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm">
-        Select
-      </button>
-    </div>
-  );
-}
 
 async function readFileAsArrayBuffer(path) {
   // If the caller is passing a File object (from <input type=file>), use it directly.
@@ -526,6 +517,22 @@ async function readFileAsArrayBuffer(path) {
   const r = await window.api.readBinaryFile({ filePath: path });
   if (!r?.ok) throw new Error(r?.error || "Failed to read file");
   return r.bytes;
+}
+
+/**
+ * Read the Colony PCR template and return its bytes.
+ *
+ * The workbook is built FROM the template, so a missing/unreadable
+ * template is a hard error — we must not silently fall back to a
+ * from-scratch workbook (that loses the plate frame and the borders).
+ */
+async function readTemplateBytes(path) {
+  if (!path) return null;
+  try {
+    return await readFileAsArrayBuffer(path);
+  } catch (err) {
+    return null;
+  }
 }
 
 function baseName(p) {

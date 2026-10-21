@@ -5,9 +5,16 @@ import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
+
+// The Colony PCR template — the workbook is built FROM it, so the harness
+// needs the real file.
+const TEMPLATE_BYTES = readFileSync(
+  resolve(ROOT, "python-app/Templates/ColonyPCR_layout_v3.xlsx")
+);
 
 /**
  * Load a CommonJS-friendly export from an ES module source by stripping
@@ -21,10 +28,10 @@ function loadExports(srcPath, exportsNeeded) {
   // Strip `export ` keyword from declarations.
   src = src.replace(/^export /gm, "");
   const fn = new Function(
-    "globalThis", "XLSX",
+    "globalThis", "XLSX", "ExcelJS",
     src + `\nreturn { ${exportsNeeded.join(", ")} };`
   );
-  return fn(globalThis, XLSX);
+  return fn(globalThis, XLSX, ExcelJS);
 }
 
 const { planPlates } = loadExports(
@@ -34,11 +41,10 @@ const { planPlates } = loadExports(
 const {
   buildPlateHeader,
   buildOutputFilename,
-  buildWorkbook,
-  serializeWorkbook,
+  buildWorkbookBytes,
 } = loadExports(
   resolve(ROOT, "src/subapps/ColonyPCRLayout/workbookBuilder.js"),
-  ["buildPlateHeader", "buildOutputFilename", "buildWorkbook", "serializeWorkbook"]
+  ["buildPlateHeader", "buildOutputFilename", "buildWorkbookBytes"]
 );
 const { readLigationLayout, readPrimerLog, buildSummary, uniqueJobDetails } = loadExports(
   resolve(ROOT, "src/subapps/ColonyPCRLayout/extractor.js"),
@@ -71,9 +77,9 @@ function check(name, cond, detail = "") {
 {
   // Simple case: 3 jobs in same vector, each with 2 clones. All fit in one plate.
   const data = [
-    { JobID: "JOB-001", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
-    { JobID: "JOB-002", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
-    { JobID: "JOB-003", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
+    { "Work No.": "JOB-001", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
+    { "Work No.": "JOB-002", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
+    { "Work No.": "JOB-003", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
   ];
   const counts = new Map([
     ["JOB-001\0lig.xlsx", 2],
@@ -90,8 +96,8 @@ function check(name, cond, detail = "") {
 {
   // Same vector, different primers -> new column on same plate.
   const data = [
-    { JobID: "JOB-001", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
-    { JobID: "JOB-002", Vector: "pUC19", Primers: "M13R", SourceFile: "lig.xlsx" },
+    { "Work No.": "JOB-001", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
+    { "Work No.": "JOB-002", Vector: "pUC19", Primers: "M13R", SourceFile: "lig.xlsx" },
   ];
   const counts = new Map([
     ["JOB-001\0lig.xlsx", 4],
@@ -105,13 +111,13 @@ function check(name, cond, detail = "") {
 {
   // 13 jobs x 4 clones = 52 cells. Fits in 1 plate (96). Different primers -> new col.
   const data = Array.from({ length: 13 }, (_, i) => ({
-    JobID: `JOB-${String(i + 1).padStart(3, "0")}`,
+    "Work No.": `JOB-${String(i + 1).padStart(3, "0")}`,
     Vector: "pUC19",
     Primers: `M${i}`, // unique primer per job -> one column per job
     SourceFile: "lig.xlsx",
   }));
   const counts = new Map();
-  data.forEach((d) => counts.set(`${d.JobID}\0lig.xlsx`, 4));
+  data.forEach((d) => counts.set(`${d["Work No."]}\0lig.xlsx`, 4));
   const { plates } = planPlates(data, counts);
   // 13 jobs x 1 col each = 13 cols -> overflows 12-col plate -> 2 plates
   check("planPlates: 2 plates when overflow", plates.length >= 2, "got " + plates.length);
@@ -123,13 +129,13 @@ function check(name, cond, detail = "") {
   // many columns and therefore multiple plates. The test only checks the
   // boundary: total clones placed = 100 + controls.
   const data = Array.from({ length: 100 }, (_, i) => ({
-    JobID: `JOB-${String(i + 1).padStart(3, "0")}`,
+    "Work No.": `JOB-${String(i + 1).padStart(3, "0")}`,
     Vector: "pUC19",
     Primers: `M${i}`, // each job has a unique primer -> each column starts new
     SourceFile: "lig.xlsx",
   }));
   const counts = new Map();
-  data.forEach((d) => counts.set(`${d.JobID}\0lig.xlsx`, 1));
+  data.forEach((d) => counts.set(`${d["Work No."]}\0lig.xlsx`, 1));
   const { plates } = planPlates(data, counts);
   const totalJobs = plates.reduce((acc, p) => acc + p.jobs.length, 0);
   const totalControls = plates.reduce((acc, p) => acc + p.controls.length, 0);
@@ -144,9 +150,9 @@ function check(name, cond, detail = "") {
   // Filter by Vector (sort by vector), and ignore 0-clone jobs.
   // Note: alphabetical sort puts "pET28" (E=69) before "pUC19" (U=85).
   const data = [
-    { JobID: "Z", Vector: "pET28", Primers: "T7", SourceFile: "lig.xlsx" },
-    { JobID: "A", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
-    { JobID: "skip", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
+    { "Work No.": "Z", Vector: "pET28", Primers: "T7", SourceFile: "lig.xlsx" },
+    { "Work No.": "A", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
+    { "Work No.": "skip", Vector: "pUC19", Primers: "M13F", SourceFile: "lig.xlsx" },
   ];
   const counts = new Map([
     ["Z\0lig.xlsx", 2],
@@ -165,41 +171,53 @@ function check(name, cond, detail = "") {
 // =============================================================================
 {
   const data = [
-    { JobID: "JOB-001", BBID: "B001", Vector: "pUC19", Resistance: "Amp", Primers: "M13F", Length: 100, Host: "DH5a", Temperature: 37, SourceFile: "lig.xlsx" },
+    { "Work No.": "JOB-001", "BBI ID": "B001", Vector: "pUC19", Resistance: "Amp", Primers: "M13F", "Length (bp)": 100, Host: "DH5a", Temperature: 37, SourceFile: "lig.xlsx" },
   ];
   const counts = new Map([["JOB-001\0lig.xlsx", 4]]);
   const plan = planPlates(data, counts);
-  const wb = buildWorkbook(plan, data);
-  check("buildWorkbook: 2 sheets (Plate + Label)", wb.SheetNames.length === 2);
-  check("buildWorkbook: Plate 1 first", wb.SheetNames[0] === "Plate 1");
-  check("buildWorkbook: Label last", wb.SheetNames[wb.SheetNames.length - 1] === "Label");
+  const bytes = await buildWorkbookBytes(plan, data, counts, TEMPLATE_BYTES);
+  check("buildWorkbookBytes: produces non-empty bytes", bytes.byteLength > 1000);
 
-  const bytes = serializeWorkbook(wb);
-  check("buildWorkbook: produces non-empty bytes", bytes.byteLength > 1000);
+  // Read the output back with ExcelJS — the builder is template-based now,
+  // so the workbook is a real .xlsx rather than a SheetJS object.
+  const outWb = new ExcelJS.Workbook();
+  await outWb.xlsx.load(bytes);
+  const names = outWb.worksheets.map((w) => w.name);
+  check("buildWorkbookBytes: 2 sheets (Plate + Label)", names.length === 2, names.join(","));
+  check("buildWorkbookBytes: Plate 1 first", names[0] === "Plate 1", names.join(","));
+  check("buildWorkbookBytes: Label last", names[names.length - 1] === "Label", names.join(","));
 
-  // Sheet contents
-  const plate1 = wb.Sheets["Plate 1"];
-  check("buildWorkbook: plate header at A1", plate1.A1.v.startsWith("U"));
+  const plate1 = outWb.getWorksheet("Plate 1");
+  check("buildWorkbookBytes: plate header at A1", String(plate1.getCell("A1").value).startsWith("U"), String(plate1.getCell("A1").value));
   // First clone is at plate (row=0, col=0) -> Excel cell column 0+2=2 ("B"), row 0+3=3 -> B3.
-  check("buildWorkbook: first clone at B3", plate1["B3"]?.v === "JOB-001-Clone1");
-  check("buildWorkbook: sample table header at B13", plate1["B13"]?.v === "JobID");
-  check("buildWorkbook: first sample row at B14", plate1["B14"]?.v === "JOB-001");
+  check("buildWorkbookBytes: first clone at B3", plate1.getCell("B3").value === "JOB-001-Clone1", String(plate1.getCell("B3").value));
+  check("buildWorkbookBytes: sample table header at B13", plate1.getCell("B13").value === "Work No.", String(plate1.getCell("B13").value));
+  check("buildWorkbookBytes: first sample row at B14", plate1.getCell("B14").value === "JOB-001", String(plate1.getCell("B14").value));
+  // The template's plate frame must survive.
+  check("buildWorkbookBytes: template row letters preserved", plate1.getCell("A3").value === "A", String(plate1.getCell("A3").value));
+  check("buildWorkbookBytes: template column numbers preserved", plate1.getCell("B2").value === 1, String(plate1.getCell("B2").value));
 }
 
 {
   // Multi-plate workbook
   const data = Array.from({ length: 14 }, (_, i) => ({
-    JobID: `JOB-${String(i + 1).padStart(3, "0")}`,
+    "Work No.": `JOB-${String(i + 1).padStart(3, "0")}`,
     Vector: "pUC19",
     Primers: `M${i}`, // 14 unique primer groups -> > 12 cols
     SourceFile: "lig.xlsx",
   }));
   const counts = new Map();
-  data.forEach((d) => counts.set(`${d.JobID}\0lig.xlsx`, 4));
+  data.forEach((d) => counts.set(`${d["Work No."]}\0lig.xlsx`, 4));
   const plan = planPlates(data, counts);
   check("planPlates: 2 plates when 14 primer groups", plan.plates.length === 2);
-  const wb = buildWorkbook(plan, data);
-  check("buildWorkbook: 3 sheets (Plate 1, Plate 2, Label)", wb.SheetNames.length === 3);
+  const bytes = await buildWorkbookBytes(plan, data, counts, TEMPLATE_BYTES);
+  const outWb = new ExcelJS.Workbook();
+  await outWb.xlsx.load(bytes);
+  const names = outWb.worksheets.map((w) => w.name);
+  check("buildWorkbookBytes: 3 sheets (Plate 1, Plate 2, Label)", names.length === 3, names.join(","));
+  // The cloned plate must carry the template frame too.
+  const p2 = outWb.getWorksheet("Plate 2");
+  check("buildWorkbookBytes: Plate 2 keeps the row letters", p2 && p2.getCell("A3").value === "A", p2 ? String(p2.getCell("A3").value) : "no sheet");
 }
 
 // =============================================================================
@@ -220,8 +238,10 @@ function check(name, cond, detail = "") {
   };
   const { rows, warnings } = buildSummary(ligationRows, primerMap);
   check("buildSummary: drops empty Name", rows.length === 2);
-  check("buildSummary: drops CK controls", rows.every((r) => !r.JobID.startsWith("CK")));
-  check("buildSummary: renames Name -> JobID", rows[0].JobID === "JOB-001");
+  check("buildSummary: drops CK controls", rows.every((r) => !r["Work No."].startsWith("CK")));
+  // The Python renames the "Name" column to the canonical "Work No."
+  // (ColonyPCR_layout_app.py:814) as part of the Oct 2026 naming standard.
+  check("buildSummary: renames Name -> Work No.", rows[0]["Work No."] === "JOB-001");
   check("buildSummary: warns about CK filter", warnings.some((w) => w.includes("CK")));
   check("buildSummary: joins primers", rows[0].Primers === "M13F");
 }
@@ -229,10 +249,10 @@ function check(name, cond, detail = "") {
 {
   // uniqueJobDetails
   const rows = [
-    { JobID: "A", SourceFile: "f1.xlsx" },
-    { JobID: "A", SourceFile: "f1.xlsx" }, // dup
-    { JobID: "A", SourceFile: "f2.xlsx" }, // same Job, different source
-    { JobID: "B", SourceFile: "f1.xlsx" },
+    { "Work No.": "A", SourceFile: "f1.xlsx" },
+    { "Work No.": "A", SourceFile: "f1.xlsx" }, // dup
+    { "Work No.": "A", SourceFile: "f2.xlsx" }, // same Job, different source
+    { "Work No.": "B", SourceFile: "f1.xlsx" },
   ];
   const u = uniqueJobDetails(rows);
   check("uniqueJobDetails: dedupes (job+source)", u.length === 3);

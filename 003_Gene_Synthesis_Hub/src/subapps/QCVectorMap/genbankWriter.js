@@ -48,31 +48,41 @@ function formatOrigin(seq) {
  *   <5 misc_feature   <21 /label="Insert"
  *                      <21 /note="Insert sequence"
  *
- * For wrap-around (insert straddles the linearization point), we emit two
- * misc_feature entries (one per fragment) instead of using CompoundLocation,
- * because GenBank parsers handle two adjacent fragments more reliably than
- * join() locations. This is a behavioural choice documented here.
+ * The insert is located INSIDE the final vector sequence (see
+ * `findSubsequenceLocation`), exactly like the Python
+ * (`vector_map_prep_biopython.py::create_genbank_with_insert`):
+ *
+ *   - in-frame insert → ONE feature spanning the matched region:
+ *       FeatureLocation(start, end, strand=1)  →  "start+1..end"
+ *
+ *   - wrap-around insert (the insert straddles the origin of the circular
+ *     vector) → the Python builds ONE feature whose location is a
+ *     CompoundLocation of two parts:
+ *       FeatureLocation(start, len(seq))  →  "start+1..len"
+ *       FeatureLocation(0, end)            →  "1..end"
+ *     Biopython writes that as a single `join(start+1..len,1..end)`
+ *     location on ONE misc_feature record — not two records — so that is
+ *     what we emit.
+ *
+ * The qualifiers mirror the Python's dict exactly:
+ *   label = "Insert"
+ *   note  = "Insert sequence"  (+ " (wrap-around)" for the wrap case)
  */
-function formatFeatures({ wrap, start, end, seqLen, insertLen }) {
+function formatFeatures({ wrap, start, end, seqLen }) {
   if (!wrap) {
     return [
-      "     misc_feature    1.." + insertLen,
+      `     misc_feature    ${start + 1}..${end}`,
       '                     /label="Insert"',
       '                     /note="Insert sequence"',
     ].join("\n");
   }
-  // Wrap-around: two fragments.
-  // First fragment: start..seqLen (length = seqLen - start)
-  // Second fragment: 1..end (length = end)
-  const frag1Len = seqLen - start;
-  const frag2Len = end;
+  // Wrap-around: ONE feature with a compound location, exactly as the
+  // Python's `CompoundLocation([part1, part2], strand=1)` is written by
+  // Biopython — `join(start+1..len,1..end)`.
   return [
-    `     misc_feature    ${start + 1}..${seqLen}`,
+    `     misc_feature    join(${start + 1}..${seqLen},1..${end})`,
     '                     /label="Insert"',
-    '                     /note="Insert sequence (wrap-around, fragment 1)"',
-    `     misc_feature    1..${frag2Len}`,
-    '                     /label="Insert"',
-    '                     /note="Insert sequence (wrap-around, fragment 2)"',
+    '                     /note="Insert sequence (wrap-around)"',
   ].join("\n");
 }
 
@@ -121,7 +131,6 @@ export function buildGenbank({ jobid, finalVector, insertSeq }) {
         start: loc.start,
         end: loc.end,
         seqLen: len,
-        insertLen: insertSeq.replace(/\s+/g, "").length,
       })
     );
   }

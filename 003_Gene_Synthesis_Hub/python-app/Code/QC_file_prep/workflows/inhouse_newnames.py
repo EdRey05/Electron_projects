@@ -3,9 +3,13 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook
 
-Version: 3.2
-Date: Mar 30, 2026
-Notes: Fixed issues with hub-passed directories.
+Version: 3.5
+Date: Oct 13, 2026
+Notes: Folder renaming reads the canonical sheet names directly
+       ('Plasmid No.', 'Resistance', 'Length (bp)'); LABEL_OUTPUT_COLMAP
+       remaps legacy 'Plasmid ID'/'Antibiotic'/'Length' headers from
+       older workbook copies onto them on load. Variables and log
+       strings follow the canonical naming (work_no, plasmid_no).
 """
 
 import os
@@ -64,6 +68,14 @@ class InHouseNewNames:
         self.DOCX_EXTENSION = ".docx"
         self.TEMP_DOCX_SUFFIX = "_temp.docx"
         self.INVALID_FILE_PREFIX = '~'
+        # The Label_Output sheet uses the Job Log canonical names; legacy
+        # 'Plasmid ID'/'Antibiotic'/'Length' headers on older workbook copies
+        # remap onto them on load (suffix still taken from 'Tube ID').
+        self.LABEL_OUTPUT_COLMAP = {
+            "Plasmid ID": "Plasmid No.",
+            "Antibiotic": "Resistance",
+            "Length": "Length (bp)",
+        }
 
         # --- Workflow-specific variables ---
         self.max_w = ctk.StringVar(value=self.app.config.get('DEFAULT', 
@@ -110,7 +122,7 @@ class InHouseNewNames:
         ctk.CTkLabel(right_panel, text="Optional Steps:").pack(anchor="w", pady=(0, 4))
         ctk.CTkCheckBox(right_panel, text="Copy output to 'Received by BBI'", variable=self.copy_output_var).pack(anchor="w", pady=2)
         ctk.CTkCheckBox(right_panel, text="Delete intermediate files when finished", variable=self.delete_intermediate_var).pack(anchor="w", pady=2)
-        ctk.CTkCheckBox(right_panel, text="Replace plasmid ID with tube ID", variable=self.rename_from_excel_var).pack(anchor="w", pady=2)
+        ctk.CTkCheckBox(right_panel, text="Replace Plasmid No. with Tube ID", variable=self.rename_from_excel_var).pack(anchor="w", pady=2)
 
     def validate_inputs(self) -> bool:
         """
@@ -132,7 +144,7 @@ class InHouseNewNames:
         if self.rename_from_excel_var.get():
             shipment_qc_path = self.app.make_path_from_config('Paths', 'Shipment_and_QC_Log')
             if not shipment_qc_path or not os.path.isfile(shipment_qc_path):
-                messagebox.showerror("Error", "The 'Shipment and QC.xlsx' file was not found. Please check config.ini or uncheck the rename option.")
+                messagebox.showerror("Error", "The 'Shipment and QC Log.xlsx' file was not found. Please check config.ini or uncheck the rename option.")
                 return False
         return True
 
@@ -159,7 +171,7 @@ class InHouseNewNames:
             'unrecognized': 0
         }
         total_files = len(extracted_zips_names)
-        processed_folders_info = [] # Will store dicts: {'name': str, 'job_id': str, 'plasmid_id': str}
+        processed_folders_info = [] # Will store dicts: {'name': str, 'work_no': str, 'plasmid_no': str}
 
         for folder_name in extracted_zips_names:
             folder_dir = os.path.join(extracted_zips_dir, folder_name)
@@ -177,7 +189,7 @@ class InHouseNewNames:
                 is_success = status['status'] in [ProcessStatus.SUCCESS_GEL, ProcessStatus.SUCCESS_NO_GEL, ProcessStatus.SUCCESS_FALLBACK_NO_GEL]
 
                 if is_success:
-                    processed_folders_info.append({'name': folder_name, 'job_id': status.get('job_id'), 'plasmid_id': status.get('plasmid_id')})
+                    processed_folders_info.append({'name': folder_name, 'work_no': status.get('work_no'), 'plasmid_no': status.get('plasmid_no')})
 
                 if mode == self.NO_GEL_PREFIX:
                     if is_success: stats['X']['success'] += 1
@@ -276,12 +288,14 @@ class InHouseNewNames:
         try:
             self.log("[INFO] \t Loading Shipment QC data for renaming...")
             self.shipment_qc_df = pd.read_excel(shipment_qc_path, sheet_name="Label_Output", header=0)
+            # Map the current sheet's column names to the canonical ones
+            self.shipment_qc_df = self.shipment_qc_df.rename(columns=self.LABEL_OUTPUT_COLMAP)
             # Ensure required columns are strings for reliable matching
-            self.shipment_qc_df['Tube ID'] = self.shipment_qc_df['Tube ID'].astype(str)
-            self.shipment_qc_df['BBI Lot#'] = self.shipment_qc_df['BBI Lot#'].astype(str)
+            self.shipment_qc_df['BBI ID'] = self.shipment_qc_df['BBI ID'].astype(str)
+            self.shipment_qc_df['Plasmid No.'] = self.shipment_qc_df['Plasmid No.'].astype(str)
             self.log("[OK] \t Successfully loaded Shipment QC data.")
         except Exception as e:
-            self.log(f"[ERROR] \t Failed to load or read 'Shipment and QC.xlsx': {e}")
+            self.log(f"[ERROR] \t Failed to load or read 'Shipment and QC Log.xlsx': {e}")
             self.shipment_qc_df = None
 
     def rename_processed_folders(self, base_dir: str, processed_folders: List[dict]) -> List[str]:
@@ -289,27 +303,27 @@ class InHouseNewNames:
         renamed_folders = []
         for folder_info in processed_folders:
             original_name = folder_info['name']
-            plasmid_id = folder_info['plasmid_id']
+            plasmid_no = folder_info['plasmid_no']
             
-            if not plasmid_id:
-                self.log(f"[WARNING] \t Could not find Plasmid ID for '{original_name}'. Skipping rename.")
+            if not plasmid_no:
+                self.log(f"[WARNING] \t Could not find Plasmid No. for '{original_name}'. Skipping rename.")
                 renamed_folders.append(original_name)
                 continue
 
             try:
                 parts = original_name.split(' ')
                 match = self.shipment_qc_df[
-                    (self.shipment_qc_df['BBI Lot#'] == plasmid_id)
+                    (self.shipment_qc_df['Plasmid No.'] == plasmid_no)
                 ]
 
                 if not match.empty:
-                    strain = str(match['Strain'].iloc[0])
+                    strain = str(match['Tube ID'].iloc[0])
                     strain_suffix = strain[1:] if len(strain) > 1 else strain
                     base_name_without_plasmid = original_name.rsplit('.', 1)[0]
                     new_name = f"{base_name_without_plasmid} {strain_suffix}"
                     
                     # Clean up potential old plasmid ID formats from the original name
-                    base_name_without_plasmid = original_name.replace(f".{plasmid_id}", "").replace(f" {plasmid_id}", "").strip()
+                    base_name_without_plasmid = original_name.replace(f".{plasmid_no}", "").replace(f" {plasmid_no}", "").strip()
                     new_name = f"{base_name_without_plasmid} {strain_suffix}"
                     
                     original_outer_path = os.path.join(base_dir, original_name)
@@ -322,9 +336,9 @@ class InHouseNewNames:
                     renamed_folders.append(new_name)
                     self.log(f"[OK] \t Renamed '{original_name}' to '{new_name}'")
                 else:
-                    self.log(f"[WARNING] \t No match found in Excel for Plasmid ID '{plasmid_id}'. Removing plasmid ID from name.")
+                    self.log(f"[WARNING] \t No match found in Excel for Plasmid No. '{plasmid_no}'. Removing Plasmid No. from name.")
                     # If no match, just remove the plasmid ID part from the name
-                    new_name = original_name.replace(f".{plasmid_id}", "").replace(f" {plasmid_id}", "").strip()
+                    new_name = original_name.replace(f".{plasmid_no}", "").replace(f" {plasmid_no}", "").strip()
 
                     original_outer_path = os.path.join(base_dir, original_name)
                     new_outer_path = os.path.join(base_dir, new_name)
@@ -454,11 +468,11 @@ class InHouseNewNames:
                 section.footer_distance = Cm(1.0)
 
             # --- NEW: Extract IDs from Word doc first ---
-            job_id, plasmid_id = self.extract_ids_from_doc(doc_obj)
-            if not job_id or not plasmid_id:
-                self.log(f"[ERROR] \t Could not extract Job ID or Plasmid ID from {os.path.basename(doc_path)}")
+            work_no, plasmid_no = self.extract_ids_from_doc(doc_obj)
+            if not work_no or not plasmid_no:
+                self.log(f"[ERROR] \t Could not extract Work No. or Plasmid No. from {os.path.basename(doc_path)}")
                 return {'status': ProcessStatus.FAIL_IDS_NOT_FOUND}
-            self.log(f"[INFO] \t Extracted from doc: JobID='{job_id}', PlasmidID='{plasmid_id}'")
+            self.log(f"[INFO] \t Extracted from doc: Work No.='{work_no}', Plasmid No.='{plasmid_no}'")
 
             status = None
             if mode == self.NO_GEL_PREFIX:
@@ -466,13 +480,13 @@ class InHouseNewNames:
                 status = ProcessStatus.SUCCESS_NO_GEL
 
             elif mode == self.GEL_PREFIX:
-                image_found = self.find_and_insert_gel_image(job_id, plasmid_id, doc_obj)
+                image_found = self.find_and_insert_gel_image(work_no, plasmid_no, doc_obj)
                 if not image_found:
                     return {'status': ProcessStatus.FAIL_NO_GEL}  # Fail hard for 'Z' files
                 status = ProcessStatus.SUCCESS_GEL
 
             elif mode == self.SEQ_PREFIX:
-                image_found = self.find_and_insert_gel_image(job_id, plasmid_id, doc_obj)
+                image_found = self.find_and_insert_gel_image(work_no, plasmid_no, doc_obj)
                 if not image_found:
                     self.log(f"[INFO] \t No gel for SEQ file '{base_name}'. Removing QC table as fallback.")
                     self.remove_qc_elements(doc_obj, base_name)
@@ -494,7 +508,7 @@ class InHouseNewNames:
                 # Apply header fix for .docx files as requested
                 self.fix_header_formatting(doc_path)
 
-            return {'status': status, 'job_id': job_id, 'plasmid_id': plasmid_id}
+            return {'status': status, 'work_no': work_no, 'plasmid_no': plasmid_no}
         except Exception as e:
             self.log(f"[ERROR] \t Failed to process Word document {doc_path}: {e}")
             return {'status': ProcessStatus.FAIL_UNEXPECTED}
@@ -585,8 +599,8 @@ class InHouseNewNames:
                     pass
 
     def extract_ids_from_doc(self, doc: Document) -> Tuple[str, str]:
-        """Extracts Job ID and Plasmid ID from the first table of the document."""
-        job_id, plasmid_id = None, None
+        """Extracts the Work No. and Plasmid No. from the first table of the document."""
+        work_no, plasmid_no = None, None
         if not doc.tables:
             return None, None
         
@@ -598,10 +612,10 @@ class InHouseNewNames:
             
             label = row.cells[0].text.strip().lower()
             if "work no." in label:
-                job_id = row.cells[1].text.strip()
+                work_no = row.cells[1].text.strip()
             elif "plasmid no." in label:
-                plasmid_id = row.cells[1].text.strip()
-        return job_id, plasmid_id
+                plasmid_no = row.cells[1].text.strip()
+        return work_no, plasmid_no
 
     def remove_qc_elements(self, doc: Document, base_name: str):
         """Removes the QC table and its preceding paragraph from the document."""
@@ -666,7 +680,7 @@ class InHouseNewNames:
         self.log(f"[INFO] \t Limiting gel image search to recent folders starting with: {sorted(list(valid_prefixes), reverse=True)}")
         return valid_prefixes, valid_years
 
-    def find_and_insert_gel_image(self, job_id: str, plasmid_id: str, doc: Document) -> bool:
+    def find_and_insert_gel_image(self, work_no: str, plasmid_no: str, doc: Document) -> bool:
         gel_images_folder = self.app.make_path_from_config('Paths', 'QC_Gel_Images')
         if not gel_images_folder or not os.path.isdir(gel_images_folder):
             self.log(f"[ERROR] \t Gel images folder not found: {gel_images_folder}")
@@ -698,18 +712,18 @@ class InHouseNewNames:
                     parts = img_name_no_ext.split('.', 3)
                     if len(parts) != 4: continue
 
-                    job_id_from_img, plasmid_id_from_img, enzymes, expected_size = parts
+                    work_no_from_img, plasmid_no_from_img, enzymes, expected_size = parts
                     # Use exact match now that we have the IDs from the Word doc
-                    if job_id_from_img == job_id and plasmid_id_from_img == plasmid_id:
+                    if work_no_from_img == work_no and plasmid_no_from_img == plasmid_no:
                         self.log(f"[OK] \t Found gel image: {fname}")
-                        self.log(f"[OK] \t Match: JobID '{job_id_from_img}' & PlasmidID '{plasmid_id_from_img}'")
+                        self.log(f"[OK] \t Match: Work No. '{work_no_from_img}' & Plasmid No. '{plasmid_no_from_img}'")
                         self.log(f"[OK] \t Enzyme: {enzymes} | Expected Size: {expected_size}")
                         
                         image_path = os.path.join(subfolder_path, fname)
                         self.insert_image_into_doc(doc, image_path, enzymes, expected_size)
                         return True
 
-        self.log(f"[ERROR] \t No matching gel image found for JobID '{job_id}' and PlasmidID '{plasmid_id}' (searched last 6 months).")
+        self.log(f"[ERROR] \t No matching gel image found for Work No. '{work_no}' and Plasmid No. '{plasmid_no}' (searched last 6 months).")
         return False
 
     def insert_image_into_doc(self, doc: Document, image_path: str, enzymes: str, expected_size: str):

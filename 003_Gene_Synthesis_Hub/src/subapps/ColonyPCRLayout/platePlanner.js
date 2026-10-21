@@ -24,18 +24,29 @@ const PLATE_COLS = 12; // 12 columns (1-12)
  * Sort the summary data by Vector (alphabetically), then plan the placement.
  * Mirrors `summary_data.sort_values(by="Vector")` from the Python source.
  *
+ * The Python sorts by "Vector" ONLY — pandas' sort is stable, so rows with
+ * the same Vector keep their ORIGINAL order (the order they came out of the
+ * ligation file). The React port used to add a "Work No." tiebreak and used
+ * `localeCompare`, which sorts case-insensitively by locale — that produced
+ * a DIFFERENT well assignment than the Python for the same input. We now
+ * sort by Vector with a stable comparison and NO secondary key, so the
+ * original row order is preserved for ties.
+ *
  * cloneCounts is a Map<(jobId, sourceFile), number>.
  * Returns { plates, warnings }.
  */
 export function planPlates(summaryData, cloneCounts) {
-  // Filter to jobs with clones > 0, sort by Vector then JobID.
+  // Filter to jobs with clones > 0, sort by Vector only (stable).
   const sorted = [...summaryData]
     .filter((row) => (cloneCounts.get(rowKey(row)) ?? 0) > 0)
+    .map((row, i) => ({ row, i }))
     .sort((a, b) => {
-      const v = (a.Vector || "").localeCompare(b.Vector || "");
+      const v = compareVector(a.row.Vector, b.row.Vector);
       if (v !== 0) return v;
-      return (a.JobID || "").localeCompare(b.JobID || "");
-    });
+      // Stable: preserve the original order for equal vectors.
+      return a.i - b.i;
+    })
+    .map((x) => x.row);
 
   const plates = [];
   let current = newPlate();
@@ -104,10 +115,10 @@ export function planPlates(summaryData, cloneCounts) {
       if (currentRow === 0 && primersInCurrentCol === null) {
         primersInCurrentCol = primers;
       }
-      const label = `${job.JobID}-Clone${i}`;
+      const label = `${job["Work No."]}-Clone${i}`;
       placements.push({ row: currentRow, col: currentCol, label });
       current.jobs.push({
-        jobId: job.JobID,
+        jobId: job["Work No."],
         primers,
         row: currentRow,
         col: currentCol,
@@ -155,7 +166,24 @@ export function planPlates(summaryData, cloneCounts) {
 }
 
 function rowKey(row) {
-  return `${row.JobID}\0${row.SourceFile}`;
+  return `${row["Work No."]}\0${row.SourceFile}`;
+}
+
+/**
+ * Compare two Vector names the way pandas' string sort does.
+ *
+ * pandas sorts strings by their CODE POINTS (ordinal), not by locale.
+ * `String.prototype.localeCompare` sorts by locale rules, which is
+ * case-insensitive-ish and locale-dependent — e.g. it puts "puc19" before
+ * "pUC19" in some locales, while the code-point order puts "pUC19" first
+ * (uppercase letters sort before lowercase). That difference changed the
+ * well assignment, so we compare code points explicitly.
+ */
+function compareVector(a, b) {
+  const sa = a == null ? "" : String(a);
+  const sb = b == null ? "" : String(b);
+  if (sa === sb) return 0;
+  return sa < sb ? -1 : 1;
 }
 
 function newPlate() {

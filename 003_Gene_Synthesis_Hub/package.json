@@ -14,9 +14,15 @@
     "package:win": "npm run build && electron-builder --win",
     "package:portable": "npm run build && electron-builder --win portable",
     "stage-python": "node scripts/stage-python.js",
-    "stage-subapps": "node scripts/stage-subapps.js"
+    "stage-subapps": "node scripts/stage-subapps.js",
+    "verify": "npm run build && node scripts/verify-sg-check-edit.mjs && node scripts/verify-order-form-parity.mjs && node scripts/verify-sheet-range.mjs && node scripts/verify-colony-template.mjs && node scripts/verify-rounding.mjs && node scripts/verify-fullcalc.mjs && node scripts/verify-ligation-template.mjs && node scripts/verify-order-form-template.mjs",
+    "smoke": "electron scripts/smoke-ui.js",
+    "screenshot": "electron scripts/screenshot-ui.js",
+    "verify:quick": "node scripts/verify-sg-check-edit.mjs && node scripts/verify-order-form-parity.mjs && node scripts/verify-sheet-range.mjs && node scripts/verify-colony-template.mjs && node scripts/verify-rounding.mjs && node scripts/verify-fullcalc.mjs && node scripts/verify-ligation-template.mjs && node scripts/verify-order-form-template.mjs"
   },
   "dependencies": {
+    "exceljs": "^4.4.0",
+    "fflate": "^0.8.2",
     "lucide-react": "^0.460.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
@@ -56,27 +62,37 @@
       {
         "from": "python-app/runtime",
         "to": "python-app/runtime",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "python-app/runtime-venv",
         "to": "python-app/runtime-venv",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "python-app/Code",
         "to": "python-app/Code",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "python-app/Templates",
         "to": "python-app/Templates",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "python-app/Databases",
         "to": "python-app/Databases",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       {
         "from": "python-app/default_directories.ini",
@@ -89,8 +105,18 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
@@ -102,11 +128,21 @@
       "createStartMenuShortcut": true
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
       "category": "public.app-category.productivity"
     },
     "linux": {
-      "target": ["AppImage"],
+      "target": [
+        "AppImage"
+      ],
       "category": "Science"
     }
   }

@@ -1,10 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   FileText,
   FolderOpen,
   Download,
@@ -15,6 +11,18 @@ import {
   planOutputs,
   resolveColumnIndices,
 } from "./extractor.js";
+import {
+  C,
+  AppHeader,
+  Button,
+  Panel,
+  FilePickerRow,
+  Pill,
+  StatusLine,
+  LogPanel,
+  EmptyState,
+  FONT_MONO,
+} from "../../ui/kit.jsx";
 
 /**
  * Sequencing Reference Files — React port.
@@ -23,8 +31,8 @@ import {
  *   - User picks a Primer Log .xlsx (validated to contain `input addon` sheet).
  *   - User picks an output folder.
  *   - Click "Export Sequences" → for each row:
- *       {JobID}.txt with the Insert Seq (column H by default)
- *       {JobID}+{Vector}.txt with the Final Vector (column I by default)
+ *       {Work No}.txt with the Insert Sequence
+ *       {Work No}+{Vector}.txt with the Final Vector Sequence
  *
  * Column mapping is auto-detected from headers (case-insensitive, with
  * positional fallbacks matching the Python app).
@@ -144,9 +152,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
         return;
       }
       appendLog(`Loaded Primer Log: ${primerFileName}`);
-      appendLog(
-        `Using column indices: JobID=${extracted.indices.jobId}, Vector=${extracted.indices.vector}, InsertSeq=${extracted.indices.insertSeq}, FinalVector=${extracted.indices.finalVector}`
-      );
+      appendLog(extracted.resolutionLog || "");
       appendLog(`Output folder: ${outputDir}`);
       appendLog("");
 
@@ -193,170 +199,151 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
   // ------------------------------------------------------------
   // Render
   // ------------------------------------------------------------
-  const statusColors = {
-    info: "text-accent-400",
-    good: "text-good",
-    warn: "text-warn",
-    bad:  "text-bad",
-  };
+  const columnRows = useMemo(() => {
+    if (!previewColumns) return [];
+    const idx = previewColumns.indices;
+    const label = (key, name) => ({
+      key,
+      label: name,
+      render: (r) => (
+        <span style={{ fontFamily: FONT_MONO }}>
+          col {r.col} — {r.header || "?"}
+        </span>
+      ),
+    });
+    return [
+      { key: "jobId", col: idx.jobId + 1, header: previewColumns.headers[idx.jobId] },
+      { key: "vector", col: idx.vector + 1, header: previewColumns.headers[idx.vector] },
+      { key: "insertSeq", col: idx.insertSeq + 1, header: previewColumns.headers[idx.insertSeq] },
+      { key: "finalVector", col: idx.finalVector + 1, header: previewColumns.headers[idx.finalVector] },
+    ].map((r) => label(r.key, r.key));
+  }, [previewColumns]);
 
   return (
-    <div className="h-full flex flex-col bg-ink-900 text-slate-100">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-ink-700 bg-ink-800/60">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-sm"
-          >
-            <ArrowLeft size={14} /> Hub
-          </button>
-          <div className="w-9 h-9 rounded-lg bg-accent-500/15 flex items-center justify-center">
-            <FileText size={18} className="text-accent-400" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg leading-tight">Sequencing Reference Files</h1>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              Extract Insert Seq + Final Vector from Primer Log → individual .txt files.
-            </p>
-          </div>
-        </div>
-      </header>
+    <div className="h-full flex flex-col" style={{ background: C.paper, color: C.ink }}>
+      <AppHeader
+        onBack={onBack}
+        icon={<FileText size={18} color="#fff" />}
+        title="Sequencing Reference Files"
+        subtitle="Extract Insert + Final Vector sequences from the Primer Log into individual .txt files"
+      />
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-5">
-        {/* Primer Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FileSpreadsheet size={16} className="text-accent-400" /> Primer Log
-          </h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-5">
+          {/* Primer Log */}
+          <Panel
+            icon={<FileSpreadsheet size={15} style={{ color: C.teal }} />}
+            title="Primer Log"
+            subtitle="Must contain the 'input addon' sheet"
+          >
+            <FilePickerRow
+              inputRef={fileInputRef}
               value={primerFileName}
-              placeholder="No file selected"
-              className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-            />
-            <input
-              ref={fileInputRef}
-              type="file"
+              onPick={handleFile}
+              valid={primerFileValid}
+              error={primerFileError}
               accept=".xlsx,.xls"
-              className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])}
+              hint="Validated (input addon sheet found)"
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-            >
-              Select...
-            </button>
-          </div>
-          {primerFile && (
-            <div className="mt-2 text-xs">
-              {primerFileValid ? (
-                <span className="text-good flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Validated (input addon sheet found)
-                </span>
-              ) : (
-                <span className="text-bad flex items-center gap-1">
-                  <AlertCircle size={12} /> {primerFileError}
-                </span>
+            {previewColumns && (
+              <div
+                className="mt-3 text-[11px] rounded px-3 py-2 space-y-0.5"
+                style={{
+                  fontFamily: FONT_MONO,
+                  color: C.inkMuted,
+                  background: C.subtle,
+                  border: "1px solid " + C.border,
+                }}
+              >
+                <div style={{ color: C.inkFaint }}>Detected columns:</div>
+                <div>
+                  Work No. → column {previewColumns.indices.workNo + 1} (
+                  {previewColumns.headers[previewColumns.indices.workNo] || "?"})
+                </div>
+                <div>
+                  Vector → column {previewColumns.indices.vector + 1} (
+                  {previewColumns.headers[previewColumns.indices.vector] || "?"})
+                </div>
+                <div>
+                  Insert Sequence → column {previewColumns.indices.insertSequence + 1} (
+                  {previewColumns.headers[previewColumns.indices.insertSequence] || "?"})
+                </div>
+                <div>
+                  Final Vector Sequence → column{" "}
+                  {previewColumns.indices.finalVectorSequence + 1} (
+                  {previewColumns.headers[previewColumns.indices.finalVectorSequence] || "?"})
+                </div>
+              </div>
+            )}
+          </Panel>
+
+          {/* Output folder */}
+          <Panel
+            icon={<FolderOpen size={15} style={{ color: C.teal }} />}
+            title="Reference Files Folder"
+            subtitle="Destination for the generated .txt files"
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                placeholder="Click 'Select…' to choose the output folder"
+                className="flex-1 px-3 py-2 text-xs rounded outline-none"
+                style={{
+                  background: C.surface,
+                  border: "1px solid " + C.border,
+                  borderRadius: 6,
+                  color: outputDir ? C.ink : C.inkFaint,
+                  fontFamily: FONT_MONO,
+                  userSelect: "text",
+                }}
+              />
+              <Button variant="primary" onClick={chooseOutputDir}>
+                Select…
+              </Button>
+            </div>
+            <p className="mt-2 text-[11px]" style={{ color: C.inkFaint }}>
+              Each row produces up to two files:{" "}
+              <span style={{ fontFamily: FONT_MONO }}>{`{Work No.}.txt`}</span> (Insert
+              Sequence) and{" "}
+              <span style={{ fontFamily: FONT_MONO }}>
+                {`{Work No.}+{Vector}.txt`}
+              </span>{" "}
+              (Final Vector Sequence).
+            </p>
+          </Panel>
+
+          {/* Action */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <StatusLine status={status} running={running} />
+              {running && (
+                <div
+                  className="mt-2 h-1.5 rounded-full overflow-hidden"
+                  style={{ background: C.border }}
+                >
+                  <div
+                    className="h-full transition-all"
+                    style={{ width: `${Math.round(progress * 100)}%`, background: C.teal }}
+                  />
+                </div>
+              )}
+              {!running && results.filesWritten > 0 && (
+                <div className="mt-1 text-xs" style={{ color: C.inkMuted }}>
+                  {results.rowsProcessed} row{results.rowsProcessed === 1 ? "" : "s"} processed,{" "}
+                  {results.filesWritten} file{results.filesWritten === 1 ? "" : "s"} written
+                </div>
               )}
             </div>
-          )}
-          {previewColumns && (
-            <div className="mt-3 text-xs font-mono text-slate-400 bg-ink-900/40 rounded px-3 py-2">
-              <div className="text-slate-500 mb-1">Detected columns:</div>
-              <div>JobID → column {previewColumns.indices.jobId + 1} ({previewColumns.headers[previewColumns.indices.jobId] || "?"})</div>
-              <div>Vector → column {previewColumns.indices.vector + 1} ({previewColumns.headers[previewColumns.indices.vector] || "?"})</div>
-              <div>Insert Seq → column {previewColumns.indices.insertSeq + 1} ({previewColumns.headers[previewColumns.indices.insertSeq] || "?"})</div>
-              <div>Final Vector → column {previewColumns.indices.finalVector + 1} ({previewColumns.headers[previewColumns.indices.finalVector] || "?"})</div>
-            </div>
-          )}
-        </section>
+            <Button variant="primary" size="lg" disabled={!canRun} onClick={runExport}>
+              <Download size={15} />
+              {running ? "Exporting…" : "Export Sequences"}
+            </Button>
+          </div>
 
-        {/* Output folder */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FolderOpen size={16} className="text-accent-400" /> Reference Files Folder
-          </h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={outputDir}
-              onChange={(e) => setOutputDir(e.target.value)}
-              placeholder="Click 'Select...' to choose the output folder"
-              className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-            />
-            <button
-              onClick={chooseOutputDir}
-              className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-            >
-              Select...
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-slate-400">
-            Each row produces up to two files: <span className="font-mono">{`{JobID}.txt`}</span> (Insert Seq)
-            and <span className="font-mono">{`{JobID}+{Vector}.txt`}</span> (Final Vector).
-          </p>
-        </section>
-
-        {/* Action */}
-        <section className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <div className={`text-sm font-medium ${statusColors[status.color]}`}>
-              {running && <Loader2 size={14} className="inline animate-spin mr-1" />}
-              {status.text}
-            </div>
-            {running && (
-              <div className="mt-2 h-1.5 bg-ink-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent-500 transition-all"
-                  style={{ width: `${Math.round(progress * 100)}%` }}
-                />
-              </div>
-            )}
-            {!running && results.filesWritten > 0 && (
-              <div className="mt-1 text-xs text-slate-400">
-                {results.rowsProcessed} row{results.rowsProcessed === 1 ? "" : "s"} processed,
-                {" "}{results.filesWritten} file{results.filesWritten === 1 ? "" : "s"} written
-              </div>
-            )}
-          </div>
-          <button
-            disabled={!canRun}
-            onClick={runExport}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded font-medium ${
-              canRun
-                ? "bg-good hover:bg-good/90 text-white"
-                : "bg-ink-700 text-slate-500 cursor-not-allowed"
-            }`}
-          >
-            <Download size={14} />
-            {running ? "Exporting..." : "Export Sequences"}
-          </button>
-        </section>
-
-        {/* Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
-            <h2 className="font-semibold">Log</h2>
-            <button
-              disabled={logs.length === 0}
-              onClick={() => setLogs([])}
-              className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-30"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="bg-black/30 font-mono text-xs text-slate-200 p-3 max-h-80 overflow-y-auto whitespace-pre-wrap">
-            {logs.length === 0 ? (
-              <span className="text-slate-500">Log output will appear here.</span>
-            ) : (
-              logs.map((l, i) => <div key={i}>{l.msg}</div>)
-            )}
-            <div ref={logEndRef} />
-          </div>
-        </section>
+          <LogPanel logs={logs} onClear={() => setLogs([])} endRef={logEndRef} />
+        </div>
       </main>
     </div>
   );

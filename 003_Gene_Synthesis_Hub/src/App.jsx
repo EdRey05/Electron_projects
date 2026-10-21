@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState, useCallback } from "react";
 import {
-  Search,
   RefreshCw,
   FolderOpen,
   Save,
@@ -9,15 +8,33 @@ import {
   CheckCircle2,
   Info,
   AlertCircle,
-  Rocket,
   HardDrive,
   Cog,
   TerminalSquare,
   FlaskConical,
+  Search,
+  Rocket,
+  LayoutGrid,
+  Boxes,
+  Wrench,
   ChevronDown,
   ChevronRight,
   X,
+  Check,
 } from "lucide-react";
+import {
+  C,
+  AppHeader,
+  Button,
+  Panel,
+  Pill,
+  Toast,
+  EmptyState,
+  Tabs,
+  Modal,
+  FONT_DISPLAY,
+  FONT_MONO,
+} from "./ui/kit.jsx";
 import PrimerFinder from "./subapps/PrimerFinder/PrimerFinder.jsx";
 import QCVectorMap from "./subapps/QCVectorMap/QCVectorMap.jsx";
 import SequencingReferenceFiles from "./subapps/SequencingReferenceFiles/SequencingReferenceFiles.jsx";
@@ -48,14 +65,29 @@ function displayKey(key) {
   return key.replace(/_/g, " ");
 }
 
-function statusColor(status) {
-  switch (status) {
-    case "success": return "text-good";
-    case "warning": return "text-warn";
-    case "error":   return "text-bad";
-    default:        return "text-slate-400";
-  }
-}
+/** Which lifecycle stage a hub app belongs to — used to group the app grid. */
+const GROUPS = [
+  { id: "prep", label: "Pre-Cloning", hint: "Primers, vector maps and layouts", icon: <Wrench size={14} /> },
+  { id: "cloning", label: "Cloning", hint: "Ligation, colony PCR and sequencing files", icon: <Boxes size={14} /> },
+  { id: "qc", label: "QC & Reporting", hint: "QC packages, digestion design and batch reports", icon: <LayoutGrid size={14} /> },
+  { id: "utility", label: "Utilities", hint: "Worklists, labels and vector logging", icon: <TerminalSquare size={14} /> },
+];
+
+const GROUP_OF = {
+  "Primer Finder": "prep",
+  "QC Vector Map Prep": "prep",
+  "Ligation Layout": "prep",
+  "Colony PCR Layout": "cloning",
+  "Sequencing Reference Files": "cloning",
+  "Sequencing Order Form": "cloning",
+  "Sequencing File Organizer": "cloning",
+  "QC File Prep": "qc",
+  "QC Digestion Design": "qc",
+  "BATCH QC Report": "qc",
+  "Integra Worklist": "utility",
+  "Label Generator": "utility",
+  "Backup Vector Logger": "utility",
+};
 
 // Parse the "Label, \"Sub\Path\"" format into [label, subpath] pairs.
 // (Same logic as Electron's resolvePath but used for *display* of pending edits.)
@@ -73,18 +105,38 @@ function parseRawValue(raw) {
 // Subcomponents
 // ===========================================================================
 
-function StatusPill({ icon: Icon, label, color = "slate" }) {
-  const colors = {
-    slate: "bg-slate-700/40 text-slate-300 border-slate-600",
-    good:  "bg-good/15 text-good border-good/40",
-    warn:  "bg-warn/15 text-warn border-warn/40",
-    bad:   "bg-bad/15 text-bad border-bad/40",
-    info:  "bg-accent-500/15 text-accent-400 border-accent-500/40",
-  };
+function DriveStrip({ driveMappings }) {
+  const entries = Object.entries(driveMappings);
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium ${colors[color]}`}>
-      <Icon size={12} /> {label}
-    </span>
+    <div
+      className="flex items-center gap-3 flex-wrap px-6 py-2"
+      style={{ borderBottom: "1px solid " + C.border, background: C.subtle2 }}
+    >
+      <span
+        className="text-[10px] uppercase tracking-wider font-semibold"
+        style={{ color: C.inkFaint }}
+      >
+        Drives
+      </span>
+      {entries.length === 0 ? (
+        <span className="text-xs flex items-center gap-1" style={{ color: C.coral }}>
+          <AlertTriangle size={12} /> No drives with labels B8. / B6. / Public detected.
+        </span>
+      ) : (
+        entries.map(([label, drive]) => (
+          <span
+            key={label}
+            className="inline-flex items-center gap-1.5 text-xs"
+            style={{ fontFamily: FONT_MONO }}
+          >
+            <HardDrive size={12} style={{ color: C.teal }} />
+            <span style={{ color: C.tealDeep }}>{label}</span>
+            <span style={{ color: C.inkFaint }}>→</span>
+            <span style={{ color: C.inkMuted }}>{drive}</span>
+          </span>
+        ))
+      )}
+    </div>
   );
 }
 
@@ -95,22 +147,30 @@ function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange })
 
   return (
     <div
-      className={`rounded-md border px-3 py-2.5 mb-2 ${
-        exists
-          ? "bg-good/5 border-good/30"
-          : "bg-bad/5 border-bad/40"
-      }`}
+      className="rounded-md border px-3 py-2.5 mb-2"
+      style={{
+        background: exists ? "#FBFDFC" : C.coralSoft,
+        borderColor: exists ? C.border : "rgba(193,85,61,0.40)",
+      }}
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
-          {exists
-            ? <CheckCircle2 size={14} className="text-good shrink-0" />
-            : <AlertCircle size={14} className="text-bad shrink-0" />}
-          <span className="font-medium text-slate-100 truncate">{displayKey(entryKey)}</span>
+          {exists ? (
+            <CheckCircle2 size={14} style={{ color: C.teal }} className="shrink-0" />
+          ) : (
+            <AlertCircle size={14} style={{ color: C.coral }} className="shrink-0" />
+          )}
+          <span className="font-medium text-sm truncate" style={{ color: C.ink }}>
+            {displayKey(entryKey)}
+          </span>
           {label && (
-            <span className="text-[11px] font-mono text-slate-400 shrink-0">
-              via <span className="text-accent-400">{label}</span>
-              {mappedDrive ? <span className="text-slate-500"> → {mappedDrive}</span> : <span className="text-bad"> (drive not found)</span>}
+            <span className="text-[11px] truncate" style={{ fontFamily: FONT_MONO, color: C.inkFaint }}>
+              via <span style={{ color: C.tealDeep }}>{label}</span>
+              {mappedDrive ? (
+                <span> → {mappedDrive}</span>
+              ) : (
+                <span style={{ color: C.coral }}> (drive not found)</span>
+              )}
             </span>
           )}
         </div>
@@ -120,28 +180,37 @@ function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange })
           value={raw}
           onChange={(e) => onChange(entryKey, e.target.value)}
           spellCheck={false}
-          className="flex-1 bg-ink-900/60 border border-ink-700 rounded px-2 py-1 text-xs font-mono text-slate-200 placeholder-slate-500 focus:border-accent-500 focus:outline-none"
+          className="flex-1 px-2 py-1 text-xs outline-none rounded"
+          style={{
+            background: C.surface,
+            border: "1px solid " + C.border,
+            borderRadius: 6,
+            color: C.ink,
+            fontFamily: FONT_MONO,
+            userSelect: "text",
+          }}
           placeholder='Format: Label, "Sub\\Path"'
         />
-        <button
-          onClick={() => onBrowse(entryKey, raw)}
-          title="Browse..."
-          className="px-2 py-1 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-xs"
-        >
-          ...
-        </button>
+        <Button variant="secondary" size="sm" onClick={() => onBrowse(entryKey, raw)}>
+          Browse…
+        </Button>
         {resolved && exists && (
-          <button
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => onReveal(resolved)}
             title="Reveal in Explorer"
-            className="px-2 py-1 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-xs"
           >
             <ExternalLink size={12} />
-          </button>
+          </Button>
         )}
       </div>
       {resolved && (
-        <div className="mt-1 text-[11px] font-mono text-slate-500 truncate" title={resolved}>
+        <div
+          className="mt-1 text-[11px] truncate"
+          style={{ fontFamily: FONT_MONO, color: C.inkFaint }}
+          title={resolved}
+        >
           → {resolved}
         </div>
       )}
@@ -151,47 +220,68 @@ function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange })
 
 function AppCard({ app, missingKeys, onLaunch, launching }) {
   const [expanded, setExpanded] = useState(false);
-  const requires = (app.requires || "").split(",").map(s => s.trim()).filter(Boolean);
-  const missingReqs = requires.filter(k => missingKeys.includes(k));
+  const requires = (app.requires || "").split(",").map((s) => s.trim()).filter(Boolean);
+  const missingReqs = requires.filter((k) => missingKeys.includes(k));
   const canLaunch = missingReqs.length === 0 && !launching;
-
-  const iconBg = app.category === "streamlit" ? "bg-warn/15 text-warn" : "bg-accent-500/15 text-accent-400";
+  const isReact = (app.category || "").toLowerCase() === "react_route";
 
   return (
-    <div className={`rounded-lg border bg-ink-800/60 ${missingReqs.length ? "border-bad/40" : "border-ink-700"} p-3.5 mb-3`}>
+    <div
+      className="rounded-lg border p-3.5"
+      style={{
+        background: C.surface,
+        borderColor: missingReqs.length ? "rgba(193,85,61,0.40)" : C.border,
+      }}
+    >
       <div className="flex items-start gap-3">
-        <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-lg shrink-0 ${iconBg}`}>
+        <div
+          className="w-9 h-9 rounded-md flex items-center justify-center text-base shrink-0"
+          style={{ background: isReact ? C.tealSoft : C.navySoft }}
+          title={isReact ? "Runs in-process (React)" : "Runs as a Python app"}
+        >
           {app.icon || "🔧"}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="font-semibold text-slate-100 truncate">{app.name}</h3>
-            <span className="text-[11px] font-mono text-slate-400 shrink-0">
+            <h3
+              className="font-semibold text-sm truncate"
+              style={{ fontFamily: FONT_DISPLAY, color: C.ink }}
+            >
+              {app.name}
+            </h3>
+            <span className="text-[11px] shrink-0" style={{ fontFamily: FONT_MONO, color: C.inkFaint }}>
               v{app.version || "?"} · {app.date_released || "—"}
             </span>
           </div>
           {app.message && (
-            <p className={`mt-1 text-xs ${statusColor(app.status)}`}>
+            <p className="mt-1 text-xs leading-snug" style={{ color: C.inkMuted }}>
               {app.message}
             </p>
           )}
           {missingReqs.length > 0 && (
-            <p className="mt-1.5 text-xs text-bad font-medium">
-              ⚠ Missing required directories: {missingReqs.map(displayKey).join(", ")}
+            <p className="mt-1.5 text-xs font-medium" style={{ color: C.coral }}>
+              Missing required directories: {missingReqs.map(displayKey).join(", ")}
             </p>
           )}
           <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <StatusPill
-              icon={app.category === "streamlit" ? TerminalSquare : FlaskConical}
-              label={app.category === "streamlit" ? "Streamlit" : "Tkinter"}
-              color={app.category === "streamlit" ? "warn" : "info"}
-            />
-            {app.status && <StatusPill icon={Info} label={app.status} color={
-              app.status === "success" ? "good" : app.status === "warning" ? "warn" : "bad"
-            } />}
+            <Pill
+              tone={isReact ? "good" : "info"}
+              icon={isReact ? <Rocket size={11} /> : <TerminalSquare size={11} />}
+            >
+              {isReact ? "Built-in" : "Python app"}
+            </Pill>
+            {app.status && (
+              <Pill
+                tone={app.status === "success" ? "good" : app.status === "warning" ? "warn" : "bad"}
+                icon={<Info size={11} />}
+              >
+                {app.status}
+              </Pill>
+            )}
             <button
-              onClick={() => setExpanded(e => !e)}
-              className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center gap-1"
+              onClick={() => setExpanded((e) => !e)}
+              className="text-[11px] inline-flex items-center gap-1"
+              style={{ color: C.inkMuted }}
             >
               {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
               {expanded ? "Hide" : "Show"} wiring
@@ -201,54 +291,52 @@ function AppCard({ app, missingKeys, onLaunch, launching }) {
       </div>
 
       {expanded && (
-        <div className="mt-3 ml-13 text-[11px] font-mono text-slate-400 bg-ink-900/50 rounded px-3 py-2 border border-ink-700 space-y-0.5">
-          <div><span className="text-slate-500">path:</span> Code/{app.path}/{app.entry}</div>
-          {app.requires && <div><span className="text-slate-500">requires:</span> {app.requires}</div>}
-          {app.pass_dir_as_kwarg && <div><span className="text-slate-500">dir_args:</span> {app.pass_dir_as_kwarg}</div>}
-          {app.pass_template_as_kwarg && <div><span className="text-slate-500">tpl_args:</span> {app.pass_template_as_kwarg}</div>}
-          {app.pass_db_as_kwarg && <div><span className="text-slate-500">db_args:</span> {app.pass_db_as_kwarg}</div>}
+        <div
+          className="mt-3 ml-12 text-[11px] rounded px-3 py-2 space-y-0.5"
+          style={{
+            fontFamily: FONT_MONO,
+            color: C.inkMuted,
+            background: C.subtle,
+            border: "1px solid " + C.border,
+          }}
+        >
+          <div>
+            <span style={{ color: C.inkFaint }}>path:</span> Code/{app.path}/{app.entry}
+          </div>
+          {app.requires && (
+            <div>
+              <span style={{ color: C.inkFaint }}>requires:</span> {app.requires}
+            </div>
+          )}
+          {app.pass_dir_as_kwarg && (
+            <div>
+              <span style={{ color: C.inkFaint }}>dir_args:</span> {app.pass_dir_as_kwarg}
+            </div>
+          )}
+          {app.pass_template_as_kwarg && (
+            <div>
+              <span style={{ color: C.inkFaint }}>tpl_args:</span> {app.pass_template_as_kwarg}
+            </div>
+          )}
+          {app.pass_db_as_kwarg && (
+            <div>
+              <span style={{ color: C.inkFaint }}>db_args:</span> {app.pass_db_as_kwarg}
+            </div>
+          )}
         </div>
       )}
 
       <div className="mt-3 flex justify-end">
-        <button
+        <Button
+          variant={canLaunch ? "primary" : "secondary"}
+          size="sm"
           disabled={!canLaunch}
           onClick={() => onLaunch(app)}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-            canLaunch
-              ? "bg-accent-500 hover:bg-accent-400 text-white"
-              : "bg-ink-700 text-slate-500 cursor-not-allowed"
-          }`}
         >
-          <Rocket size={14} />
-          {launching ? "Launching..." : "Launch"}
-        </button>
+          <Rocket size={13} />
+          {launching ? "Launching…" : "Launch"}
+        </Button>
       </div>
-    </div>
-  );
-}
-
-function Toast({ toast, onClose }) {
-  useEffect(() => {
-    if (!toast) return;
-    const t = setTimeout(onClose, 5000);
-    return () => clearTimeout(t);
-  }, [toast, onClose]);
-
-  if (!toast) return null;
-
-  const styles = {
-    success: "bg-good/15 border-good/40 text-good",
-    error:   "bg-bad/15 border-bad/40 text-bad",
-    info:    "bg-accent-500/15 border-accent-500/40 text-accent-400",
-  };
-
-  return (
-    <div className={`fixed bottom-5 right-5 max-w-md border rounded-lg px-4 py-3 shadow-lg backdrop-blur ${styles[toast.kind] || styles.info} flex items-start gap-2 z-50`}>
-      <div className="flex-1 text-sm whitespace-pre-wrap">{toast.message}</div>
-      <button onClick={onClose} className="text-current opacity-60 hover:opacity-100">
-        <X size={14} />
-      </button>
     </div>
   );
 }
@@ -271,6 +359,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("needs"); // "needs" | "found"
   const [toast, setToast] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const showToast = useCallback((message, kind = "info") => {
     setToast({ message, kind });
@@ -313,8 +402,19 @@ export default function App() {
   const filteredApps = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return apps;
-    return apps.filter(a => a.name.toLowerCase().includes(q));
+    return apps.filter((a) => a.name.toLowerCase().includes(q));
   }, [apps, searchQuery]);
+
+  const groupedApps = useMemo(() => {
+    const byGroup = new Map(GROUPS.map((g) => [g.id, []]));
+    const other = [];
+    for (const app of filteredApps) {
+      const gid = GROUP_OF[app.name];
+      if (gid && byGroup.has(gid)) byGroup.get(gid).push(app);
+      else other.push(app);
+    }
+    return { byGroup, other };
+  }, [filteredApps]);
 
   const dirty = useMemo(() => {
     return Object.entries(draftValues).some(([k, v]) => paths[k]?.raw !== v);
@@ -325,7 +425,7 @@ export default function App() {
     const isFile = /\.[A-Za-z0-9]{1,5}$/.test(raw.split(/[\\/]/).pop() || "");
     const picked = await window.api.browsePath(raw, isFile);
     if (picked) {
-      setDraftValues(prev => ({ ...prev, [key]: picked }));
+      setDraftValues((prev) => ({ ...prev, [key]: picked }));
     }
   }, []);
 
@@ -334,7 +434,7 @@ export default function App() {
   }, []);
 
   const handleChange = useCallback((key, value) => {
-    setDraftValues(prev => ({ ...prev, [key]: value }));
+    setDraftValues((prev) => ({ ...prev, [key]: value }));
   }, []);
 
   const handleSave = useCallback(async () => {
@@ -364,43 +464,88 @@ export default function App() {
     }
   }, [draftValues, driveMappings, refreshAll, showToast]);
 
-  const handleLaunch = useCallback(async (app) => {
-    // React-side subapps are mounted in-process; no subprocess spawn.
-    if ((app.category || "").toLowerCase() === "react_route") {
-      const Component = REACT_SUBAPPS[app.entry];
-      if (!Component) {
-        showToast(`React subapp "${app.entry}" is not registered in REACT_SUBAPPS.`, "error");
+  const handleLaunch = useCallback(
+    async (app) => {
+      // React-side subapps are mounted in-process; no subprocess spawn.
+      if ((app.category || "").toLowerCase() === "react_route") {
+        const Component = REACT_SUBAPPS[app.entry];
+        if (!Component) {
+          showToast(`React subapp "${app.entry}" is not registered in REACT_SUBAPPS.`, "error");
+          return;
+        }
+        // Resolve the kwarg paths the same way the Python hub would, so the
+        // React subapp can pre-fill its UI. For Primer Finder this is just
+        // Primer_Log → primer_log_path.
+        const initialPaths = {};
+        if (app.pass_dir_as_kwarg) {
+          for (const pair of app.pass_dir_as_kwarg.split(";")) {
+            const [dirKey, kwarg] = pair.split(":").map((s) => s.trim());
+            const info = paths[dirKey];
+            if (info?.resolved) initialPaths[kwarg] = info.resolved;
+          }
+        }
+        // Template / database patterns travel as patterns; the subapp asks
+        // the main process to resolve the newest match in the bundled tree.
+        const patternMap = (spec) =>
+          spec
+            ? Object.fromEntries(
+                spec.split(";").map((pair) => {
+                  const [kwarg, pattern] = pair.split(":").map((s) => s.trim());
+                  return [kwarg, pattern];
+                })
+              )
+            : {};
+        const templatePatterns = patternMap(app.pass_template_as_kwarg);
+        const dbPatterns = patternMap(app.pass_db_as_kwarg);
+
+        // Resolve the bundled templates/databases NOW so the subapp gets an
+        // absolute path in `initialPaths` and can pre-fill its fields.
+        //
+        // The Python hub resolves these kwargs before it constructs the
+        // app (the Colony PCR app receives `colony_pcr_template_path` and
+        // the Sequencing Order Form receives `empty_form_path` +
+        // `seq_layout_path`). The React route used to leave them
+        // unresolved, so those fields stayed EMPTY and the app could not
+        // run without the user hunting for the file by hand.
+        // The main process returns { templates: { kwarg: absPath },
+        // databases: { kwarg: absPath } }.
+        const bundled = await window.api.resolveBundledFiles({
+          templates: Object.entries(templatePatterns).map(([kwarg, pattern]) => `${kwarg}:${pattern}`),
+          databases: Object.entries(dbPatterns).map(([kwarg, pattern]) => `${kwarg}:${pattern}`),
+        });
+        for (const bucket of ["templates", "databases"]) {
+          const resolved = bundled?.[bucket] || {};
+          for (const [kwarg, absPath] of Object.entries(resolved)) {
+            if (absPath) initialPaths[kwarg] = absPath;
+          }
+        }
+
+        setActiveSubapp({
+          entry: app.entry,
+          name: app.name,
+          initialPaths,
+          templatePatterns,
+          dbPatterns,
+        });
         return;
       }
-      // Resolve the kwarg paths the same way the Python hub would, so the
-      // React subapp can pre-fill its UI. For Primer Finder this is just
-      // Primer_Log → primer_log_path.
-      const initialPaths = {};
-      if (app.pass_dir_as_kwarg) {
-        for (const pair of app.pass_dir_as_kwarg.split(";")) {
-          const [dirKey, kwarg] = pair.split(":").map((s) => s.trim());
-          const info = paths[dirKey];
-          if (info?.resolved) initialPaths[kwarg] = info.resolved;
-        }
-      }
-      setActiveSubapp({ entry: app.entry, name: app.name, initialPaths });
-      return;
-    }
 
-    setLaunchingApp(app.name);
-    try {
-      const r = await window.api.launchApp(app, paths, driveMappings);
-      if (!r.ok) {
-        showToast(`Launch failed: ${r.error}`, "error");
-      } else {
-        showToast(`Launched ${app.name} (pid ${r.pid})`, "success");
+      setLaunchingApp(app.name);
+      try {
+        const r = await window.api.launchApp(app, paths, driveMappings);
+        if (!r.ok) {
+          showToast(`Launch failed: ${r.error}`, "error");
+        } else {
+          showToast(`Launched ${app.name} (pid ${r.pid})`, "success");
+        }
+      } catch (err) {
+        showToast(`Launch error: ${err.message}`, "error");
+      } finally {
+        setLaunchingApp(null);
       }
-    } catch (err) {
-      showToast(`Launch error: ${err.message}`, "error");
-    } finally {
-      setLaunchingApp(null);
-    }
-  }, [paths, driveMappings, showToast]);
+    },
+    [paths, driveMappings, showToast]
+  );
 
   // ---------- render ----------
   // When a React-side subapp is active, mount it as the entire view.
@@ -411,199 +556,270 @@ export default function App() {
         <Component
           onBack={() => setActiveSubapp(null)}
           initialPaths={activeSubapp.initialPaths}
+          templatePatterns={activeSubapp.templatePatterns}
+          dbPatterns={activeSubapp.dbPatterns}
         />
       );
     }
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col" style={{ background: C.paper, color: C.ink }}>
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-3 border-b border-ink-700 bg-ink-900/40 backdrop-blur">
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-lg bg-accent-500/15 flex items-center justify-center">
-            <FlaskConical size={18} className="text-accent-400" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg leading-tight">Gene Synthesis Hub</h1>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              Bio Basic Inc. · {apps.length} apps · {Object.keys(driveMappings).length} drives mapped
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={refreshAll}
-            disabled={scanning}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-sm disabled:opacity-50"
-          >
-            <RefreshCw size={14} className={scanning ? "animate-spin" : ""} />
-            {scanning ? "Scanning..." : "Rescan"}
-          </button>
-          {layout && (
-            <button
-              onClick={() => window.api.openPythonApp()}
-              title="Open bundled python-app folder"
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-sm"
+      <AppHeader
+        icon={<FlaskConical size={18} color="#fff" />}
+        title="Gene Synthesis Hub"
+        subtitle="Bio Basic Inc."
+        meta={`${apps.length} apps · ${Object.keys(driveMappings).length} drives mapped`}
+        actions={
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setSettingsOpen(true)}
+              title="Default directories"
             >
-              <FolderOpen size={14} />
-              python-app
-            </button>
-          )}
-        </div>
-      </header>
+              <Cog size={14} /> Directories
+            </Button>
+            {layout && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => window.api.openPythonApp()}
+                title="Open bundled python-app folder"
+              >
+                <FolderOpen size={14} /> python-app
+              </Button>
+            )}
+            <Button variant="primary" size="sm" onClick={refreshAll} disabled={scanning}>
+              <RefreshCw size={14} className={scanning ? "animate-spin" : ""} />
+              {scanning ? "Scanning…" : "Rescan"}
+            </Button>
+          </>
+        }
+      />
 
-      {/* Drive strip */}
-      <div className="px-6 py-2 border-b border-ink-700 bg-ink-900/20 text-xs flex items-center gap-3 flex-wrap">
-        <span className="text-slate-500 uppercase tracking-wider font-medium">Drives:</span>
-        {Object.keys(driveMappings).length === 0 && (
-          <span className="text-bad flex items-center gap-1">
-            <AlertTriangle size={12} /> No drives with labels B8./B6./Public detected.
-          </span>
-        )}
-        {Object.entries(driveMappings).map(([label, drive]) => (
-          <span key={label} className="inline-flex items-center gap-1.5 font-mono text-slate-300">
-            <HardDrive size={12} className="text-accent-400" />
-            <span className="text-accent-400">{label}</span>
-            <span className="text-slate-500">→</span>
-            <span>{drive}</span>
-          </span>
-        ))}
-      </div>
+      <DriveStrip driveMappings={driveMappings} />
 
       {/* Main grid */}
-      <main className="flex-1 grid grid-cols-[420px_1fr] gap-4 p-4 overflow-hidden min-h-0">
-        {/* LEFT: directory editor */}
-        <section className="flex flex-col bg-ink-800/40 border border-ink-700 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Cog size={16} /> Default directories
+      <main className="flex-1 grid grid-cols-1 gap-4 p-4 overflow-hidden min-h-0">
+        {/* App grid */}
+        <section
+          className="flex flex-col rounded-lg overflow-hidden"
+          style={{ background: C.surface, border: "1px solid " + C.border }}
+        >
+          <div
+            className="flex items-center justify-between gap-3 px-4 py-3"
+            style={{ borderBottom: "1px solid " + C.border, background: C.subtle2 }}
+          >
+            <h2
+              className="font-semibold flex items-center gap-2 shrink-0"
+              style={{ fontFamily: FONT_DISPLAY, fontSize: 14, color: C.ink }}
+            >
+              <Rocket size={15} style={{ color: C.teal }} /> Available tools
             </h2>
-            <span className="text-xs text-slate-400">
-              {needsAttentionEntries.length} need attention
-            </span>
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b border-ink-700 bg-ink-900/40">
-            <button
-              onClick={() => setActiveTab("needs")}
-              className={`flex-1 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2 ${
-                activeTab === "needs"
-                  ? "border-b-2 border-bad text-bad"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <AlertCircle size={14} />
-              Needs attention ({needsAttentionEntries.length})
-            </button>
-            <button
-              onClick={() => setActiveTab("found")}
-              className={`flex-1 px-4 py-2 text-sm font-medium flex items-center justify-center gap-2 ${
-                activeTab === "found"
-                  ? "border-b-2 border-good text-good"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              <CheckCircle2 size={14} />
-              Found ({foundEntries.length})
-            </button>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-3">
-            {activeTab === "needs" && (
-              needsAttentionEntries.length === 0
-                ? <p className="text-sm text-slate-400 text-center py-8">All directories resolved ✓</p>
-                : needsAttentionEntries.map(([k, info]) => (
-                    <DirRow
-                      key={k}
-                      entryKey={k}
-                      info={{ ...info, raw: draftValues[k] ?? info.raw }}
-                      driveMappings={driveMappings}
-                      onBrowse={handleBrowse}
-                      onReveal={handleReveal}
-                      onChange={handleChange}
-                    />
-                  ))
-            )}
-            {activeTab === "found" && (
-              foundEntries.length === 0
-                ? <p className="text-sm text-slate-400 text-center py-8">No directories found.</p>
-                : foundEntries.map(([k, info]) => (
-                    <DirRow
-                      key={k}
-                      entryKey={k}
-                      info={{ ...info, raw: draftValues[k] ?? info.raw }}
-                      driveMappings={driveMappings}
-                      onBrowse={handleBrowse}
-                      onReveal={handleReveal}
-                      onChange={handleChange}
-                    />
-                  ))
-            )}
-          </div>
-
-          <div className="border-t border-ink-700 px-4 py-3 bg-ink-900/40 flex items-center justify-between gap-2">
-            <span className="text-xs text-slate-500 truncate">
-              {dirty ? "Unsaved changes" : "No pending changes"}
-            </span>
-            <button
-              disabled={!dirty || saving}
-              onClick={handleSave}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-sm font-medium ${
-                dirty && !saving
-                  ? "bg-accent-500 hover:bg-accent-400 text-white"
-                  : "bg-ink-700 text-slate-500 cursor-not-allowed"
-              }`}
-            >
-              <Save size={14} />
-              {saving ? "Saving..." : "Update directories"}
-            </button>
-          </div>
-        </section>
-
-        {/* RIGHT: app grid */}
-        <section className="flex flex-col bg-ink-800/40 border border-ink-700 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700 gap-3">
-            <h2 className="font-semibold flex items-center gap-2 shrink-0">
-              <Rocket size={16} /> Available tools
-            </h2>
-            <div className="flex-1 max-w-xs relative">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search apps..."
-                className="w-full pl-8 pr-3 py-1.5 rounded bg-ink-900/60 border border-ink-700 text-sm focus:border-accent-500 focus:outline-none"
-              />
+            <div className="flex items-center gap-2">
+              <div className="relative" style={{ width: 240 }}>
+                <Search
+                  size={14}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2"
+                  style={{ color: C.inkFaint }}
+                />
+                <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search apps…"
+                  className="w-full pl-8 pr-3 py-1.5 rounded text-sm outline-none"
+                  style={{
+                    background: C.surface,
+                    border: "1px solid " + C.border,
+                    borderRadius: 6,
+                    color: C.ink,
+                    fontFamily: "IBM Plex Sans, sans-serif",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              {missing.length > 0 && (
+                <Pill tone="warn" icon={<AlertTriangle size={11} />}>
+                  {missing.length} path{missing.length === 1 ? "" : "s"} unresolved
+                </Pill>
+              )}
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto p-3">
-            {filteredApps.length === 0 && (
-              <p className="text-sm text-slate-400 text-center py-12">
-                {apps.length === 0 ? "Loading apps..." : "No apps match your search."}
-              </p>
-            )}
-            {filteredApps.map(app => (
-              <AppCard
-                key={app.name}
-                app={app}
-                missingKeys={missing}
-                onLaunch={handleLaunch}
-                launching={launchingApp === app.name}
+
+          <div className="flex-1 overflow-y-auto p-4">
+            {filteredApps.length === 0 ? (
+              <EmptyState
+                icon={<Search size={28} />}
+                title={apps.length === 0 ? "Loading apps…" : "No apps match your search."}
+                hint={
+                  apps.length === 0
+                    ? "Reading app_information.txt from the bundled python-app folder."
+                    : "Try a different name."
+                }
               />
-            ))}
+            ) : (
+              <div className="space-y-5">
+                {GROUPS.map((g) => {
+                  const list = groupedApps.byGroup.get(g.id) || [];
+                  if (list.length === 0) return null;
+                  return (
+                    <div key={g.id}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span style={{ color: C.teal }}>{g.icon}</span>
+                        <h3
+                          className="text-xs font-semibold uppercase tracking-wider"
+                          style={{ color: C.inkMuted }}
+                        >
+                          {g.label}
+                        </h3>
+                        <span
+                          className="px-1.5 py-0.5 rounded-full text-[10px]"
+                          style={{ background: C.subtle, color: C.inkFaint }}
+                        >
+                          {list.length}
+                        </span>
+                        <span className="text-[11px] truncate" style={{ color: C.inkFaint }}>
+                          {g.hint}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                        {list.map((app) => (
+                          <AppCard
+                            key={app.name}
+                            app={app}
+                            missingKeys={missing}
+                            onLaunch={handleLaunch}
+                            launching={launchingApp === app.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {groupedApps.other.length > 0 && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3
+                        className="text-xs font-semibold uppercase tracking-wider"
+                        style={{ color: C.inkMuted }}
+                      >
+                        Other
+                      </h3>
+                      <span
+                        className="px-1.5 py-0.5 rounded-full text-[10px]"
+                        style={{ background: C.subtle, color: C.inkFaint }}
+                      >
+                        {groupedApps.other.length}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
+                      {groupedApps.other.map((app) => (
+                        <AppCard
+                          key={app.name}
+                          app={app}
+                          missingKeys={missing}
+                          onLaunch={handleLaunch}
+                          launching={launchingApp === app.name}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </section>
       </main>
 
       {/* Footer */}
       {layout && (
-        <footer className="px-6 py-1.5 border-t border-ink-700 bg-ink-900/40 text-[10px] text-slate-500 font-mono flex items-center gap-3 overflow-hidden">
-          <span className="shrink-0">{layout.isPackaged ? "📦 packaged" : "🛠 dev"}</span>
-          <span className="truncate" title={layout.venvPythonExe}>{layout.venvPythonExe}</span>
+        <footer
+          className="px-6 py-1.5 text-[10px] flex items-center gap-3 overflow-hidden"
+          style={{
+            borderTop: "1px solid " + C.border,
+            background: C.subtle2,
+            color: C.inkFaint,
+            fontFamily: FONT_MONO,
+          }}
+        >
+          <span className="shrink-0">{layout.isPackaged ? "packaged" : "dev"}</span>
+          <span className="truncate" title={layout.venvPythonExe}>
+            {layout.venvPythonExe}
+          </span>
         </footer>
       )}
+
+      {/* Directories modal */}
+      <Modal
+        open={settingsOpen}
+        title="Default directories"
+        subtitle="Paths resolve against the drive labels detected on this machine."
+        onCancel={() => setSettingsOpen(false)}
+        width={760}
+        footer={
+          <>
+            <span className="mr-auto text-xs" style={{ color: dirty ? C.amber : C.inkFaint }}>
+              {dirty ? "Unsaved changes" : "No pending changes"}
+            </span>
+            <Button variant="secondary" onClick={() => setSettingsOpen(false)}>
+              Close
+            </Button>
+            <Button variant="primary" disabled={!dirty || saving} onClick={handleSave}>
+              <Save size={14} />
+              {saving ? "Saving…" : "Update directories"}
+            </Button>
+          </>
+        }
+      >
+        <Tabs
+          tabs={[
+            { id: "needs", label: "Needs attention", count: needsAttentionEntries.length },
+            { id: "found", label: "Found", count: foundEntries.length },
+          ]}
+          active={activeTab}
+          onChange={setActiveTab}
+        />
+        <div className="pt-3">
+          {activeTab === "needs" &&
+            (needsAttentionEntries.length === 0 ? (
+              <EmptyState
+                icon={<Check size={24} style={{ color: C.teal }} />}
+                title="All directories resolved ✓"
+                hint="Every configured path was found on this machine."
+              />
+            ) : (
+              needsAttentionEntries.map(([k, info]) => (
+                <DirRow
+                  key={k}
+                  entryKey={k}
+                  info={{ ...info, raw: draftValues[k] ?? info.raw }}
+                  driveMappings={driveMappings}
+                  onBrowse={handleBrowse}
+                  onReveal={handleReveal}
+                  onChange={handleChange}
+                />
+              ))
+            ))}
+          {activeTab === "found" &&
+            (foundEntries.length === 0 ? (
+              <EmptyState icon={<FolderOpen size={24} />} title="No directories found." />
+            ) : (
+              foundEntries.map(([k, info]) => (
+                <DirRow
+                  key={k}
+                  entryKey={k}
+                  info={{ ...info, raw: draftValues[k] ?? info.raw }}
+                  driveMappings={driveMappings}
+                  onBrowse={handleBrowse}
+                  onReveal={handleReveal}
+                  onChange={handleChange}
+                />
+              ))
+            ))}
+        </div>
+      </Modal>
 
       <Toast toast={toast} onClose={() => setToast(null)} />
     </div>

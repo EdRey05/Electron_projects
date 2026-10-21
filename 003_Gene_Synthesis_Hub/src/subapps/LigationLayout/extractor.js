@@ -20,6 +20,7 @@
  */
 
 import * as XLSX from "xlsx";
+import { buildHeaderMap, resolveColumn, resolveColumns, columnResolutionLog } from "../../ui/columns.js";
 
 const DEFAULT_HOST = "TOP10";
 const DEFAULT_TEMP = "37C";
@@ -81,9 +82,14 @@ export function extractVectorDbLookups(arrayBuffer) {
   };
 
   // --- Vector sheet (cols A=Name, B=Size, C=Resistance) ---
+  // `raw: true` so numeric cells stay NUMBERS. The Python reads the sheet
+  // with openpyxl's `iter_rows(values_only=True)` — raw values, no display
+  // formatting. With `raw: false` a size of 2710 formatted as "#,##0" comes
+  // back as the string "2,710", `Number("2,710")` is NaN, and the vector is
+  // silently DROPPED from the length map.
   const vectorSheet = wb.Sheets["Vector"];
   if (vectorSheet) {
-    const aoa = XLSX.utils.sheet_to_json(vectorSheet, { header: 1, blankrows: false, raw: false });
+    const aoa = XLSX.utils.sheet_to_json(vectorSheet, { header: 1, blankrows: false, raw: true });
     for (let i = 1; i < aoa.length; i++) {
       const r = aoa[i] || [];
       const rawVname = r[0];
@@ -97,9 +103,11 @@ export function extractVectorDbLookups(arrayBuffer) {
       }
       // Length
       const rawSize = r[1];
-      const sizeNum = Number(rawSize);
-      if (Number.isFinite(sizeNum)) {
-        result.length[vname] = sizeNum;
+      if (rawSize != null && rawSize !== "") {
+        const sizeNum = Number(rawSize);
+        if (Number.isFinite(sizeNum)) {
+          result.length[vname] = sizeNum;
+        }
       }
     }
   }
@@ -107,7 +115,7 @@ export function extractVectorDbLookups(arrayBuffer) {
   // --- Digested_Vectors sheet (cols A=Box, B=Name, C=Enzymes, D=Lot, E=Conc, F=Length) ---
   const digSheet = wb.Sheets["Digested_Vectors"];
   if (digSheet) {
-    const aoa = XLSX.utils.sheet_to_json(digSheet, { header: 1, blankrows: false, raw: false });
+    const aoa = XLSX.utils.sheet_to_json(digSheet, { header: 1, blankrows: false, raw: true });
     for (let i = 1; i < aoa.length; i++) {
       const r = aoa[i] || [];
       const rawName = r[1];
@@ -116,15 +124,32 @@ export function extractVectorDbLookups(arrayBuffer) {
       const enzyme = r[2] != null ? String(r[2]).trim() : "";
       const box = r[0] != null ? String(r[0]).trim() : "";
       const lot = r[3] != null ? String(r[3]).trim() : "";
-      const concNum = Number(r[4]);
+      const rawConc = r[4];
+      let concNum = NaN;
+      if (rawConc != null && rawConc !== "") {
+        const n = Number(rawConc);
+        if (Number.isFinite(n)) concNum = n;
+      }
       result.digested[`${vectorName}\0${enzyme}`] = {
         lot,
         box_position: box,
         concentration: Number.isFinite(concNum) ? concNum : null,
       };
       // Overwrite length with the lot-specific length if present.
-      const lenNum = Number(r[5]);
-      if (Number.isFinite(lenNum)) result.length[vectorName] = lenNum;
+      //
+      // Guard against a BLANK cell: `Number("")` is 0, and 0 IS finite, so
+      // a naive check would write a 0 length and DESTROY the vector's true
+      // size (5 of the 83 rows in the real Vector_database.xlsx have a blank
+      // "Vector length" cell). The Python reads the cell as None there and
+      // leaves the previous length alone. We only override when the cell
+      // actually holds a number.
+      const rawLen = r[5];
+      if (rawLen != null && rawLen !== "") {
+        const lenNum = Number(rawLen);
+        if (Number.isFinite(lenNum) && lenNum > 0) {
+          result.length[vectorName] = lenNum;
+        }
+      }
     }
   }
 
@@ -139,6 +164,12 @@ export function extractVectorDbLookups(arrayBuffer) {
  *     jobs_needing_manual_entry: [ jobIds that exist but have placeholder vector ],
  *   }
  *
+ * Column resolution: the Python source reads the Job Log with pandas and
+ * names the columns directly ("Work No.", "BBI ID", "Vector", "Cloning
+ * Site", "Resistance", "Length (bp)"). We resolve them the same way, but
+ * tolerate the legacy spellings and fall back to the historic positions so
+ * an older workbook copy still loads.
+ *
  * Caller must prompt for manual entries via the modal, then call
  * `applyManualEntries(extractionResult, manualResults)` to get the
  * final rows.
@@ -147,17 +178,43 @@ export function extractJobLogInfo(arrayBuffer, jobIds) {
   const wb = XLSX.read(arrayBuffer, { type: "array" });
   const sheet = wb.Sheets["Initiated"];
   if (!sheet) throw new Error("Sheet 'Initiated' not found in Job Log");
-  const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: false });
+  // `raw: true` so numeric cells stay NUMBERS. With `raw: false` a cell
+  // formatted as `#,##0` comes back as the string "2,686" and a cell
+  // formatted `0.0` as "2686.5" — the Python (pandas) yields the number
+  // 2686 / 2686.5, and the layout's Length (bp) column is then written as
+  // a text cell instead of a number.
+  const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: true });
 
   // First row is the header. Build a column-index map from header names.
-  const headers = (aoa[0] || []).map((h) => String(h || "").trim());
-  const col = (name) => headers.indexOf(name);
-  const COL_JOB_ID = col("Work No.");
-  const COL_BBID = col("BBI ID");
-  const COL_VECTOR = col("Vector");
-  const COL_ENZYME = col("Cloning Site");
-  const COL_RESISTANCE = col("Resistance");
-  const COL_LENGTH = col("Length (bp)");
+  const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
+  const headerMap = buildHeaderMap(headers);
+  const find = (candidates) => {
+    for (const c of candidates) {
+      if (c in headerMap) return headerMap[c];
+    }
+    return null;
+  };
+  // Historic positional fallbacks: Work No.=A(0), BBI ID=B(1), Vector=C(2),
+  // Cloning Site=D(3), Resistance=E(4), Length (bp)=F(5).
+  const COL_JOB_ID = find(["work no.", "jobid", "job id", "job_id"]) ?? 0;
+  const COL_BBID = find(["bbi id", "bbid"]) ?? 1;
+  const COL_VECTOR = find(["vector"]) ?? 2;
+  const COL_ENZYME = find(["cloning site", "cloningsite", "enzyme", "enzymes"]) ?? 3;
+  const COL_RESISTANCE = find(["resistance", "antibiotic"]) ?? 4;
+  const COL_LENGTH = find(["length (bp)", "length"]) ?? 5;
+
+  // Provenance report: which path fired for each column (name vs fixed
+  // fallback), using the shared helper so the wording matches the rest of
+  // the hub.
+  const resolution = resolveColumns(headers, [
+    { key: "workNo", label: "Work No.", candidates: ["Work No.", "JobID", "Job ID", "Job_ID"], fallback: 0 },
+    { key: "bbiId", label: "BBI ID", candidates: ["BBI ID", "BBID"], fallback: 1 },
+    { key: "vector", label: "Vector", candidates: ["Vector"], fallback: 2 },
+    { key: "cloningSite", label: "Cloning Site", candidates: ["Cloning Site", "CloningSite", "Enzyme", "Enzymes"], fallback: 3 },
+    { key: "resistance", label: "Resistance", candidates: ["Resistance", "Antibiotic"], fallback: 4 },
+    { key: "length", label: "Length (bp)", candidates: ["Length (bp)", "Length"], fallback: 5 },
+  ]);
+  const resolutionLog = columnResolutionLog("Initiated", resolution);
 
   const jobRows = {};
   const missing_from_log = [];
@@ -192,6 +249,7 @@ export function extractJobLogInfo(arrayBuffer, jobIds) {
     missing_from_log,
     jobs_needing_manual_entry,
     columns: { COL_JOB_ID, COL_BBID, COL_VECTOR, COL_ENZYME, COL_RESISTANCE, COL_LENGTH },
+    resolutionLog,
   };
 }
 
@@ -266,8 +324,8 @@ export function buildLayoutRowsWithControls(finalRows, specialConditions = {}) {
     const key = `${row.vector}\0${row.enzyme}`;
     if (!currentGroup || currentGroup.key !== key) {
       if (currentGroup) {
-        // Emit CK- for the previous group
-        out.push(buildControlRow(currentGroup.rows[0], "-"));
+        // Emit the negative control for the previous group
+        out.push(buildNegativeControlRow(currentGroup.rows[0]));
       }
       currentGroup = { key, rows: [] };
     }
@@ -281,7 +339,7 @@ export function buildLayoutRowsWithControls(finalRows, specialConditions = {}) {
     currentGroup.rows.push(row);
   }
   if (currentGroup) {
-    out.push(buildControlRow(currentGroup.rows[0], "-"));
+    out.push(buildNegativeControlRow(currentGroup.rows[0]));
   }
   // Positive control at end
   out.push({
@@ -297,9 +355,22 @@ export function buildLayoutRowsWithControls(finalRows, specialConditions = {}) {
   return out;
 }
 
-function buildControlRow(templateRow, prefix) {
+/**
+ * Build the NEGATIVE control row for a (vector, enzyme) group.
+ *
+ * The Python (`ligation_layout_app.py:1725-1734`) writes the Work No. as
+ *   f"CK-{vector}-{cloning_site}"   ->   "CK-pUC19-EcoRI"
+ * with a SINGLE hyphen. The old React template
+ * (`CK${prefix}-${vector}-${enzyme}` with prefix="-") produced
+ * "CK--pUC19-EcoRI" — a doubled hyphen that does not match the Python's
+ * output value. Consumers that pattern-match "CK" (Colony PCR Layout drops
+ * control rows via `Name.startsWith("CK")`, and the Python's own
+ * `work_no.startswith("CK-")` control check) still work, but the Work No.
+ * written into the Layout sheet was wrong.
+ */
+function buildNegativeControlRow(templateRow) {
   return {
-    job_id: `CK${prefix}-${templateRow.vector}-${templateRow.enzyme}`,
+    job_id: `CK-${templateRow.vector}-${templateRow.enzyme}`,
     bbid: "",
     vector: templateRow.vector,
     enzyme: templateRow.enzyme,
@@ -311,33 +382,126 @@ function buildControlRow(templateRow, prefix) {
 }
 
 /**
+ * Fragment column resolution.
+ *
+ * The Python reads the fragments workbook with pandas (`read_excel`), so
+ * the data columns are addressed BY NAME ("Position", "Gene Name",
+ * "Purity Pass", "Yield Pass", "Sequence"). The one exception is the
+ * "PCR Fragments" sheet's Concentration, which the Python takes
+ * positionally (`df_pcr_filtered.iloc[:, 6]`).
+ *
+ * We resolve each column by header name first (whitespace collapsed,
+ * lowercased — see `src/ui/columns.js`) and fall back to the historic
+ * positional index when the header is not present. "Sequence" has NO
+ * positional fallback: without it the Python's else-branch sets
+ * "Insert Length" to 0 for every row.
+ */
+const FRAGMENT_COLUMNS = {
+  position: { candidates: ["Position"], fallback: 0 },
+  geneName: { candidates: ["Gene Name", "GeneName"], fallback: 1 },
+  purityPass: { candidates: ["Purity Pass", "PurityPass"], fallback: 3 },
+  yieldPass: { candidates: ["Yield Pass", "YieldPass"], fallback: 4 },
+  sequence: { candidates: ["Sequence"], fallback: -1 },
+  concentration: { candidates: ["Concentration"], fallback: 6 },
+};
+
+/**
+ * Resolve the fragment columns of one sheet.
+ * Returns { position, geneName, purityPass, yieldPass, sequence,
+ *           concentration, <key>ByName }.
+ */
+function resolveFragmentColumns(headers) {
+  const headerMap = buildHeaderMap(headers);
+  const out = {};
+  for (const [key, spec] of Object.entries(FRAGMENT_COLUMNS)) {
+    const r = resolveColumn(headerMap, spec.candidates, spec.fallback);
+    out[key] = r.idx;
+    out[`${key}ByName`] = r.byName;
+  }
+  return out;
+}
+
+/**
+ * Turn one sheet row into a fragment row, or null when the row has no
+ * Gene Name (the Python's `dropna(subset=["Gene Name"])`).
+ */
+function readFragmentRow(r, cols, sheetName) {
+  const geneCell = cols.geneName >= 0 ? r[cols.geneName] : null;
+  // pandas' `dropna(subset=["Gene Name"])` treats an EMPTY STRING as NA
+  // too ("" is in pandas' default NA list), so an empty cell drops the
+  // row exactly like a missing one.
+  if (geneCell == null || geneCell === "") return null;
+
+  // Insert Length is the LENGTH OF THE SEQUENCE STRING — the Python does
+  //   df["Insert Length"] = df["Sequence"].fillna("").astype(str).str.len()
+  // and then drops the Sequence column. A missing Sequence column (or a
+  // missing cell) yields 0.
+  const seqCell = cols.sequence >= 0 ? r[cols.sequence] : null;
+  const seq = seqCell != null ? String(seqCell) : "";
+
+  let concentration = null;
+  if (cols.concentration >= 0) {
+    const rawConc = r[cols.concentration];
+    if (rawConc != null && rawConc !== "") {
+      const n = Number(rawConc);
+      if (Number.isFinite(n)) concentration = n;
+    }
+  }
+
+  return {
+    sheetName,
+    position: cols.position >= 0 && r[cols.position] != null ? String(r[cols.position]) : "",
+    geneName: String(geneCell),
+    purityPass: cols.purityPass >= 0 && r[cols.purityPass] != null ? String(r[cols.purityPass]) : "",
+    yieldPass: cols.yieldPass >= 0 && r[cols.yieldPass] != null ? String(r[cols.yieldPass]) : "",
+    insertLength: seq.length,
+    concentration,
+  };
+}
+
+/**
  * Read fragments file, pick relevant sheets (current/previous month
  * prefix + the special "PCR Fragments" sheet), consolidate them.
  *
  * Returns: { rows: [{ sheetName, position, geneName, purityPass, insertLength, concentration? }] }
  */
 export function extractFragments(arrayBuffer, sheetPrefixes = generateSheetPrefixes()) {
+  return extractFragmentsWithReport(arrayBuffer, sheetPrefixes).rows;
+}
+
+/**
+ * Same as `extractFragments`, but also returns the Python's log lines so
+ * the UI can show the provenance (which sheets were read, whether the
+ * "Sequence" column was found, …).
+ *
+ * Returns: { rows: [...], logs: [string, ...] }
+ */
+export function extractFragmentsWithReport(
+  arrayBuffer,
+  sheetPrefixes = generateSheetPrefixes()
+) {
   const wb = XLSX.read(arrayBuffer, { type: "array" });
   const allSheets = wb.SheetNames;
   const out = [];
+  const logs = [];
+  let anySequenceColumn = false;
 
   // Special "PCR Fragments" sheet has priority.
   if (allSheets.includes("PCR Fragments")) {
     const sheet = wb.Sheets["PCR Fragments"];
     const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: false });
+    const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
+    const cols = resolveFragmentColumns(headers);
+    logs.push("    - Checking special sheet 'PCR Fragments'...");
+    let pcrCount = 0;
     for (let i = 1; i < aoa.length; i++) {
-      const r = aoa[i] || [];
-      if (r[1] == null) continue; // Gene Name in column B (index 1)
-      out.push({
-        sheetName: "PCR Fragments",
-        position: r[0] != null ? String(r[0]) : "",
-        geneName: String(r[1]),
-        purityPass: r[3] != null ? String(r[3]) : "",
-        yieldPass: r[4] != null ? String(r[4]) : "",
-        insertLength: 0, // computed from Sequence column if present
-        concentration: r[6] != null ? Number(r[6]) : null,
-      });
+      const row = readFragmentRow(aoa[i] || [], cols, "PCR Fragments");
+      if (!row) continue;
+      out.push(row);
+      pcrCount++;
     }
+    if (cols.sequenceByName) anySequenceColumn = true;
+    logs.push(`      > Found ${pcrCount} PCR fragments.`);
   }
 
   // Monthly sheets
@@ -345,33 +509,41 @@ export function extractFragments(arrayBuffer, sheetPrefixes = generateSheetPrefi
     .filter((name) => sheetPrefixes.some((p) => name.startsWith(p)))
     .sort()
     .reverse(); // newest first
+  if (monthlySheets.length > 0) {
+    logs.push(
+      `  > Found ${monthlySheets.length} matching monthly sheets ` +
+        `(sorted newest to oldest): [${monthlySheets.join(", ")}]`
+    );
+  }
   for (const sheetName of monthlySheets) {
     const sheet = wb.Sheets[sheetName];
     const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: false });
     // Build column map from header row
-    const headers = (aoa[0] || []).map((h) => String(h || "").trim());
-    const colPos = headers.indexOf("Position");
-    const colGene = headers.indexOf("Gene Name");
-    const colPurity = headers.indexOf("Purity Pass");
-    const colYield = headers.indexOf("Yield Pass");
-    const colSeq = headers.indexOf("Sequence");
+    const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
+    const cols = resolveFragmentColumns(headers);
+    if (cols.sequenceByName) anySequenceColumn = true;
+    let sheetCount = 0;
     for (let i = 1; i < aoa.length; i++) {
-      const r = aoa[i] || [];
-      if (r[colGene] == null) continue;
-      const seq = colSeq >= 0 && r[colSeq] != null ? String(r[colSeq]) : "";
-      out.push({
-        sheetName,
-        position: colPos >= 0 && r[colPos] != null ? String(r[colPos]) : "",
-        geneName: String(r[colGene]),
-        purityPass: colPurity >= 0 && r[colPurity] != null ? String(r[colPurity]) : "",
-        yieldPass: colYield >= 0 && r[colYield] != null ? String(r[colYield]) : "",
-        insertLength: seq ? seq.length : 0,
-        concentration: null, // monthly sheets don't carry concentration
-      });
+      const row = readFragmentRow(aoa[i] || [], cols, sheetName);
+      if (!row) continue;
+      // Monthly sheets don't carry a Concentration column (the Python only
+      // fills it in for the "PCR Fragments" sheet).
+      out.push({ ...row, concentration: null });
+      sheetCount++;
     }
+    logs.push(`    - Processing sheet '${sheetName}'...`);
+    logs.push(`      > Rows with Gene Name: ${sheetCount}`);
   }
 
-  return out;
+  if (anySequenceColumn) {
+    logs.push("  > Calculating insert length from 'Sequence' column...");
+  } else {
+    logs.push(
+      "  > WARNING: 'Sequence' column not found. 'Insert Length' will be set to 0."
+    );
+  }
+
+  return { rows: out, logs };
 }
 
 export function getDefaultHost() { return DEFAULT_HOST; }

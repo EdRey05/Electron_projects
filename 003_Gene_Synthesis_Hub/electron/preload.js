@@ -3,7 +3,7 @@
  * No nodeIntegration, full context isolation: the renderer never sees
  * `require`, `process`, or the filesystem directly.
  */
-const { contextBridge, ipcRenderer } = require("electron");
+const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
   // Drive discovery (used at startup and on manual refresh).
@@ -80,4 +80,22 @@ contextBridge.exposeInMainWorld("api", {
   // Native open-file dialog (returns path or null).
   chooseFile: ({ filter } = {}) =>
     ipcRenderer.invoke("hub:chooseFile", { filter }),
+
+  // Absolute path of a File picked through an <input type=file>.
+  // Electron 32+ removed the `File.path` property from the renderer, so
+  // `webUtils.getPathForFile` is the supported way to turn a File into a
+  // filesystem path. Returns "" when the File is not backed by disk.
+  getPathForFile: (file) => {
+    try {
+      return webUtils.getPathForFile(file) || "";
+    } catch {
+      return "";
+    }
+  },
+
+  // Resolve bundled template / database patterns to concrete file paths.
+  // Patterns come from app_information.txt (e.g. "Sequencing_order_form_v*.xlsx");
+  // the main process globs the newest match in python-app/Templates|Databases.
+  resolveBundledFiles: ({ templates, databases } = {}) =>
+    ipcRenderer.invoke("hub:resolveBundledFiles", { templates, databases }),
 });

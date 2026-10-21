@@ -3,9 +3,11 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook
 
-Version: 1.1
-Date: Mar 30, 2026
-Notes: Fixed issue with hub-passed directories.
+Version: 1.2
+Date: Oct 13, 2026
+Notes: Extracted fields use the canonical job-log naming
+       (bbi_id, plasmid_no, quantity); output table headers are
+       BBI ID / Plasmid No. / Quantity.
 """
 
 import customtkinter as ctk
@@ -104,7 +106,7 @@ class ResuspensionPrep:
                 return
 
             # Prepare data list with the required header
-            self.extracted_data = [["BBID", "Plasmid_ID", "Plasmid_Qty", "OD_260_280", "OD_260_230"]]
+            self.extracted_data = [["BBI ID", "Plasmid No.", "Quantity", "OD_260_280", "OD_260_230"]]
             
             processed_count = 0
             for folder_name in extracted_zips_names:
@@ -127,9 +129,9 @@ class ResuspensionPrep:
                     if row_data:
                         # Append the extracted data in the correct order
                         self.extracted_data.append([
-                            row_data.get("BBID", ""),
-                            row_data.get("Plasmid_ID", ""),
-                            row_data.get("Plasmid_Qty", ""),
+                            row_data.get("bbi_id", ""),
+                            row_data.get("plasmid_no", ""),
+                            row_data.get("quantity", ""),
                             row_data.get("OD_260_280", ""),
                             row_data.get("OD_260_230", "")
                         ])
@@ -242,8 +244,8 @@ class ResuspensionPrep:
                 data = self.extract_data_from_batch_doc(doc_obj)
             elif report_type == self.WGK_TYPE:
                 data = self.extract_data_from_wgk_doc(doc_obj)
-                # WGK reports require an additional step to get the Plasmid ID
-                data["Plasmid_ID"] = self.extract_plasmid_id_from_wgk_folder(folder_path)
+                # WGK reports require an additional step to get the Plasmid No.
+                data["plasmid_no"] = self.extract_plasmid_no_from_wgk_folder(folder_path)
 
             self.log(f"[OK] \t Extracted data from {doc_name}")
             return data
@@ -265,7 +267,7 @@ class ResuspensionPrep:
         """
         data = {"OD_260_230": ""} # This value is not present in BATCH reports
         
-        # Table 1: BBID, Plasmid No., Plasmid Qty.
+        # Table 1: BBI ID, Plasmid No., Quantity.
         if len(doc_obj.tables) > 0:
             found_count = 0
             table1 = doc_obj.tables[0]
@@ -274,13 +276,13 @@ class ResuspensionPrep:
                     # Search for labels and grab the text from the cell to the right
                     cell_text = cell.text.strip().lower()
                     if "bbi id" in cell_text and i + 1 < len(row.cells):
-                        data["BBID"] = row.cells[i+1].text.strip()
+                        data["bbi_id"] = row.cells[i+1].text.strip()
                         found_count += 1
                     if "plasmid no." in cell_text and i + 1 < len(row.cells):
-                        data["Plasmid_ID"] = row.cells[i+1].text.strip()
+                        data["plasmid_no"] = row.cells[i+1].text.strip()
                         found_count += 1
                     if "plasmid qty." in cell_text and i + 1 < len(row.cells):
-                        data["Plasmid_Qty"] = row.cells[i+1].text.strip()
+                        data["quantity"] = row.cells[i+1].text.strip()
                         found_count += 1
                 
                 # If all 3 items are found, we can stop searching this table
@@ -314,20 +316,20 @@ class ResuspensionPrep:
                 for i, cell in enumerate(row.cells):
                     if "bbi id" in cell.text.lower() and i + 2 < len(row.cells):
                         # For WGK, the value is two cells to the right of the label
-                        data["BBID"] = row.cells[i+2].text.strip()
+                        data["bbi_id"] = row.cells[i+2].text.strip()
                         found_bbi_id = True
                         break # Exit inner cell loop
                 if found_bbi_id:
                     break # Exit outer row loop
 
-        # Table 2: Plasmid Qty
+        # Table 2: Quantity
         if len(doc_obj.tables) > 1:
             found_qty = False
             table2 = doc_obj.tables[1]
             for row in table2.rows:
                 for i, cell in enumerate(row.cells):
                     if "plasmid qty" in cell.text.lower() and i + 2 < len(row.cells):
-                        data["Plasmid_Qty"] = row.cells[i+2].text.strip()
+                        data["quantity"] = row.cells[i+2].text.strip()
                         found_qty = True
                         break
                 if found_qty:
@@ -352,9 +354,9 @@ class ResuspensionPrep:
                     break
         return data
 
-    def extract_plasmid_id_from_wgk_folder(self, folder_path: str) -> str:
+    def extract_plasmid_no_from_wgk_folder(self, folder_path: str) -> str:
         """
-        Finds the Plasmid ID from an .ab1 file in a subfolder for WGK reports.
+        Finds the Plasmid No. from an .ab1 file in a subfolder for WGK reports.
         """
         seq_results_folder = os.path.join(folder_path, "OriginalSequencingResults")
         # Check if the specific subfolder exists
@@ -364,10 +366,10 @@ class ResuspensionPrep:
         
         for filename in os.listdir(seq_results_folder):
             if filename.lower().endswith(".ab1"):
-                # The Plasmid ID is the part of the filename before the first dot
-                plasmid_id = filename.split('.')[0]
-                self.log(f"[OK] \t Found Plasmid ID '{plasmid_id}' from file '{filename}'")
-                return plasmid_id
+                # The Plasmid No. is the part of the filename before the first dot
+                plasmid_no = filename.split('.')[0]
+                self.log(f"[OK] \t Found Plasmid No. '{plasmid_no}' from file '{filename}'")
+                return plasmid_no
         
         self.log(f"[WARNING] \t No .ab1 files found in 'OriginalSequencingResults' for {os.path.basename(folder_path)}")
         return ""

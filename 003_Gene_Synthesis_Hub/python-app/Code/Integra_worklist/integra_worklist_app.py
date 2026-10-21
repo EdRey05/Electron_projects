@@ -3,9 +3,14 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 4.2
-Date: Jun 10, 2026
-Notes: Validation output reordered to match extraction log format. Renamed columns.
+Version: 4.3
+Date: Oct 10, 2026
+Notes: Column names follow the canonical job-log naming: Work No., BBI ID,
+    Plasmid No. (internal df columns work_no/bbi_id/plasmid_no); ratio
+    displays align with the validation template (OD260/280, OD260/230).
+    Single-entries mode: Gene ID field/input renamed to Work No. The Integra
+    automation-string header (SampleID;SourceDeckPosition;...) is the
+    liquid-handler format and stays unchanged.
 """
 
 ###############################################################################
@@ -111,10 +116,10 @@ with bulk_mode_tab:
 
     # Create initial empty df
     bm_df_columns = [
-        "Job_ID",
-        "BBID",
+        "work_no",
+        "bbi_id",
         "Clone",
-        "Vector_number",
+        "plasmid_no",
         "Notes",
         "Concentration",
         "ratio_260_280",
@@ -126,14 +131,14 @@ with bulk_mode_tab:
 
     # Column aliases for display matching extraction log format
     _COLUMN_LABELS = {
-        "Job_ID": "Work No.",
-        "BBID": "BBI ID",
+        "work_no": "Work No.",
+        "bbi_id": "BBI ID",
         "Clone": "Clone and Plate Source",
-        "Vector_number": "Plasmid No.",
+        "plasmid_no": "Plasmid No.",
         "Notes": "Notes",
         "Concentration": "Concentration",
-        "ratio_260_280": "A260/280",
-        "ratio_260_230": "A260/230",
+        "ratio_260_280": "OD260/280",
+        "ratio_260_230": "OD260/230",
         "Seq_reactions": "Seq reactions",
         "Seq_well": "Seq well",
     }
@@ -162,15 +167,15 @@ with bulk_mode_tab:
     if create_worklist or "bm_df" in st.session_state:
         # 1. Filter for rows that the user actually filled in.
         active_df = bm_displayed_df.loc[
-            (bm_displayed_df["Job_ID"].fillna("") != "")
-            & (bm_displayed_df["Vector_number"].fillna("") != "")
+            (bm_displayed_df["work_no"].fillna("") != "")
+            & (bm_displayed_df["plasmid_no"].fillna("") != "")
         ].copy()
 
         # 2. If no valid rows, stop.
         if active_df.empty:
             if create_worklist:  # Only show warning if button was clicked
                 st.warning(
-                    "Please fill in at least one row with both 'Job_ID' and 'Vector_number'."
+                    "Please fill in at least one row with both 'Work No.' and 'Plasmid No.'."
                 )
             st.stop()
 
@@ -182,7 +187,7 @@ with bulk_mode_tab:
                 or (active_df["Seq_reactions"] == "").any()
             ):
                 st.error(
-                    "Error: 'Auto-sort' is checked, but some rows are missing a 'Seq_reactions' number."
+                    "Error: 'Auto-sort' is checked, but some rows are missing a 'Seq reactions' number."
                 )
                 st.stop()
 
@@ -192,14 +197,14 @@ with bulk_mode_tab:
             )
             if numeric_reactions.isnull().any():
                 st.error(
-                    "Error: 'Auto-sort' is checked, but the 'Seq_reactions' column contains non-numeric values."
+                    "Error: 'Auto-sort' is checked, but the 'Seq reactions' column contains non-numeric values."
                 )
                 st.stop()
 
-            # Sort by reaction number (DESC), then Job_ID (ASC) for tie-breaking.
+            # Sort by reaction number (DESC), then Work No. (ASC) for tie-breaking.
             # This establishes the primary order for auto-well assignment.
             active_df = active_df.sort_values(
-                by=['Seq_reactions', 'Job_ID'],
+                by=['Seq_reactions', 'work_no'],
                 ascending=[False, True]
             ).reset_index(drop=True)
 
@@ -258,7 +263,7 @@ with bulk_mode_tab:
                 or (active_df["Seq_well"] == "").any()
             ):
                 st.error(
-                    "Error: 'Auto-assign wells' is unchecked, but some rows are missing a 'Seq_well' value."
+                    "Error: 'Auto-assign wells' is unchecked, but some rows are missing a 'Seq well' value."
                 )
                 st.stop()
 
@@ -308,12 +313,12 @@ with bulk_mode_tab:
         # Derive remaining columns for the automation string
         # Assumes sample format like T0618P2A1, where slicing gives the well
         # NEW: Strip "Stbl" suffix if present (e.g., U0416P1A5Stbl30C → A5)
-        active_df["Source_well"] = active_df["Vector_number"].str.slice(7).str.replace(r"Stbl.*$", "", regex=True)
+        active_df["Source_well"] = active_df["plasmid_no"].str.slice(7).str.replace(r"Stbl.*$", "", regex=True)
         active_df["Target_well"] = active_df["Seq_well"].str.replace(
             r"[#\(\)]", "", regex=True
         )
         active_df["Automation_string"] = active_df.apply(
-            lambda row: f"{row['Job_ID']};{row['Source_spot']};{row['Source_well']};{row['Target_spot']};{row['Target_well']};{row['Transfer_volume']}",
+            lambda row: f"{row['work_no']};{row['Source_spot']};{row['Source_well']};{row['Target_spot']};{row['Target_well']};{row['Transfer_volume']}",
             axis=1,
         )
 
@@ -342,7 +347,7 @@ with bulk_mode_tab:
             # Create a temporary DataFrame for display by dropping unwanted columns
             display_df = st.session_state["bm_df"].drop(
                 columns=[
-                    "BBID",
+                    "bbi_id",
                     "Notes",
                     "Concentration",
                     "ratio_260_280",
@@ -365,10 +370,10 @@ with bulk_mode_tab:
 
             # Define columns to keep (input order matches extraction log format)
             validation_columns = [
-                "Job_ID",
-                "BBID",
+                "work_no",
+                "bbi_id",
                 "Clone",
-                "Vector_number",
+                "plasmid_no",
                 "Notes",
                 "Concentration",
                 "ratio_260_280",
@@ -398,9 +403,9 @@ with bulk_mode_tab:
                     validation_df.groupby("Clone")
                     .agg(
                         {
-                            "Job_ID": "first",
-                            "BBID": "first",
-                            "Vector_number": lambda x: (
+                            "work_no": "first",
+                            "bbi_id": "first",
+                            "plasmid_no": lambda x: (
                                 x.iloc[0]
                                 if len(x) == 1
                                 else x.iloc[0] + "x" + str(len(x))
@@ -438,12 +443,12 @@ with bulk_mode_tab:
             # Rename columns to match extraction log format
             validation_df = validation_df.rename(
                 columns={
-                    "Job_ID": "Work No.",
-                    "BBID": "BBI ID",
+                    "work_no": "Work No.",
+                    "bbi_id": "BBI ID",
                     "Clone": "Clone and Plate Source",
-                    "Vector_number": "Plasmid No.",
-                    "ratio_260_280": "A260/280",
-                    "ratio_260_230": "A260/230",
+                    "plasmid_no": "Plasmid No.",
+                    "ratio_260_280": "OD260/280",
+                    "ratio_260_230": "OD260/230",
                 }
             )
 
@@ -481,9 +486,9 @@ with single_entries_tab:
 
     # Display widgets to enter sample information
     with row1_col1:
-        gene_ID = st.text_input(
-            "Gene ID",
-            key="gene_ID",
+        work_no = st.text_input(
+            "Work No.",
+            key="work_no",
             placeholder="None",
         )
     with row1_col2:
@@ -547,7 +552,7 @@ with single_entries_tab:
     row4_col1, row4_col2 = st.columns([4, 1])
 
     # Error prevention/handling
-    if gene_ID == "":
+    if work_no == "":
         st.session_state["error_1"] = True
     else:
         st.session_state["error_1"] = False
@@ -561,7 +566,7 @@ with single_entries_tab:
         st.session_state["error_3"] = False
 
     # Messages to explicitely show what has been clicked for each sample
-    message_1 = f"Transfer: {st.session_state.get('gene_ID', '')}"
+    message_1 = f"Transfer: {st.session_state.get('work_no', '')}"
     message_2 = f"From: {st.session_state.get('source_well', '')}"
     message_3 = f"To: {st.session_state.get('target_well', '')}"
     with row3_col1:
@@ -580,7 +585,7 @@ with single_entries_tab:
             "df",
             pd.DataFrame(
                 columns=[
-                    "Gene_ID",
+                    "work_no",
                     "Source_spot",
                     "Source_well",
                     "Target_spot",
@@ -601,13 +606,13 @@ with single_entries_tab:
         else:
             # Add current selection and sample info to worklist
             new_row = {
-                "Gene_ID": gene_ID,
+                "work_no": work_no,
                 "Source_spot": source_spot,
                 "Source_well": st.session_state["source_well"],
                 "Target_spot": target_spot,
                 "Target_well": st.session_state["target_well"],
                 "Transfer_volume": transfer_volume,
-                "Automation_string": f"{gene_ID};{source_spot};{st.session_state['source_well']};{target_spot};{st.session_state['target_well']};{transfer_volume}",
+                "Automation_string": f"{work_no};{source_spot};{st.session_state['source_well']};{target_spot};{st.session_state['target_well']};{transfer_volume}",
             }
             df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
             st.session_state["df"] = df

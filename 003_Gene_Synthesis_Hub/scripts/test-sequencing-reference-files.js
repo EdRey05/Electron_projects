@@ -13,10 +13,22 @@ const src = readFileSync(
 );
 
 // Strip ESM and eval.
+//
+// The extractor imports the shared column helpers from
+// src/ui/columns.js; the stripped source still calls them, so they have
+// to be injected into the eval scope.
 const stripped = src
   .replace(/^import .* from .*;$/gm, "")
   .replace(/^export /gm, "");
-const fn = new Function(stripped + "\nreturn { resolveColumnIndices, planOutputs };");
+const columnsSrc = readFileSync(
+  resolve(ROOT, "src/ui/columns.js"),
+  "utf8"
+)
+  .replace(/^import .* from .*;$/gm, "")
+  .replace(/^export /gm, "");
+const fn = new Function(
+  columnsSrc + "\n" + stripped + "\nreturn { resolveColumnIndices, planOutputs };"
+);
 const { resolveColumnIndices, planOutputs } = fn();
 
 let failed = 0;

@@ -14,9 +14,9 @@ Notes: Workflow for automating SnapGene to create .dna files. Adds two
         a modal dialog the user must acknowledge, followed by a visible
         10-second countdown before any keystrokes fire.
 
-    2. Mid-run focus check. Before each JobID's automation block, verifies
+    2. Mid-run focus check. Before each Work No.'s automation block, verifies
         SnapGene is the foreground window (via win32gui). If not, shows a
-        3-button dialog: Retry (recheck focus and restart current JobID),
+        3-button dialog: Retry (recheck focus and restart current Work No.),
         Continue (proceed anyway), or Cancel Run (abort).
 
     pyautogui FailSafe (mouse to top-left corner) remains the fastest
@@ -30,7 +30,7 @@ import pandas as pd
 import pyautogui
 import pyperclip
 
-from .helpers import get_row_for_jobid, get_field_from_row
+from .helpers import get_row_for_work_no, get_field_from_row
 
 
 # --- Foreground-window detection (lazy import for non-Windows safety) ---
@@ -61,7 +61,7 @@ def _is_snapgene_foreground():
 # via master.after() and signal the worker's choice back with threading
 # Events.
 
-def _show_ready_dialog(master, jobid_count):
+def _show_ready_dialog(master, work_no_count):
     """Show the pre-start 'Ready' dialog. Blocks until user clicks OK or
     Cancel. Returns 'ok' or 'cancel'.
     """
@@ -83,7 +83,7 @@ def _show_ready_dialog(master, jobid_count):
     ).pack(pady=(20, 8), padx=20)
 
     body = (
-        f"All {jobid_count} JobID(s) are loaded.\n\n"
+        f"All {work_no_count} Work No. are loaded.\n\n"
         "Click OK, then switch to SnapGene during the countdown."
     )
     ctk.CTkLabel(dialog, text=body, justify="center").pack(pady=(0, 16), padx=20)
@@ -269,7 +269,7 @@ def _show_switch_countdown_dialog(master, seconds):
     dialog.wait_window()
 
 
-def _show_focus_loss_dialog(master, jid):
+def _show_focus_loss_dialog(master, work_no):
     """Show the mid-run 'SnapGene lost focus' dialog. Returns one of:
     'retry', 'continue', 'cancel'.
     """
@@ -292,7 +292,7 @@ def _show_focus_loss_dialog(master, jid):
 
     body = (
         f"SnapGene is no longer the active window\n"
-        f"before processing JobID {jid}.\n\n"
+        f"before processing Work No. {work_no}.\n\n"
         "Switch back to SnapGene, then choose an option:"
     )
     ctk.CTkLabel(dialog, text=body, justify="center").pack(pady=(0, 14), padx=20)
@@ -318,13 +318,13 @@ def _show_focus_loss_dialog(master, jid):
     # X button on the title bar counts as Cancel Run.
     dialog.protocol("WM_DELETE_WINDOW", lambda: choose("cancel"))
 
-    # Retry: recheck focus and restart the current JobID
+    # Retry: recheck focus and restart the current Work No.
     ctk.CTkButton(
         button_row, text="Retry", command=lambda: choose("retry"),
         fg_color="#3C702D", hover_color="#4CAF50",
     ).grid(row=0, column=0, padx=4, sticky="ew")
 
-    # Continue: skip the focus check for this JobID and proceed anyway
+    # Continue: skip the focus check for this Work No. and proceed anyway
     ctk.CTkButton(
         button_row, text="Continue", command=lambda: choose("continue"),
     ).grid(row=0, column=1, padx=4, sticky="ew")
@@ -385,9 +385,9 @@ class VectorMapPrepSnapGene:
         self.app = app_instance
         self.log_queue = app_instance.log_queue
 
-    # --- per-JobID automation block (unchanged behavior) ---
-    def _automate_one(self, jid, vector, insert):
-        """Run the pyautogui sequence for a single JobID. Caller is
+    # --- per-Work No. automation block (unchanged behavior) ---
+    def _automate_one(self, work_no, vector, insert):
+        """Run the pyautogui sequence for a single Work No. Caller is
         responsible for any focus verification and retry handling.
         """
         # 1. New file
@@ -401,8 +401,8 @@ class VectorMapPrepSnapGene:
         pyautogui.press("tab", presses=19, interval=0.2)
         time.sleep(0.75)
 
-        # 4. Paste JobID as the file name
-        pyperclip.copy(jid)
+        # 4. Paste Work No. as the file name
+        pyperclip.copy(work_no)
         pyautogui.hotkey("ctrl", "v")
         time.sleep(0.75)
         # 5. Tab to 'Create' button and press Enter
@@ -436,8 +436,8 @@ class VectorMapPrepSnapGene:
         # 12. Save file
         pyautogui.hotkey("ctrl", "s")
         time.sleep(0.75)
-        # 13. Type JobID as filename
-        pyperclip.copy(jid)
+        # 13. Type Work No. as filename
+        pyperclip.copy(work_no)
         pyautogui.hotkey("ctrl", "v")
         time.sleep(0.75)
         # 14. Press Enter to save
@@ -447,7 +447,7 @@ class VectorMapPrepSnapGene:
         pyautogui.hotkey("ctrl", "w")
         time.sleep(0.75)
 
-    def run_processing_task(self, excel_path, output_dir, jobids):
+    def run_processing_task(self, excel_path, output_dir, work_nos):
         """The main processing logic for this workflow, run in a thread."""
         # output_dir is ignored in this workflow as SnapGene saves to its default folder.
         master = self.app.master
@@ -488,34 +488,34 @@ class VectorMapPrepSnapGene:
                 self.log_queue.put(f"Warning: Failed to load sheet {sheet}: {e}")
 
         # --- Step 1: Gather all data in memory first ---
-        self.log_queue.put("Gathering data for all JobIDs...")
+        self.log_queue.put("Gathering data for all Work No....")
         records_to_process = []
-        for jid in jobids:
+        for work_no in work_nos:
             row = None
             for sheet in sheets_to_load:
-                row = get_row_for_jobid(dfs.get(sheet), jid)
+                row = get_row_for_work_no(dfs.get(sheet), work_no)
                 if row is not None:
                     break
 
             if row is None:
-                self.log_queue.put(f"  -> JobID {jid} not found. Skipping.")
+                self.log_queue.put(f"  -> Work No. {work_no} not found. Skipping.")
                 continue
 
-            final_vector = get_field_from_row(
-                row, ["Final Vector", "FinalVector"], fallback_index=8
+            final_vector_sequence = get_field_from_row(
+                row, ["Final Vector Sequence", "Final Vector", "FinalVector"], fallback_index=8
             )
-            insert_seq = get_field_from_row(
-                row, ["Insert Seq", "InsertSeq"], fallback_index=7
+            insert_sequence = get_field_from_row(
+                row, ["Insert Sequence", "Insert Seq", "InsertSeq"], fallback_index=7
             )
 
-            if not final_vector:
-                self.log_queue.put(f"  -> No 'Final Vector' for {jid}. Skipping.")
+            if not final_vector_sequence:
+                self.log_queue.put(f"  -> No 'Final Vector Sequence' for {work_no}. Skipping.")
                 continue
 
             records_to_process.append(
-                {"jobid": jid, "vector": final_vector, "insert": insert_seq}
+                {"work_no": work_no, "vector": final_vector_sequence, "insert": insert_sequence}
             )
-            self.log_queue.put(f"  -> Data for {jid} collected.")
+            self.log_queue.put(f"  -> Data for {work_no} collected.")
 
         if not records_to_process:
             self.log_queue.put("No valid records found to process.")
@@ -525,7 +525,7 @@ class VectorMapPrepSnapGene:
         # --- Step 2: Pre-start "Ready" dialog ---
         total = len(records_to_process)
         self.log_queue.put(
-            f"\nAll {total} JobID(s) loaded. Waiting for user confirmation..."
+            f"\nAll {total} Work No. loaded. Waiting for user confirmation..."
         )
         self.log_queue.put(
             "A dialog will appear. Click OK, then switch to SnapGene."
@@ -565,13 +565,13 @@ class VectorMapPrepSnapGene:
 
         self.log_queue.put("Launching SnapGene automation...")
 
-        # --- Step 4: Per-JobID automation with focus check ---
+        # --- Step 4: Per-Work No. automation with focus check ---
         try:
             for i, record in enumerate(records_to_process, start=1):
-                jid = record["jobid"]
+                work_no = record["work_no"]
                 vector = record["vector"]
                 insert = record["insert"]
-                self.log_queue.put(f"[{i}/{total}] Processing: {jid}")
+                self.log_queue.put(f"[{i}/{total}] Processing: {work_no}")
 
                 # Mid-run focus check (with retry loop).
                 # After Retry/Continue the user has just clicked a button on
@@ -583,11 +583,11 @@ class VectorMapPrepSnapGene:
                         break  # proceed with automation
 
                     self.log_queue.put(
-                        f"  -> SnapGene is not the foreground window before {jid}."
+                        f"  -> SnapGene is not the foreground window before {work_no}."
                     )
                     try:
                         action = _ask_main_thread(
-                            master, _show_focus_loss_dialog, master, jid
+                            master, _show_focus_loss_dialog, master, work_no
                         )
                     except Exception as e:
                         self.log_queue.put(f"Could not show focus-loss dialog: {e}")
@@ -596,7 +596,7 @@ class VectorMapPrepSnapGene:
 
                     if action == "cancel":
                         self.log_queue.put(
-                            f"Aborted by user after focus loss on JobID {jid}."
+                            f"Aborted by user after focus loss on Work No. {work_no}."
                         )
                         return
 
@@ -620,23 +620,23 @@ class VectorMapPrepSnapGene:
                             # through to the focus re-check.
                         if action == "continue":
                             self.log_queue.put(
-                                f"  -> Continuing past focus check for {jid}."
+                                f"  -> Continuing past focus check for {work_no}."
                             )
                             break
                         # action == "retry": loop and recheck focus
 
                 # Run the actual automation block
                 try:
-                    self._automate_one(jid, vector, insert)
+                    self._automate_one(work_no, vector, insert)
                 except pyautogui.FailSafeException:
                     self.log_queue.put(
-                        f"  -> Aborted via pyautogui FailSafe on JobID {jid}."
+                        f"  -> Aborted via pyautogui FailSafe on Work No. {work_no}."
                     )
                     self.log_queue.put("Aborting run.")
                     return
                 except Exception as e:
                     self.log_queue.put(
-                        f"  -> An error occurred during automation for {jid}: {e}"
+                        f"  -> An error occurred during automation for {work_no}: {e}"
                     )
                     self.log_queue.put("  -> Aborting automation.")
                     self.log_queue.put(
@@ -655,7 +655,7 @@ class VectorMapPrepSnapGene:
             # Brief sleep before the final puts: gives the app's queue
             # pump (master.after(100, ...)) a chance to drain any earlier
             # log messages and also makes sure "Automation complete."
-            # shows up AFTER all per-JobID log lines, in the right order.
+            # shows up AFTER all per-Work No. log lines, in the right order.
             time.sleep(0.3)
             self.log_queue.put("\nAutomation complete.")
             self.log_queue.put("DONE")

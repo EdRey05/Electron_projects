@@ -3,9 +3,14 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 2.2
-Date: Mar 30, 2026
-Notes: Fixed issue with hub-passed directories.
+Version: 2.4
+Date: Oct 13, 2026
+Notes: Added BATCH Post-Processing workflow to the workflow list. v2.4
+    removes the __init__ theme application (an always-missing theme
+    path fell back to the blue theme and mutated the hub process's
+    global ctk theme, re-styling every app opened afterwards); the app
+    now inherits the hub appearance like the other subapps, and main()
+    uses the standard standalone convention (System + blue).
 """
 
 import configparser
@@ -30,6 +35,8 @@ from workflows.inhouse_oldnames import InHouseOldNames
 from workflows.internal_renaming import InternalRenaming
 from workflows.wgk_correction import WgkCorrection
 from workflows.resuspension_prep import ResuspensionPrep
+from workflows.batch_post_processing import BatchPostProcessing
+from workflows.inhouse_qc_new import InHouseQcNew
 
 # 2. Add a tuple to this list: (Display Name, ClassName)
 WORKFLOWS_TO_LOAD = [
@@ -38,6 +45,8 @@ WORKFLOWS_TO_LOAD = [
     ("Internal Renaming", InternalRenaming),
     ("WGK Correction", WgkCorrection),
     ("Resuspension Prep", ResuspensionPrep),
+    ("BATCH Post-Processing", BatchPostProcessing),
+    ("In-House QC New (from scratch)", InHouseQcNew),
 ]
 
 
@@ -55,15 +64,11 @@ class QCFilePrepApp(ctk.CTkFrame):
         if self.master:
             self.master.geometry("1000x720")
 
-        # --- Theme Configuration (Hub-consistent) ---
-        # Apply the same appearance mode and theme as the Gene Synthesis Hub
-        ctk.set_appearance_mode("Light")
-        theme_path = os.path.join(os.path.dirname(SCRIPT_DIR), "app_theme_midnight.json")
-        if os.path.exists(theme_path):
-            ctk.set_default_color_theme(theme_path)
-        else:
-            # Fallback to blue theme if midnight theme not found
-            ctk.set_default_color_theme("blue")
+        # Appearance/theme: NOT set here. The hub owns the process-wide
+        # appearance (Light + app_theme_midnight.json); apps that re-apply a
+        # theme in __init__ mutate ctk's GLOBAL theme state and re-style every
+        # app launched afterwards. Standalone runs get the standard-app theme
+        # in main() below.
 
         # --- 1. Common Setup ---
         # Read from hub's default_directories.ini (parent directory)
@@ -77,6 +82,7 @@ class QCFilePrepApp(ctk.CTkFrame):
             'Gene_Invoicing_Db': gene_invoicing_db_path,
             'Gel_Ladder': gel_ladder_path,
             'Job_Log': job_log_path,
+            'QC_Output_Folder': output_folder,
         }
 
         self.input_folder = ctk.StringVar()
@@ -89,6 +95,8 @@ class QCFilePrepApp(ctk.CTkFrame):
 
         folder_frame = ctk.CTkFrame(top_panel)
         folder_frame.pack(pady=8)
+        self.folder_frame = folder_frame
+        self.top_panel = top_panel
         ctk.CTkLabel(
             folder_frame,
             text="Folder with Zips:",
@@ -186,6 +194,18 @@ class QCFilePrepApp(ctk.CTkFrame):
         # Show the selected workflow
         active_workflow = self.workflows[selected_name]
         active_workflow.frame.pack(fill="both", expand=True)
+
+        # 'Folder with Zips' is only used by zip-input workflows; hide it for
+        # workflows that declare NEEDS_INPUT_FOLDER = False.
+        needs_folder = getattr(active_workflow, "NEEDS_INPUT_FOLDER", True)
+        if needs_folder:
+            self.folder_frame.pack_configure(in_=self.top_panel)
+            try:
+                self.folder_frame.lift()
+            except Exception:
+                pass
+        else:
+            self.folder_frame.pack_forget()
 
         self.log(f"--- Switched to '{selected_name}' workflow ---")
         active_workflow.setup_default_paths()
@@ -308,17 +328,11 @@ class QCFilePrepApp(ctk.CTkFrame):
 
 
 if __name__ == "__main__":
+    # Standalone entry point: own process, standard-app appearance.
+    ctk.set_appearance_mode("System")
+    ctk.set_default_color_theme("blue")
     root = ctk.CTk()
     root.title("BBI QC File Prep Hub")
     root.geometry("1200x650")
-    
-    # Apply hub-consistent theme
-    ctk.set_appearance_mode("Light")
-    theme_path = os.path.join(os.path.dirname(SCRIPT_DIR), "app_theme_midnight.json")
-    if os.path.exists(theme_path):
-        ctk.set_default_color_theme(theme_path)
-    else:
-        ctk.set_default_color_theme("blue")
-    
     app = QCFilePrepApp(master=root)
     root.mainloop()

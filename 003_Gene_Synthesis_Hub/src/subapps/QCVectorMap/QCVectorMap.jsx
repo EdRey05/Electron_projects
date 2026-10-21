@@ -1,21 +1,28 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   FileSpreadsheet,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
   FlaskConical,
   FolderOpen,
-  Download,
+  Dna,
 } from "lucide-react";
 import {
   loadPrimerLogSheets,
   primerLogHasRequiredSheets,
   getRowForJobId,
-  getFieldFromRow,
+  readResolvedField,
 } from "./excelHelpers.js";
+import { columnResolutionLog } from "../../ui/columns.js";
 import { buildGenbank } from "./genbankWriter.js";
+import {
+  C,
+  AppHeader,
+  Button,
+  Panel,
+  FilePickerRow,
+  StatusLine,
+  LogPanel,
+  FONT_MONO,
+} from "../../ui/kit.jsx";
 
 /**
  * QC Vector Map Prep — React port of `vector_map_prep_biopython.py`.
@@ -24,16 +31,17 @@ import { buildGenbank } from "./genbankWriter.js";
  *   - User picks a Primer Log .xlsx (validated to contain `input addon` and/or
  *     `Obsolete input addon(completed)` sheets).
  *   - User picks an output folder via Electron's `dialog:showOpenDialog`.
- *   - User pastes JobIDs (one per line).
- *   - For each JobID: locate the row in either relevant sheet, pull
- *     `Final Vector` (col I, fallback index 8) and `Insert Seq` (col H,
- *     fallback index 7), emit a GenBank file with the insert annotated
- *     (single feature for in-frame inserts, two features for wrap-around).
+ *   - User pastes Work Nos (one per line).
+ *   - For each Work No.: locate the row in either relevant sheet, pull
+ *     `Final Vector Sequence` (col I, fallback index 8) and `Insert Sequence`
+ *     (col H, fallback index 7), emit a GenBank file with the insert
+ *     annotated (single feature for in-frame inserts, two features for
+ *     wrap-around).
  *
  * Differences from the Tkinter original:
  *   - No thread: the loop runs async/await with `setTimeout(0)` yields so
- *     the log textbox keeps rendering per-JobID.
- *   - Output is one folder for all JobIDs; user picks once via the OS dialog
+ *     the log textbox keeps rendering per-Work-No.
+ *   - Output is one folder for all Work Nos; user picks once via the OS dialog
  *     rather than the Tkinter filedialog.
  *   - SnapGene automation workflow is NOT ported (see BUILD.md "Why this
  *     split" — it requires pyautogui + win32gui which have no JS analogue).
@@ -109,8 +117,6 @@ export default function QCVectorMap({ onBack, initialPaths }) {
       const picked = await window.api.chooseOutputDir(outputDir);
       if (picked) setOutputDir(picked);
     } else {
-      // Browser fallback: <input webkitdirectory> — Electron always has the
-      // native API so this is mainly for running outside Electron.
       alert("Output folder picker requires the Electron host. Open via Gene Synthesis Hub.exe.");
     }
   };
@@ -135,6 +141,11 @@ export default function QCVectorMap({ onBack, initialPaths }) {
       }
       for (const s of sheets) {
         appendLog(`Loaded sheet: ${s.name} (${s.rows.length} rows)`);
+        // Three-way provenance report, matching the Python apps:
+        //   "columns resolved by name (...)" /
+        //   "header row not recognized; falling back to fixed columns (...)" /
+        //   "partial header match; fixed fallback used for missing columns (...)"
+        appendLog(columnResolutionLog(s.name, s.resolution));
       }
 
       const total = jobids.length;
@@ -142,45 +153,38 @@ export default function QCVectorMap({ onBack, initialPaths }) {
       const failures = [];
       for (let i = 0; i < total; i++) {
         const jid = jobids[i];
-        appendLog(`[${i + 1}/${total}] Processing JobID: ${jid}`);
+        appendLog(`[${i + 1}/${total}] Processing Work No.: ${jid}`);
         setStatus({ text: `Processing ${jid} (${i + 1}/${total})`, color: "info" });
 
         // Look in each sheet, first hit wins.
         let row = null;
+        let sourceSheet = null;
         for (const s of sheets) {
           row = getRowForJobId(s.rows, s.headers, jid);
-          if (row) break;
+          if (row) {
+            sourceSheet = s;
+            break;
+          }
         }
         if (!row) {
-          appendLog(`  -> JobID ${jid} not found. Skipping.`);
+          appendLog(`  -> Work No. ${jid} not found. Skipping.`);
           failures.push({ jid, reason: "Not found" });
           continue;
         }
 
-        // Resolve headers from whichever sheet gave us the row.
-        const headers = (() => {
-          for (const s of sheets) {
-            if (s.rows.includes(row)) return s.headers;
-          }
-          return sheets[0].headers;
-        })();
-
-        const finalVector = getFieldFromRow(
-          row,
-          headers,
-          ["Final Vector", "FinalVector"],
-          8
-        );
-        const insertSeq = getFieldFromRow(
-          row,
-          headers,
-          ["Insert Seq", "InsertSeq"],
-          7
-        );
+        // Use the resolution provenance of the sheet that gave us the row,
+        // so the value comes from exactly the column that was logged.
+        const resolution = sourceSheet?.resolution;
+        const finalVector = resolution
+          ? readResolvedField(row, resolution.indices.finalVectorSequence)
+          : "";
+        const insertSeq = resolution
+          ? readResolvedField(row, resolution.indices.insertSequence)
+          : "";
 
         if (!finalVector) {
-          appendLog(`  -> No 'Final Vector' for ${jid}. Skipping.`);
-          failures.push({ jid, reason: "Final Vector missing" });
+          appendLog(`  -> No 'Final Vector Sequence' for ${jid}. Skipping.`);
+          failures.push({ jid, reason: "Final Vector Sequence missing" });
           continue;
         }
 
@@ -232,171 +236,120 @@ export default function QCVectorMap({ onBack, initialPaths }) {
   // ------------------------------------------------------------
   // Render
   // ------------------------------------------------------------
-  const statusColors = {
-    info: "text-accent-400",
-    good: "text-good",
-    warn: "text-warn",
-    bad:  "text-bad",
-  };
-
   return (
-    <div className="h-full flex flex-col bg-ink-900 text-slate-100">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-ink-700 bg-ink-800/60">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-sm"
-          >
-            <ArrowLeft size={14} /> Hub
-          </button>
-          <div className="w-9 h-9 rounded-lg bg-accent-500/15 flex items-center justify-center">
-            <FlaskConical size={18} className="text-accent-400" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg leading-tight">QC Vector Map Prep</h1>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              BioPython workflow — generates GenBank (.gb) files annotated with the insert sequence.
-              For SnapGene automation, use the legacy QC Digestion Design subapp.
-            </p>
-          </div>
-        </div>
-      </header>
+    <div className="h-full flex flex-col" style={{ background: C.paper, color: C.ink }}>
+      <AppHeader
+        onBack={onBack}
+        icon={<FlaskConical size={18} color="#fff" />}
+        title="QC Vector Map Prep"
+        subtitle="BioPython workflow — generates GenBank (.gb) files annotated with the insert sequence"
+      />
 
-      <main className="flex-1 overflow-y-auto p-6 space-y-5">
-        {/* Primer Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FileSpreadsheet size={16} className="text-accent-400" /> Primer Log
-          </h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              readOnly
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-5">
+          {/* Primer Log */}
+          <Panel
+            icon={<FileSpreadsheet size={15} style={{ color: C.teal }} />}
+            title="Primer Log"
+            subtitle="Must contain 'input addon' and/or 'Obsolete input addon(completed)'"
+          >
+            <FilePickerRow
+              inputRef={fileInputRef}
               value={primerFileName}
-              placeholder="No file selected"
-              className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
+              onPick={handleFile}
+              valid={primerFileValid}
+              error={primerFileError}
+              hint="Validated (input addon sheet found)"
             />
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx"
-              className="hidden"
-              onChange={(e) => handleFile(e.target.files?.[0])}
+          </Panel>
+
+          {/* Output folder */}
+          <Panel
+            icon={<FolderOpen size={15} style={{ color: C.teal }} />}
+            title="Output Folder"
+            subtitle="Destination for the generated .gb files"
+          >
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={outputDir}
+                onChange={(e) => setOutputDir(e.target.value)}
+                placeholder="Click 'Select…' to choose an output folder"
+                className="flex-1 px-3 py-2 rounded text-xs outline-none"
+                style={{
+                  background: C.surface,
+                  border: "1px solid " + C.border,
+                  borderRadius: 6,
+                  color: outputDir ? C.ink : C.inkFaint,
+                  fontFamily: FONT_MONO,
+                  userSelect: "text",
+                }}
+              />
+              <Button variant="primary" onClick={chooseOutputDir}>
+                Select…
+              </Button>
+            </div>
+          </Panel>
+
+          {/* Work Nos */}
+          <Panel
+            icon={<Dna size={15} style={{ color: C.teal }} />}
+            title="Work Nos (one per line)"
+            actions={
+              <span className="text-[11px]" style={{ color: C.inkFaint }}>
+                {jobids.length} parsed
+              </span>
+            }
+          >
+            <textarea
+              value={jobidsRaw}
+              onChange={(e) => setJobidsRaw(e.target.value)}
+              placeholder={"Paste Work Nos here…\njob-001\njob-002\n…"}
+              rows={6}
+              spellCheck={false}
+              className="w-full px-3 py-2 rounded text-sm outline-none resize-y"
+              style={{
+                background: C.surface,
+                border: "1px solid " + C.border,
+                borderRadius: 6,
+                color: C.ink,
+                fontFamily: FONT_MONO,
+                fontSize: 12,
+                userSelect: "text",
+              }}
             />
-            <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-            >
-              Select...
-            </button>
-          </div>
-          {primerFile && (
-            <div className="mt-2 text-xs">
-              {primerFileValid ? (
-                <span className="text-good flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Validated (input addon sheet found)
-                </span>
-              ) : (
-                <span className="text-bad flex items-center gap-1">
-                  <AlertCircle size={12} /> {primerFileError}
-                </span>
+          </Panel>
+
+          {/* Action */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <StatusLine status={status} running={running} />
+              {running && (
+                <div
+                  className="mt-2 h-1.5 rounded-full overflow-hidden"
+                  style={{ background: C.border }}
+                >
+                  <div
+                    className="h-full transition-all"
+                    style={{ width: `${Math.round(progress * 100)}%`, background: C.teal }}
+                  />
+                </div>
+              )}
+              {!running && results.failures.length > 0 && (
+                <div className="mt-1 text-xs" style={{ color: C.coral }}>
+                  Failures: {results.failures.map((f) => f.jid).join(", ")}
+                </div>
               )}
             </div>
-          )}
-        </section>
+            <Button variant="primary" size="lg" disabled={!canRun} onClick={runProcessing}>
+              {running
+                ? "Processing…"
+                : `Process ${jobids.length || ""} Work No.${jobids.length === 1 ? "" : "s"}`.trim()}
+            </Button>
+          </div>
 
-        {/* Output folder */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <FolderOpen size={16} className="text-accent-400" /> Output Folder
-          </h2>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              value={outputDir}
-              onChange={(e) => setOutputDir(e.target.value)}
-              placeholder="Click 'Select...' to choose an output folder"
-              className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-            />
-            <button
-              onClick={chooseOutputDir}
-              className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-            >
-              Select...
-            </button>
-          </div>
-        </section>
-
-        {/* JobIDs */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2">JobIDs (one per line)</h2>
-          <textarea
-            value={jobidsRaw}
-            onChange={(e) => setJobidsRaw(e.target.value)}
-            placeholder={"Paste JobIDs here...\njob-001\njob-002\n..."}
-            className="w-full h-32 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono focus:border-accent-500 focus:outline-none resize-y"
-            spellCheck={false}
-          />
-          <div className="mt-1 text-xs text-slate-400">
-            {jobids.length} JobID{jobids.length === 1 ? "" : "s"} parsed
-          </div>
-        </section>
-
-        {/* Action */}
-        <section className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <div className={`text-sm font-medium ${statusColors[status.color]}`}>
-              {running && <Loader2 size={14} className="inline animate-spin mr-1" />}
-              {status.text}
-            </div>
-            {running && (
-              <div className="mt-2 h-1.5 bg-ink-700 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-accent-500 transition-all"
-                  style={{ width: `${Math.round(progress * 100)}%` }}
-                />
-              </div>
-            )}
-            {!running && results.failures.length > 0 && (
-              <div className="mt-1 text-xs text-slate-400">
-                Failures: {results.failures.map((f) => f.jid).join(", ")}
-              </div>
-            )}
-          </div>
-          <button
-            disabled={!canRun}
-            onClick={runProcessing}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded font-medium ${
-              canRun
-                ? "bg-good hover:bg-good/90 text-white"
-                : "bg-ink-700 text-slate-500 cursor-not-allowed"
-            }`}
-          >
-            {running ? "Processing..." : `Process ${jobids.length || ""} JobID${jobids.length === 1 ? "" : "s"}`.trim()}
-          </button>
-        </section>
-
-        {/* Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
-            <h2 className="font-semibold">Log / Progress</h2>
-            <button
-              disabled={logs.length === 0}
-              onClick={() => setLogs([])}
-              className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-30"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="bg-black/30 font-mono text-xs text-slate-200 p-3 max-h-80 overflow-y-auto whitespace-pre-wrap">
-            {logs.length === 0 ? (
-              <span className="text-slate-500">Log output will appear here.</span>
-            ) : (
-              logs.map((l, i) => <div key={i}>{l.msg}</div>)
-            )}
-            <div ref={logEndRef} />
-          </div>
-        </section>
+          <LogPanel logs={logs} onClear={() => setLogs([])} endRef={logEndRef} title="Log / Progress" />
+        </div>
       </main>
     </div>
   );

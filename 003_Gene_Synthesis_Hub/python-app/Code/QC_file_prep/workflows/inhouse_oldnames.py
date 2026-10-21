@@ -3,9 +3,11 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook
 
-Version: 1.9
-Date: Mar 30, 2026
-Notes: Fixed issue with hub-passed directories.
+Version: 1.10
+Date: Oct 13, 2026
+Notes: QC folder-info keys follow the canonical job-log naming
+       (work_no, plasmid_no, bbi_id); the renamed folder and
+       gel-image name formats keep their shapes.
 """
 
 import os
@@ -316,11 +318,11 @@ class InHouseOldNames:
         qc_file_info = {}
         base_name = os.path.basename(folder_dir)
         try:
-            job_id, vector_num = base_name.split('.', 1)
-            qc_file_info['JobID'] = job_id
-            qc_file_info['Vector_number'] = vector_num
+            work_no, plasmid_no = base_name.split('.', 1)
+            qc_file_info['work_no'] = work_no
+            qc_file_info['plasmid_no'] = plasmid_no
         except ValueError:
-            self.log(f"[ERROR] \t Folder name '{base_name}' is not in 'JobID.Vector#' format. Skipping.")
+            self.log(f"[ERROR] \t Folder name '{base_name}' is not in 'WorkNo.PlasmidNo' format. Skipping.")
             return ProcessStatus.FAIL_FORMAT, None
 
         docx_subfolder_dir = os.path.join(folder_dir, base_name)
@@ -333,7 +335,7 @@ class InHouseOldNames:
             return ProcessStatus.FAIL_DOC_NOT_FOUND, None
         
         is_doc_format = doc_path.lower().endswith(self.DOC_EXTENSION)
-        qc_file_info['BBID'] = os.path.splitext(os.path.basename(doc_path))[0].split(' ')[0]
+        qc_file_info['bbi_id'] = os.path.splitext(os.path.basename(doc_path))[0].split(' ')[0]
 
         word_app = None
         temp_docx_path = None
@@ -420,7 +422,7 @@ class InHouseOldNames:
 
         # Sanitize folder name by removing characters invalid for filenames
         safe_vector_name = qc_file_info['Vector'].replace('/', '-').replace('\\', '-')
-        new_folder_name = f"{qc_file_info['JobID']} {qc_file_info['BBID']} in {safe_vector_name} {qc_file_info['delivery_date']}.{qc_file_info['Vector_number']}"
+        new_folder_name = f"{qc_file_info['work_no']} {qc_file_info['bbi_id']} in {safe_vector_name} {qc_file_info['delivery_date']}.{qc_file_info['plasmid_no']}"
         new_docx_file_dir = os.path.join(os.path.dirname(docx_subfolder_dir), new_folder_name)
         new_folder_dir = os.path.join(os.path.dirname(folder_dir), new_folder_name)
         
@@ -501,7 +503,7 @@ class InHouseOldNames:
             self.log(f"[ERROR] \t Gel images folder not found: {gel_images_folder}")
             return False
 
-        image_prefix = f"{qc_file_info['JobID']}.{qc_file_info['Vector_number']}"
+        image_prefix = f"{qc_file_info['work_no']}.{qc_file_info['plasmid_no']}"
         image_path = None
         
         # To improve performance, only search in folders from the last 6 months.

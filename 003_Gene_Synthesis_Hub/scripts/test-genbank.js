@@ -72,9 +72,40 @@ function check(name, condition, detail = "") {
   } else {
     const r = buildGenbank({ jobid: "test-002", finalVector: vector, insertSeq: insert });
     check("wrap-around insert ok", r.ok, r.error);
-    check("wrap-around has fragment 1+2",
-      r.ok && r.text.includes("fragment 1") && r.text.includes("fragment 2"));
+    // The Python (vector_map_prep_biopython.py) builds ONE feature whose
+    // location is a CompoundLocation of two parts:
+    //   FeatureLocation(start, len(seq)) and FeatureLocation(0, end)
+    // Biopython writes that as a single "join(start+1..len,1..end)"
+    // location on ONE misc_feature record.
+    check("wrap-around uses a single compound location",
+      r.ok && r.text.includes("misc_feature    join(14..16,1..1)"),
+      r.ok ? r.text.split("FEATURES")[1]?.split("ORIGIN")[0] : "");
+    check("wrap-around is ONE feature record, not two",
+      r.ok && (r.text.match(/misc_feature/g) || []).length === 1,
+      r.ok ? String((r.text.match(/misc_feature/g) || []).length) : "");
+    check("wrap-around has the Python's note qualifier",
+      r.ok && r.text.includes('/note="Insert sequence (wrap-around)"'));
+    check("wrap-around has the Python's label qualifier",
+      r.ok && r.text.includes('/label="Insert"'));
   }
+}
+
+// Test 2b: the in-frame insert is annotated at its REAL position inside the
+// final vector — NOT hard-coded to 1..insertLen (the Python locates the
+// insert inside the final vector and annotates the matched region).
+{
+  const vector = "ATG" + "GCTAGCTAGC".repeat(20) + "TTTT" + "GGGGCCCCAAATTTGGGCCC";
+  const insert = "GGGGCCCCAAATTTGGGCCC";
+  const r = buildGenbank({ jobid: "test-002b", finalVector: vector, insertSeq: insert });
+  check("in-frame insert ok", r.ok, r.error);
+  // The insert starts at 0-based 207 in a 227 bp vector -> "208..227".
+  check("in-frame insert annotated at its real position",
+    r.ok && r.text.includes("misc_feature    208..227"),
+    r.ok ? r.text.split("FEATURES")[1]?.split("ORIGIN")[0] : "");
+  check("in-frame insert is NOT annotated as 1..insertLen",
+    r.ok && !r.text.includes("misc_feature    1..20"));
+  check("in-frame insert has exactly one feature",
+    r.ok && (r.text.match(/misc_feature/g) || []).length === 1);
 }
 
 // Test 3: insert not found

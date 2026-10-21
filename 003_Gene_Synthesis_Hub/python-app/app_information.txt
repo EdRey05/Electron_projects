@@ -1,12 +1,13 @@
 [Ligation Layout]
 category = react_route
-path = subapps/LigationLayout
-entry = LigationLayout.jsx
+path = Code/Ligation_layout
+entry = ligation_layout_app.py
+class_name = LigationLayoutApp
 icon = 🧬
-version = 5.0
-date_released = 2026-08-23
+version = 3.2
+date_released = 2026-10-10
 status = success
-message = Fills empty layout template with ordered fragments and digested vectors. React port.
+message = Fills empty layout template with ordered fragments and digested vectors.
 requires = Job_Log, Fragments_Log
 pass_dir_as_kwarg = Job_Log:job_log_path; Fragments_Log:fragments_log_path
 pass_template_as_kwarg = ligation_template_path:Ligation_Template_v*.xlsx
@@ -14,63 +15,68 @@ pass_db_as_kwarg = vector_db_path:Vector_database.xlsx
 
 [Colony PCR Layout]
 category = react_route
-path = subapps/ColonyPCRLayout
-entry = ColonyPCRLayout.jsx
+path = Code/ColonyPCR_layout
+entry = ColonyPCR_layout_app.py
+class_name = ColonyPCRLayoutApp
 icon = 🧫
-version = 5.0
-date_released = 2026-08-23
+version = 1.5
+date_released = 2026-10-13
 status = success
-message = Generates Colony PCR layout from Ligation Layouts and the Primer Log. React port.
-requires =
+message = Generates Colony PCR layout from Ligation Layouts and the Primer Log.
+requires = 
 pass_dir_as_kwarg = Primer_Log:primer_log_path
 pass_template_as_kwarg = colony_pcr_template_path:ColonyPCR_layout_v*.xlsx
 
 [Primer Finder]
 category = react_route
-path = subapps/PrimerFinder
-entry = PrimerFinder.jsx
+path = Code/Primer_finder
+entry = primer_finder_app.py
+class_name = PrimerFinderApp
 icon = 🔬
-version = 2.0
-date_released = 2026-08-23
+version = 1.1
+date_released = 2026-10-10
 status = success
-message = Finds primers from all orders in the Primer Log that bind to a target sequence. React port — runs in-process, no Python.
+message = Finds primers from all orders in the Primer Log that bind to a target sequence.
 requires =
 pass_dir_as_kwarg = Primer_Log:primer_log_path
 
 [Sequencing Reference Files]
 category = react_route
-path = subapps/SequencingReferenceFiles
-entry = SequencingReferenceFiles.jsx
+path = Code/Sequencing_reference_files
+entry = Sequencing_reference_files_app.py
+class_name = SequencingReferenceFilesApp
 icon = 🧬
-version = 2.0
-date_released = 2026-08-23
+version = 1.2
+date_released = 2026-10-13
 status = success
-message = Extracts Insert and Final Vector sequences from the Primer Log and exports as .txt files. React port.
+message = Extracts Insert and Final Vector sequences from the Primer Log and exports as .txt files.
 requires =
 pass_dir_as_kwarg = Primer_Log:primer_log_path; Reference_Sequences:reference_files_path
 
 [Sequencing Order Form]
 category = react_route
-path = subapps/SequencingOrderForm
-entry = SequencingOrderForm.jsx
+path = Code/Sequencing_order_form
+entry = sequencing_order_form_app.py
+class_name = OrderFormGUI
 icon = 📝
-version = 5.0
-date_released = 2026-08-23
+version = 4.5
+date_released = 2026-10-15
 status = success
-message = Fills empty order form as specified in the sequencing validation file. React port.
+message = Fills empty order form as specified in the sequencing validation file.
 requires =
 pass_dir_as_kwarg = Primer_Log:primer_log_path
 pass_template_as_kwarg = empty_form_path:Sequencing_order_form_v*.xlsx; seq_layout_path:Sequencing_layout_v*.xlsx
 
 [Sequencing File Organizer]
 category = react_route
-path = subapps/SequencingFileOrganizer
-entry = SequencingFileOrganizer.jsx
+path = Code/Sequencing_file_organizer
+entry = sequencing_file_organizer_app.py
+class_name = SequencingFileOrganizerApp
 icon = 📑
-version = 5.0
-date_released = 2026-08-23
+version = 4.2
+date_released = 2026-10-13
 status = success
-message = Organizes .ab1 and .fasta files by Job ID. Distributes reference files. Generates SG Check document. React port.
+message = Organizes .ab1 and .fasta files by Work No. Distributes reference files. Generates SG Check document.
 requires =
 pass_dir_as_kwarg = Reference_Sequences:reference_sequences_path; Sorted_Sequencing_Files:sorted_sequencing_files_path; SG_Check_Output:sg_check_output_path
 pass_template_as_kwarg = sg_check_template_path:Gene_Seq_Log_v*.xlsx
@@ -81,23 +87,60 @@ path = Code/QC_file_prep
 entry = QC_file_prep_app.py
 class_name = QCFilePrepApp
 icon = 📁
-version = 2.2
-date_released = 2026-03-16
+version = 2.4
+date_released = 2026-10-13
 status = success
 message = Fixes zip QC files received from Sg.
 requires =
-pass_dir_as_kwarg = QC_Output_Folder:output_folder; QC_Gel_Ladder:gel_ladder_path; Gene_Invoicing_Db:gene_invoicing_db_path; Job_Log:job_log_path
+pass_dir_as_kwarg = QC_Output_Folder:output_folder; QC_Gel_Ladder:gel_ladder_path; Job_Log:job_log_path
+
+[BATCH QC Report]
+category = tkinter_import
+path = Code/BATCH_QC_report
+entry = batch_qc_report_app.py
+class_name = BatchQCReportApp
+icon = 📊
+version = 1.1
+date_released = 2026-10-10
+status = success
+message = Generates QC report from BATCH QC zip files: BBI ID, Plasmid No., sequences, OD values.
+requires =
 
 [Integra Worklist]
 category = streamlit
 path = Code/Integra_worklist
 entry = integra_worklist_app.py
 icon = 🔬
-version = 4.2
-date_released = 2026-06-10
+version = 4.3
+date_released = 2026-10-10
 status = success
 message = Create worklists for Integra ASSIST liquid handler.
 requires =
+
+[QC Digestion Design]
+category = tkinter_import
+path = Code/QC_digestion_design
+entry = QC_digestion_design_app.py
+class_name = QCDesignApp
+icon = ✂
+version = 1.4
+date_released = 2026-10-13
+status = success
+message = Prepares vector + insert maps. More functions to be added later.
+requires =
+pass_dir_as_kwarg = Primer_Log:primer_log_path
+
+[Label Generator]
+category = tkinter_import
+path = Code/Label_generator
+entry = label_generator_app.py
+class_name = LabelGeneratorApp
+icon = 🏷️
+version = 1.1
+date_released = 2026-10-13
+status = success
+message = Parses Sg shipping lists into Shipping_labels-format rows for the label printer. Copy data puts them on the clipboard.
+requires = 
 
 [QC Vector Map Prep]
 category = react_route
@@ -110,27 +153,3 @@ status = success
 message = Generates GenBank (.gb) files annotated with the insert sequence (BioPython workflow). React port. For SnapGene automation, see [QC Digestion Design] below.
 requires =
 pass_dir_as_kwarg = Primer_Log:primer_log_path
-
-[QC Digestion Design]
-category = tkinter_import
-path = Code/QC_digestion_design
-entry = QC_digestion_design_app.py
-class_name = QCDesignApp
-icon = ✂
-version = 1.2
-date_released = 2026-08-11
-status = success
-message = SnapGene automation workflow — drives pyautogui + win32gui. Stays Python because it requires native GUI automation.
-requires =
-pass_dir_as_kwarg = Primer_Log:primer_log_path
-
-[Backup Vector Logger]
-category = streamlit
-path = Code/Backup_vector_logger
-entry = backup_vector_logger_app.py
-icon = 🧪
-version = 1.6
-date_released = 2026-03-08
-status = success
-message = Interface to log in boxes the received WGK and BATCH vector backups.
-requires = Vector_Storage_Dir, Gene_Invoicing_Db

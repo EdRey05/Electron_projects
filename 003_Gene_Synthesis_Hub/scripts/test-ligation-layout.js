@@ -8,15 +8,35 @@ import * as XLSX from "xlsx";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, "..");
 
+// Load the shared column-resolution helpers so the modules under test can
+// use them (their `import` statements are stripped below).
+const columnsSrc = readFileSync(resolve(ROOT, "src/ui/columns.js"), "utf8")
+  .replace(/^export /gm, "");
+const columnHelpers = new Function(
+  "globalThis",
+  columnsSrc +
+    "\nreturn { normHeader, buildHeaderMap, resolveColumn, resolveColumns, columnLetter, columnResolutionLog };"
+)(globalThis);
+
 function loadExports(srcPath, exportsNeeded) {
   let src = readFileSync(srcPath, "utf8");
   src = src.replace(/^import .*?from\s+["'][^"']+["'];?\s*$/gm, "");
   src = src.replace(/^export /gm, "");
   const fn = new Function(
-    "globalThis", "XLSX",
+    "globalThis", "XLSX", "buildHeaderMap", "resolveColumn", "resolveColumns",
+    "columnResolutionLog", "normHeader", "columnLetter",
     src + `\nreturn { ${exportsNeeded.join(", ")} };`
   );
-  return fn(globalThis, XLSX);
+  return fn(
+    globalThis,
+    XLSX,
+    columnHelpers.buildHeaderMap,
+    columnHelpers.resolveColumn,
+    columnHelpers.resolveColumns,
+    columnHelpers.columnResolutionLog,
+    columnHelpers.normHeader,
+    columnHelpers.columnLetter
+  );
 }
 globalThis.XLSX = XLSX;
 

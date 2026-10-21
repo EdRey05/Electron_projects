@@ -21,7 +21,9 @@ export function extractInfo(filename) {
   const m = filename.match(/^(.+?)_(.+?)_(.+)$/);
   if (!m) return { jobId: null, plasmidNumber: null };
   const plasmidNumber = m[1];
-  const jobId = m[2].replace(/\.+$/, ""); // strip trailing dots from job_id
+  // Python: `match.group(2).strip(".")` — strips LEADING *and* TRAILING dots.
+  // e.g. "P1_.A._S1.ab1" -> work_no "A" (not ".A").
+  const jobId = m[2].replace(/^\.+/, "").replace(/\.+$/, "");
   return { jobId, plasmidNumber };
 }
 

@@ -98,7 +98,41 @@ After either of these, rebuild the portable artifact with `npm run package:porta
 
 ## Verifying the build
 
-Without a GUI on this host:
+### Automated verification harnesses
+
+Four scripts prove the behaviour that a compile check cannot. Run them after
+any change to the workbook builders, the extractors or the UI:
+
+```bash
+npm run build                              # required first — the harnesses read dist/
+
+node scripts/verify-sg-check-edit.mjs      # external link + 2504 VLOOKUPs survive
+node scripts/verify-order-form-parity.mjs  # B18 ID, col B/F, row order
+node scripts/verify-sheet-range.mjs         # no cell lost past the sheet !ref
+node_modules/.bin/electron.cmd scripts/smoke-ui.js   # the app really renders
+```
+
+`smoke-ui.js` boots Electron headless, stubs the IPC handlers with
+representative data (12 apps, 3 drives, 2 unresolved paths), loads the built
+renderer and probes the live DOM: the React tree mounts, all 12 apps are listed
+under their stage groups, the paper background and IBM Plex Sans are applied,
+and a React subapp opens and shows its own header. It also writes
+`gsh-hub-shell.png` / `gsh-subapp.png` when run via `screenshot-ui.js`.
+
+**Note on the `electron` postinstall.** npm may block `electron`'s
+`postinstall` (the script that downloads the ~250 MB binary). When that
+happens `node_modules/electron/dist/` and `path.txt` are missing and the app
+cannot launch even though the build succeeded. Fix it with either:
+
+```bash
+npm rebuild electron
+# or, if the network is restricted, copy dist/ + path.txt from another
+# checkout of the SAME electron version:
+#   cp -r <other>/node_modules/electron/dist node_modules/electron/
+#   cp <other>/node_modules/electron/path.txt node_modules/electron/
+```
+
+### Manual checks
 
 ```bash
 node --check electron/main.js           # main process parses

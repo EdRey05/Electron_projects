@@ -3,12 +3,15 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 1.2
-Date: Jun 22, 2026
+Version: 1.4
+Date: Oct 13, 2026
 Notes: Standardized appearance and initial loading to match the rest of the
     hub's apps. Primer Log is now a required, validated file (autodetected from
     hub config, sheet 'input addon' checked in a background thread).
-    Process button stays disabled until Primer Log validates.
+    Process button stays disabled until Primer Log validates. Job fields
+    follow the canonical job-log naming (Work No.). Header matching in the
+    shared helper is whitespace-normalized on both the workbook-column and
+    the candidate side.
 """
 
 import os
@@ -161,13 +164,13 @@ class QCDesignApp:
         )
         self.button_output.pack(side="right")
 
-        # --- JobIDs input ---
+        # --- Work No. input ---
         self.ids_frame = ctk.CTkFrame(self.master, fg_color="transparent")
         self.ids_frame.pack(pady=(5, 5), padx=15, fill="both", expand=True)
 
         ctk.CTkLabel(
             self.ids_frame,
-            text="Paste JobIDs (one per line)",
+            text="Paste Work No. (one per line)",
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(anchor="w")
 
@@ -394,11 +397,11 @@ class QCDesignApp:
 
         raw_ids = self.txt_ids.get("1.0", "end").strip()
         if not raw_ids:
-            messagebox.showerror("No IDs", "Please paste JobIDs into the text field.")
+            messagebox.showerror("No IDs", "Please paste Work No. into the text field.")
             return
 
-        jobids = [line.strip() for line in raw_ids.splitlines() if line.strip()]
-        if not jobids:
+        work_nos = [line.strip() for line in raw_ids.splitlines() if line.strip()]
+        if not work_nos:
             messagebox.showerror("No IDs", "No valid IDs parsed from input.")
             return
 
@@ -438,11 +441,11 @@ class QCDesignApp:
         self.log_textbox.configure(state="disabled")
         self.btn_process.configure(state="disabled", fg_color="gray50")
 
-        self.log(f"Starting '{workflow_name}' for {len(jobids)} JobIDs...")
+        self.log(f"Starting '{workflow_name}' for {len(work_nos)} Work No....")
 
         self.processing_thread = threading.Thread(
             target=active_workflow.run_processing_task,
-            args=(primer_log, output_dir, jobids),
+            args=(primer_log, output_dir, work_nos),
             daemon=True,
         )
         self.processing_thread.start()

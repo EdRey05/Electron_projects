@@ -3,39 +3,48 @@
  *
  * Mirrors `Sequencing_reference_files_app.py::_processing_thread`:
  *   1. Open the Primer Log .xlsx, find the `input addon` sheet.
- *   2. Read the header row, map column names to indices (case-insensitive).
- *      Fallback indices: JobID=A(0), Vector=E(4), Insert Seq=H(7), Final Vector=I(8).
+ *   2. Read the header row, resolve the columns (canonical header name
+ *      first, legacy spelling second, historic positional index last).
+ *      Fallback indices: Work No.=A(0), Vector=E(4), Insert Sequence=H(7),
+ *      Final Vector Sequence=I(8).
  *   3. For each non-empty row:
- *      - Write `{JobID}.txt` with the Insert Seq (if non-empty).
- *      - Write `{JobID}+{Vector}.txt` with the Final Vector (if non-empty).
+ *      - Write `{Work No.}.txt` with the Insert Sequence (if non-empty).
+ *      - Write `{Work No.}+{Vector}.txt` with the Final Vector Sequence.
  */
 import * as XLSX from "xlsx";
+import { resolveSpecSet, columnResolutionLog } from "../../ui/columns.js";
 
 /**
  * Resolve column indices from a header row.
- * Returns { jobId, vector, insertSeq, finalVector }.
+ * Returns the indices plus the per-column provenance (byName) so the caller
+ * can log which resolution path fired.
  */
 export function resolveColumnIndices(headers) {
-  const headerMap = {};
-  for (let i = 0; i < headers.length; i++) {
-    const h = headers[i];
-    if (h == null) continue;
-    headerMap[String(h).trim().toLowerCase()] = i;
-  }
-  // Try common header name variants; fall back to the positional defaults.
-  const find = (...names) => {
-    for (const n of names) {
-      const idx = headerMap[n.toLowerCase()];
-      if (idx !== undefined) return idx;
-    }
-    return null;
-  };
+  const { indices, byName, report, mode } = resolveSpecSet(headers, [
+    "workNo",
+    "vector",
+    "insertSequence",
+    "finalVectorSequence",
+  ]);
   return {
-    jobId: find("JobID", "Job Id", "Job_ID", "jobid") ?? 0,
-    vector: find("Vector") ?? 4,
-    insertSeq: find("Insert Seq", "InsertSeq", "insert seq") ?? 7,
-    finalVector: find("Final Vector", "FinalVector", "final vector") ?? 8,
+    // Legacy key names kept so the existing callers keep working.
+    jobId: indices.workNo,
+    vector: indices.vector,
+    insertSeq: indices.insertSequence,
+    finalVector: indices.finalVectorSequence,
+    workNo: indices.workNo,
+    insertSequence: indices.insertSequence,
+    finalVectorSequence: indices.finalVectorSequence,
+    byName,
+    report,
+    mode,
   };
+}
+
+/** The log line the Python app emits for the resolved column set. */
+export function columnLog(headers) {
+  const r = resolveColumnIndices(headers);
+  return columnResolutionLog("input addon", r);
 }
 
 /**
@@ -70,16 +79,22 @@ export async function extractSequences(file) {
   const indices = resolveColumnIndices(headers);
   const rows = [];
   for (const row of aoa.slice(1)) {
-    const jobId = cleanCell(row[indices.jobId]);
+    const jobId = cleanCell(row[indices.workNo]);
     if (!jobId) continue;
     rows.push({
       jobId,
+      workNo: jobId,
       vector: cleanCell(row[indices.vector]),
-      insertSeq: cleanCell(row[indices.insertSeq]),
-      finalVector: cleanCell(row[indices.finalVector]),
+      insertSeq: cleanCell(row[indices.insertSequence]),
+      finalVector: cleanCell(row[indices.finalVectorSequence]),
     });
   }
-  return { ok: true, indices, rows };
+  return {
+    ok: true,
+    indices,
+    rows,
+    resolutionLog: columnResolutionLog("input addon", indices),
+  };
 }
 
 /**

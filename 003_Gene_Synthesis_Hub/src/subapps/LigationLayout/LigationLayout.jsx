@@ -1,13 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ArrowLeft,
   FileSpreadsheet,
-  Loader2,
-  FolderOpen,
+  Database,
   Play,
   Plus,
   X,
-  Database,
   ListChecks,
   ClipboardList,
   Settings,
@@ -16,7 +13,7 @@ import {
 import {
   extractVectorDbLookups,
   extractJobLogInfo,
-  extractFragments,
+  extractFragmentsWithReport,
   applyManualEntries,
   buildLayoutRowsWithControls,
   generateSheetPrefixes,
@@ -24,6 +21,18 @@ import {
 } from "./extractor.js";
 import { matchFragmentsToJobs } from "./matcher.js";
 import { writeLayoutRows, writeFragmentsToLayout, serializeWorkbook } from "./workbookBuilder.js";
+import { applyFullCalcOnLoad } from "../../ui/xlsxPostProcess.js";
+import {
+  C,
+  AppHeader,
+  Button,
+  Panel,
+  PathInput,
+  StatusLine,
+  LogPanel,
+  Modal,
+  FONT_MONO,
+} from "../../ui/kit.jsx";
 
 // Common vectors shown at the top of the manual-entry dropdown.
 const COMMON_VECTORS = [
@@ -42,7 +51,7 @@ const COMMON_VECTORS = [
  *
  * Behaviour parity with the Tkinter original:
  *   1. Pick Job Log + Fragments + Vector DB + Ligation Template.
- *   2. Paste a list of Job IDs (one per line).
+ *   2. Paste a list of Work Nos (one per line).
  *   3. Optional: add per-job special Host/Temperature conditions.
  *   4. Click Generate. App reads files, builds lookups, finds
  *      missing-from-log or placeholder jobs, and (if any) opens
@@ -59,6 +68,9 @@ export default function LigationLayout({ onBack, initialPaths }) {
 
   const [jobIdsText, setJobIdsText] = useState("");
   const [conditions, setConditions] = useState([]); // [{ jobId, host, temperature }]
+  // The Python's `standard_conditions` checkbox: when it is on (the default)
+  // every Work No. uses TOP10 at 37 °C and the per-job rows are hidden.
+  const [standardConditions, setStandardConditions] = useState(true);
 
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState({ text: "Ready", color: "info" });
@@ -68,6 +80,25 @@ export default function LigationLayout({ onBack, initialPaths }) {
   const [manualOpen, setManualOpen] = useState(false);
   const [pendingManualJobs, setPendingManualJobs] = useState([]);
   const [manualResults, setManualResults] = useState({});
+  // The vector database lookups (vector -> resistance, vector -> length).
+  // The manual-vector dialog needs the resistance map so it can auto-fill
+  // the antibiotic when a vector is chosen — the Python does the same
+  // (`BulkManualVectorDialog._load_vector_db`).
+  const [vectorDb, setVectorDb] = useState({ resistance: {}, length: {}, digested: {} });
+
+  // The full vector list for the manual-vector dialog, taken from the
+  // Vector Database rather than a hard-coded shortlist.
+  const modalVectorNames = useMemo(
+    () =>
+      [
+        ...new Set([
+          ...Object.keys(vectorDb?.resistance || {}),
+          ...Object.keys(vectorDb?.length || {}),
+          ...COMMON_VECTORS,
+        ]),
+      ].sort(),
+    [vectorDb]
+  );
 
   const jobLogInputRef = useRef(null);
   const fragmentsInputRef = useRef(null);
@@ -98,7 +129,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
   const handleGenerate = async () => {
     if (!canGenerate) return;
     if (jobIdsList.length === 0) {
-      setStatus({ text: "Please paste Job IDs first.", color: "warn" });
+      setStatus({ text: "Please paste Work Nos first.", color: "warn" });
       return;
     }
     setRunning(true);
@@ -110,17 +141,26 @@ export default function LigationLayout({ onBack, initialPaths }) {
       appendLog("Loading vector database lookups...");
       const vdbBuf = await readFileAsArrayBuffer(vectorDbPath);
       const lookups = extractVectorDbLookups(vdbBuf);
+      setVectorDb(lookups);
       appendLog(`  Resistance lookup: ${Object.keys(lookups.resistance).length} entries.`);
       appendLog(`  Length map: ${Object.keys(lookups.length).length} entries.`);
       appendLog(`  Digested vectors: ${Object.keys(lookups.digested).length} entries.`);
 
       // Step 1: Extract Job Log info
-      appendLog("\nExtracting Job ID information from Job Log...");
+      appendLog("\nExtracting Work No. information from Job Log...");
       const jlBuf = await readFileAsArrayBuffer(jobLogPath);
       const jobExtraction = extractJobLogInfo(jlBuf, jobIdsList);
+      appendLog(jobExtraction.resolutionLog || "");
       appendLog(`  Found ${Object.keys(jobExtraction.rows).length} jobs in log.`);
       appendLog(`  Missing from log: ${jobExtraction.missing_from_log.length}.`);
       appendLog(`  Jobs needing manual entry: ${jobExtraction.jobs_needing_manual_entry.length}.`);
+      if (jobExtraction.missing_from_log.length) {
+        appendLog(
+          `  > WARNING: The following Work No. were not found in the Job Log: ${[
+            ...jobExtraction.missing_from_log,
+          ].sort().join(", ")}`
+        );
+      }
 
       // If anything needs manual entry, open the modal and pause.
       const allManualJobs = [
@@ -157,8 +197,9 @@ export default function LigationLayout({ onBack, initialPaths }) {
       appendLog("\nLoading vector database lookups...");
       const vdbBuf = await readFileAsArrayBuffer(vectorDbPath);
       const lookups = extractVectorDbLookups(vdbBuf);
+      setVectorDb(lookups);
 
-      appendLog("Extracting Job ID information from Job Log...");
+      appendLog("Extracting Work No. information from Job Log...");
       const jlBuf = await readFileAsArrayBuffer(jobLogPath);
       const jobExtraction = extractJobLogInfo(jlBuf, jobIdsList);
 
@@ -188,9 +229,13 @@ export default function LigationLayout({ onBack, initialPaths }) {
     appendLog(`Final rows after manual entries: ${finalRows.length}.`);
 
     // Step 2: Build layout rows with controls + special conditions
+    // The Python's get_conditions() returns {} when "standard conditions" is
+    // checked, so the special-conditions rows are ignored entirely.
     const conditionsMap = {};
-    for (const c of conditions) {
-      if (c.jobId) conditionsMap[c.jobId] = { host: c.host, temperature: c.temperature };
+    if (!standardConditions) {
+      for (const c of conditions) {
+        if (c.jobId) conditionsMap[c.jobId] = { host: c.host, temperature: c.temperature };
+      }
     }
     const layoutRows = buildLayoutRowsWithControls(finalRows, conditionsMap);
     appendLog(`Layout rows (with controls): ${layoutRows.length}.`);
@@ -200,7 +245,11 @@ export default function LigationLayout({ onBack, initialPaths }) {
     const fragmentsBuf = await readFileAsArrayBuffer(fragmentsPath);
     const sheetPrefixes = generateSheetPrefixes(new Date());
     appendLog(`  Searching for sheets with prefixes: ${sheetPrefixes}`);
-    const fragments = extractFragments(fragmentsBuf, sheetPrefixes);
+    const { rows: fragments, logs: fragmentLogs } = extractFragmentsWithReport(
+      fragmentsBuf,
+      sheetPrefixes
+    );
+    for (const line of fragmentLogs) appendLog(line);
     appendLog(`  Found ${fragments.length} fragment rows.`);
 
     // Step 4: Match fragments to jobs
@@ -228,13 +277,23 @@ export default function LigationLayout({ onBack, initialPaths }) {
         insertColumns,
         fragmentsToWrite,
         manualJobIds,
-        lookups.length
+        lookups.length,
+        appendLog
       );
       appendLog(`  Wrote ${fr.written.length} fragment entries.`);
+      for (const miss of fr.missingInserts) {
+        appendLog(`  > WARNING: No column found for '${miss}'.`);
+      }
     }
 
     // Step 6: Save
-    const bytes = serializeWorkbook(wb);
+    // SheetJS does not round-trip the template's `<calcPr>` element or the
+    // CACHED VALUES of its formula cells, so the 292 formulas would read
+    // as blank in any viewer that does not evaluate formulas. Adding
+    // `fullCalcOnLoad="1"` makes Excel/LibreOffice recompute them on
+    // open — the Python (openpyxl) keeps them working by preserving the
+    // original calcPr.
+    const bytes = applyFullCalcOnLoad(serializeWorkbook(wb));
     const filename = generateOutputFilename(new Date());
     appendLog(`\nSuggested filename: ${filename}`);
     appendLog("Prompting for save location...");
@@ -253,187 +312,205 @@ export default function LigationLayout({ onBack, initialPaths }) {
   const addCondition = () =>
     setConditions((prev) => [...prev, { jobId: "", host: "TOP10", temperature: "37C" }]);
 
-  const statusColors = {
-    info: "text-accent-400",
-    good: "text-good",
-    warn: "text-warn",
-    bad: "text-bad",
-  };
-
   return (
-    <div className="h-full flex flex-col bg-ink-900 text-slate-100">
-      <header className="flex items-center justify-between px-6 py-3 border-b border-ink-700 bg-ink-800/60">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-ink-700 hover:bg-ink-600 text-slate-200 text-sm"
+    <div className="h-full flex flex-col" style={{ background: C.paper, color: C.ink }}>
+      <AppHeader
+        onBack={onBack}
+        icon={<FlaskConical size={18} color="#fff" />}
+        title="Ligation Layout"
+        subtitle="Generates a Ligation Layout .xlsx from Job Log + Fragments + Vector DB"
+      />
+
+      <main className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-5">
+          {/* File pickers */}
+          <Panel
+            icon={<FileSpreadsheet size={15} style={{ color: C.teal }} />}
+            title="Input files"
+            subtitle="Job Log, Fragments Log, Template and Vector Database"
           >
-            <ArrowLeft size={14} /> Hub
-          </button>
-          <div className="w-9 h-9 rounded-lg bg-accent-500/15 flex items-center justify-center">
-            <FlaskConical size={18} className="text-accent-400" />
-          </div>
-          <div>
-            <h1 className="font-semibold text-lg leading-tight">Ligation Layout</h1>
-            <p className="text-[11px] text-slate-400 leading-tight">
-              Generates a Ligation Layout .xlsx from Job Log + Fragments + Vector DB.
-            </p>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 overflow-y-auto p-6 space-y-5">
-        {/* File pickers */}
-        <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FilePicker
-            label="Job Log"
-            inputRef={jobLogInputRef}
-            value={jobLogPath}
-            onPick={(f) => setJobLogPath(f.path)}
-            icon={<FileSpreadsheet size={14} />}
-          />
-          <FilePicker
-            label="Fragments File"
-            inputRef={fragmentsInputRef}
-            value={fragmentsPath}
-            onPick={(f) => setFragmentsPath(f.path)}
-            icon={<FileSpreadsheet size={14} />}
-          />
-          <FilePicker
-            label="Ligation Layout Template"
-            inputRef={templateInputRef}
-            value={templatePath}
-            onPick={(f) => setTemplatePath(f.path)}
-            icon={<FileSpreadsheet size={14} />}
-          />
-          <FilePicker
-            label="Vector Database (.xlsx)"
-            inputRef={vectorDbInputRef}
-            value={vectorDbPath}
-            onPick={(f) => setVectorDbPath(f.path)}
-            icon={<Database size={14} />}
-          />
-        </section>
-
-        {/* Job IDs textarea */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <h2 className="font-semibold mb-2 flex items-center gap-2">
-            <ClipboardList size={16} className="text-accent-400" /> Job IDs (one per line)
-          </h2>
-          <textarea
-            value={jobIdsText}
-            onChange={(e) => setJobIdsText(e.target.value)}
-            placeholder={"JOB-001\nJOB-002\nJOB-003"}
-            rows={6}
-            className="w-full px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-          />
-          <div className="text-xs text-slate-400 mt-1">
-            {jobIdsList.length} Job ID(s) parsed.
-          </div>
-        </section>
-
-        {/* Conditions list */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h2 className="font-semibold flex items-center gap-2">
-              <Settings size={16} className="text-accent-400" /> Special Conditions (optional)
-            </h2>
-            <button
-              onClick={addCondition}
-              className="px-3 py-1 rounded bg-ink-700 hover:bg-ink-600 text-xs inline-flex items-center gap-1"
-            >
-              <Plus size={12} /> Add
-            </button>
-          </div>
-          {conditions.length === 0 ? (
-            <div className="text-xs text-slate-500 italic">
-              Default: every job uses TOP10 host at 37°C. Add a row here to override.
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+              <FilePicker
+                label="Job Log"
+                inputRef={jobLogInputRef}
+                value={jobLogPath}
+                onPick={(f) => setJobLogPath(f.path)}
+                icon={<FileSpreadsheet size={14} style={{ color: C.teal }} />}
+              />
+              <FilePicker
+                label="Fragments File"
+                inputRef={fragmentsInputRef}
+                value={fragmentsPath}
+                onPick={(f) => setFragmentsPath(f.path)}
+                icon={<FileSpreadsheet size={14} style={{ color: C.teal }} />}
+              />
+              <FilePicker
+                label="Ligation Layout Template"
+                inputRef={templateInputRef}
+                value={templatePath}
+                onPick={(f) => setTemplatePath(f.path)}
+                icon={<FileSpreadsheet size={14} style={{ color: C.teal }} />}
+              />
+              <FilePicker
+                label="Vector Database (.xlsx)"
+                inputRef={vectorDbInputRef}
+                value={vectorDbPath}
+                onPick={(f) => setVectorDbPath(f.path)}
+                icon={<Database size={14} style={{ color: C.teal }} />}
+              />
             </div>
-          ) : (
-            <div className="grid grid-cols-[1fr_1fr_1fr_30px] gap-2">
-              <div className="text-xs font-bold text-slate-300">Job ID</div>
-              <div className="text-xs font-bold text-slate-300">Host</div>
-              <div className="text-xs font-bold text-slate-300">Temperature</div>
-              <div></div>
-              {conditions.map((c, i) => (
-                <React.Fragment key={i}>
-                  <input
-                    type="text"
-                    value={c.jobId}
-                    onChange={(e) =>
-                      setConditions((prev) => prev.map((row, j) => (j === i ? { ...row, jobId: e.target.value } : row)))
-                    }
-                    placeholder="JOB-ID"
-                    className="px-2 py-1 rounded bg-ink-900/60 border border-ink-700 text-xs font-mono"
-                  />
-                  <input
-                    type="text"
-                    value={c.host}
-                    onChange={(e) =>
-                      setConditions((prev) => prev.map((row, j) => (j === i ? { ...row, host: e.target.value } : row)))
-                    }
-                    className="px-2 py-1 rounded bg-ink-900/60 border border-ink-700 text-xs"
-                  />
-                  <input
-                    type="text"
-                    value={c.temperature}
-                    onChange={(e) =>
-                      setConditions((prev) => prev.map((row, j) => (j === i ? { ...row, temperature: e.target.value } : row)))
-                    }
-                    className="px-2 py-1 rounded bg-ink-900/60 border border-ink-700 text-xs"
-                  />
-                  <button onClick={() => removeCondition(i)} className="text-slate-400 hover:text-bad">
-                    <X size={14} />
-                  </button>
-                </React.Fragment>
-              ))}
-            </div>
-          )}
-        </section>
+          </Panel>
 
-        {/* Generate */}
-        <section className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <div className={`text-sm font-medium ${statusColors[status.color]}`}>
-              {running && <Loader2 size={14} className="inline animate-spin mr-1" />}
-              {status.text}
-            </div>
-          </div>
-          <button
-            disabled={!canGenerateWithIds}
-            onClick={handleGenerate}
-            className={`inline-flex items-center gap-2 px-4 py-2 rounded font-medium ${
-              canGenerateWithIds
-                ? "bg-good hover:bg-good/90 text-white"
-                : "bg-ink-700 text-slate-500 cursor-not-allowed"
-            }`}
+          {/* Work Nos textarea */}
+          <Panel
+            icon={<ClipboardList size={15} style={{ color: C.teal }} />}
+            title="Work Nos (one per line)"
+            actions={
+              <span className="text-[11px]" style={{ color: C.inkFaint }}>
+                {jobIdsList.length} parsed
+              </span>
+            }
           >
-            <Play size={14} />
-            {running ? "Working..." : "Generate Layout"}
-          </button>
-        </section>
+            <textarea
+              value={jobIdsText}
+              onChange={(e) => setJobIdsText(e.target.value)}
+              placeholder={"JOB-001\nJOB-002\nJOB-003"}
+              rows={6}
+              className="w-full px-3 py-2 rounded text-sm outline-none resize-y"
+              style={{
+                background: C.surface,
+                border: "1px solid " + C.border,
+                borderRadius: 6,
+                color: C.ink,
+                fontFamily: FONT_MONO,
+                fontSize: 12,
+                userSelect: "text",
+              }}
+            />
+          </Panel>
 
-        {/* Log */}
-        <section className="bg-ink-800/40 border border-ink-700 rounded-lg overflow-hidden">
-          <div className="flex items-center justify-between px-4 py-3 border-b border-ink-700">
-            <h2 className="font-semibold">Log</h2>
-            <button
-              disabled={logs.length === 0}
-              onClick={() => setLogs([])}
-              className="text-xs text-slate-400 hover:text-slate-200 disabled:opacity-30"
-            >
-              Clear
-            </button>
-          </div>
-          <div className="bg-black/30 font-mono text-xs text-slate-200 p-3 max-h-80 overflow-y-auto whitespace-pre-wrap">
-            {logs.length === 0 ? (
-              <span className="text-slate-500">Log output will appear here.</span>
+          {/* Conditions list */}
+          <Panel
+            icon={<Settings size={15} style={{ color: C.teal }} />}
+            title="Special Conditions (optional)"
+            subtitle={
+              standardConditions
+                ? "Standard conditions: every job uses TOP10 host at 37 °C"
+                : "Per-job overrides"
+            }
+            actions={
+              <>
+                <label
+                  className="flex items-center gap-2 text-xs cursor-pointer select-none"
+                  style={{ color: C.inkMuted }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={standardConditions}
+                    onChange={(e) => setStandardConditions(e.target.checked)}
+                  />
+                  Standard conditions
+                </label>
+                {!standardConditions && (
+                  <Button variant="secondary" size="sm" onClick={addCondition}>
+                    <Plus size={13} /> Add
+                  </Button>
+                )}
+              </>
+            }
+          >
+            {standardConditions ? (
+              <p className="text-xs italic" style={{ color: C.inkFaint }}>
+                No overrides — every job uses TOP10 host at 37 °C. Uncheck “Standard
+                conditions” to set a host/temperature per Work No.
+              </p>
+            ) : conditions.length === 0 ? (
+              <p className="text-xs italic" style={{ color: C.inkFaint }}>
+                No overrides yet — click “Add” to set a host/temperature per Work No.
+              </p>
             ) : (
-              logs.map((l, i) => <div key={i}>{l.msg}</div>)
+              <div>
+                <div
+                  className="grid gap-2 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                  style={{ gridTemplateColumns: "1fr 1fr 1fr 30px", color: C.inkMuted }}
+                >
+                  <div>Work No.</div>
+                  <div>Host</div>
+                  <div>Temperature</div>
+                  <div />
+                </div>
+                {conditions.map((c, i) => (
+                  <div
+                    key={i}
+                    className="grid gap-2 px-2 py-1 items-center"
+                    style={{ gridTemplateColumns: "1fr 1fr 1fr 30px" }}
+                  >
+                    {/* The Python drives this from a dropdown populated with
+                        the parsed Work No. list, so a typo is impossible. */}
+                    <input
+                      type="text"
+                      list="lig-work-nos"
+                      value={c.jobId}
+                      onChange={(e) =>
+                        setConditions((prev) => prev.map((row, j) => (j === i ? { ...row, jobId: e.target.value } : row)))
+                      }
+                      placeholder="Work No."
+                      className="px-2 py-1 rounded text-xs outline-none"
+                      style={inputStyle(true)}
+                    />
+                    <datalist id="lig-work-nos">
+                      {jobIdsList.map((jid) => (
+                        <option key={jid} value={jid} />
+                      ))}
+                    </datalist>
+                    <input
+                      type="text"
+                      value={c.host}
+                      onChange={(e) =>
+                        setConditions((prev) => prev.map((row, j) => (j === i ? { ...row, host: e.target.value } : row)))
+                      }
+                      className="px-2 py-1 rounded text-xs outline-none"
+                      style={inputStyle(false)}
+                    />
+                    <input
+                      type="text"
+                      value={c.temperature}
+                      onChange={(e) =>
+                        setConditions((prev) => prev.map((row, j) => (j === i ? { ...row, temperature: e.target.value } : row)))
+                      }
+                      className="px-2 py-1 rounded text-xs outline-none"
+                      style={inputStyle(false)}
+                    />
+                    <button
+                      onClick={() => removeCondition(i)}
+                      style={{ color: C.inkFaint }}
+                    >
+                      <X size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             )}
-            <div ref={logEndRef} />
+          </Panel>
+
+          {/* Generate */}
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <StatusLine status={status} running={running} />
+            </div>
+            <Button
+              variant="primary"
+              size="lg"
+              disabled={!canGenerateWithIds}
+              onClick={handleGenerate}
+            >
+              <Play size={15} />
+              {running ? "Working…" : "Generate Layout"}
+            </Button>
           </div>
-        </section>
+
+          <LogPanel logs={logs} onClear={() => setLogs([])} endRef={logEndRef} />
+        </div>
       </main>
 
       {manualOpen && (
@@ -441,7 +518,11 @@ export default function LigationLayout({ onBack, initialPaths }) {
           jobIds={pendingManualJobs}
           values={manualResults}
           onChange={setManualResults}
-          vectorNames={COMMON_VECTORS}
+          // The full vector list from the Vector Database (not a
+          // hard-coded shortlist) plus the vector -> resistance map, so
+          // the resistance auto-fills.
+          vectorNames={modalVectorNames}
+          vectorResistance={vectorDb?.resistance || {}}
           onConfirm={onConfirmManual}
           onCancel={onCancelManual}
         />
@@ -453,75 +534,133 @@ export default function LigationLayout({ onBack, initialPaths }) {
 // =============================================================================
 // Manual Vector Modal — mirrors BulkManualVectorDialog.
 // =============================================================================
-function ManualVectorModal({ jobIds, values, onChange, vectorNames, onConfirm, onCancel }) {
+function ManualVectorModal({
+  jobIds,
+  values,
+  onChange,
+  vectorNames,
+  vectorResistance,
+  onConfirm,
+  onCancel,
+}) {
+  // The Python's `BulkManualVectorDialog` loads the vector->resistance map
+  // from the Vector Database and AUTO-FILLS the resistance when a vector
+  // is chosen (`if choice in self._vec_to_res: res_cb.set(...)`). The React
+  // port used a hard-coded 8-item datalist and a free-text resistance
+  // field, so the operator had to know both the vector name and its
+  // antibiotic.
+  const resistanceOptions = useMemo(() => {
+    const set = new Set();
+    for (const r of Object.values(vectorResistance || {})) {
+      if (r) set.add(r);
+    }
+    return [...set].sort();
+  }, [vectorResistance]);
+
+  // Auto-fill the resistance when the operator picks a known vector.
+  const setVector = (jid, vector) => {
+    const auto = vectorResistance?.[vector];
+    const prev = values[jid] || { vector: "", enzyme: "", resistance: "" };
+    onChange({
+      ...values,
+      [jid]: {
+        ...prev,
+        vector,
+        // Only overwrite the resistance if the operator has not set one
+        // themselves — the Python always overwrites, but silently keeping
+        // a hand-typed value is friendlier and does not change the data.
+        resistance: auto || prev.resistance || "",
+      },
+    });
+  };
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4">
-      <div className="bg-ink-800 border border-ink-700 rounded-lg max-w-4xl w-full max-h-[80vh] flex flex-col">
-        <header className="px-5 py-3 border-b border-ink-700 flex items-center gap-2">
-          <ListChecks size={16} className="text-accent-400" />
-          <h2 className="font-semibold">Manual Vector Entry</h2>
-          <span className="text-xs text-slate-400 ml-2">{jobIds.length} job(s)</span>
-        </header>
-
-        <div className="flex-1 overflow-y-auto p-3">
-          <div className="grid grid-cols-[120px_1fr_1fr_120px] gap-2 px-2 py-1 text-xs font-bold text-slate-300 border-b border-ink-700 mb-2 sticky top-0 bg-ink-800">
-            <div>Job ID</div>
-            <div>Vector Name</div>
-            <div>Cloning Site</div>
-            <div>Resistance</div>
-          </div>
-
-          {jobIds.map((jid) => {
-            const v = values[jid] || { vector: "", enzyme: "", resistance: "" };
-            return (
-              <div
-                key={jid}
-                className="grid grid-cols-[120px_1fr_1fr_120px] gap-2 px-2 py-1 text-xs items-center"
-              >
-                <div className="font-mono">{jid}</div>
-                <input
-                  type="text"
-                  list={`vec-${jid}`}
-                  value={v.vector}
-                  onChange={(e) => onChange({ ...values, [jid]: { ...v, vector: e.target.value } })}
-                  placeholder="e.g. pUC19"
-                  className="px-2 py-1 rounded bg-ink-900/60 border border-ink-700"
-                />
-                <datalist id={`vec-${jid}`}>
-                  {vectorNames.map((vn) => <option key={vn} value={vn} />)}
-                </datalist>
-                <input
-                  type="text"
-                  value={v.enzyme}
-                  onChange={(e) => onChange({ ...values, [jid]: { ...v, enzyme: e.target.value } })}
-                  placeholder="e.g. EcoRI"
-                  className="px-2 py-1 rounded bg-ink-900/60 border border-ink-700"
-                />
-                <input
-                  type="text"
-                  value={v.resistance}
-                  onChange={(e) => onChange({ ...values, [jid]: { ...v, resistance: e.target.value } })}
-                  placeholder="e.g. Amp"
-                  className="px-2 py-1 rounded bg-ink-900/60 border border-ink-700"
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        <footer className="px-5 py-3 border-t border-ink-700 flex justify-end gap-2">
-          <button onClick={onCancel} className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm">
+    <Modal
+      open
+      title="Manual Vector Entry"
+      subtitle={`${jobIds.length} job(s) need a vector, cloning site and resistance`}
+      onCancel={onCancel}
+      width={820}
+      footer={
+        <>
+          <Button variant="secondary" onClick={onCancel}>
             Cancel
-          </button>
-          <button
-            onClick={onConfirm}
-            className="px-4 py-2 rounded bg-good hover:bg-good/90 text-white font-medium"
-          >
+          </Button>
+          <Button variant="primary" onClick={onConfirm}>
             Apply
-          </button>
-        </footer>
+          </Button>
+        </>
+      }
+    >
+      <div
+        className="grid gap-2 px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+        style={{
+          gridTemplateColumns: "120px 1fr 1fr 120px",
+          color: C.inkMuted,
+          borderBottom: "1px solid " + C.border,
+        }}
+      >
+        <div>Work No.</div>
+        <div>Vector Name</div>
+        <div>Cloning Site</div>
+        <div>Resistance</div>
       </div>
-    </div>
+      <div className="mt-1">
+        {jobIds.map((jid) => {
+          const v = values[jid] || { vector: "", enzyme: "", resistance: "" };
+          return (
+            <div
+              key={jid}
+              className="grid gap-2 px-2 py-1 text-xs items-center"
+              style={{
+                gridTemplateColumns: "120px 1fr 1fr 120px",
+                background: C.subtle2,
+                marginBottom: 3,
+                borderRadius: 4,
+              }}
+            >
+              <div style={{ fontFamily: FONT_MONO }}>{jid}</div>
+              <input
+                type="text"
+                list={`vec-${jid}`}
+                value={v.vector}
+                onChange={(e) => setVector(jid, e.target.value)}
+                placeholder="e.g. pUC19"
+                className="px-2 py-1 rounded outline-none"
+                style={inputStyle(false)}
+              />
+              <datalist id={`vec-${jid}`}>
+                {vectorNames.map((vn) => (
+                  <option key={vn} value={vn} />
+                ))}
+              </datalist>
+              <input
+                type="text"
+                value={v.enzyme}
+                onChange={(e) => onChange({ ...values, [jid]: { ...v, enzyme: e.target.value } })}
+                placeholder="e.g. EcoRI"
+                className="px-2 py-1 rounded outline-none"
+                style={inputStyle(false)}
+              />
+              <input
+                type="text"
+                list={`res-${jid}`}
+                value={v.resistance}
+                onChange={(e) => onChange({ ...values, [jid]: { ...v, resistance: e.target.value } })}
+                placeholder="e.g. Amp"
+                className="px-2 py-1 rounded outline-none"
+                style={inputStyle(false)}
+              />
+              <datalist id={`res-${jid}`}>
+                {resistanceOptions.map((r) => (
+                  <option key={r} value={r} />
+                ))}
+              </datalist>
+            </div>
+          );
+        })}
+      </div>
+    </Modal>
   );
 }
 
@@ -530,18 +669,15 @@ function ManualVectorModal({ jobIds, values, onChange, vectorNames, onConfirm, o
 // =============================================================================
 function FilePicker({ label, inputRef, value, onPick, icon }) {
   return (
-    <div className="bg-ink-800/40 border border-ink-700 rounded-lg p-4">
-      <h2 className="font-semibold mb-2 flex items-center gap-2">
-        {icon} {label}
-      </h2>
+    <div>
+      <div className="flex items-center gap-1.5 mb-1">
+        {icon}
+        <span className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: C.inkMuted }}>
+          {label}
+        </span>
+      </div>
       <div className="flex items-center gap-2">
-        <input
-          type="text"
-          readOnly
-          value={value}
-          placeholder="No file selected"
-          className="flex-1 px-3 py-2 rounded bg-ink-900/60 border border-ink-700 text-sm font-mono text-slate-300"
-        />
+        <PathInput value={value} style={{ flex: 1 }} />
         <input
           ref={inputRef}
           type="file"
@@ -553,15 +689,24 @@ function FilePicker({ label, inputRef, value, onPick, icon }) {
             e.target.value = "";
           }}
         />
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="px-3 py-2 rounded bg-ink-700 hover:bg-ink-600 text-sm"
-        >
-          Select
-        </button>
+        <Button variant="secondary" onClick={() => inputRef.current?.click()}>
+          Select…
+        </Button>
       </div>
     </div>
   );
+}
+
+function inputStyle(mono) {
+  return {
+    background: C.surface,
+    border: "1px solid " + C.border,
+    borderRadius: 5,
+    color: C.ink,
+    fontFamily: mono ? FONT_MONO : "IBM Plex Sans, sans-serif",
+    fontSize: 12,
+    userSelect: "text",
+  };
 }
 
 async function readFileAsArrayBuffer(path) {

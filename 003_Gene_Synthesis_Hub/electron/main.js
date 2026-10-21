@@ -357,81 +357,68 @@ ipcMain.handle("hub:launchApp", async (_evt, { appDef, paths, driveMappings }) =
     return { ok: false, error: `Subapp folder not found: ${subPath}` };
   }
 
-  // Resolve all the kwarg sets the Python hub supports:
-  //   pass_dir_as_kwarg   = KeyA:kwargA; KeyB:kwargB
-  //   pass_template_as_kwarg = kwarg:pattern_in_Templates/
-  //   pass_db_as_kwarg    = kwarg:pattern_in_Databases/
-  const extraArgs = [];
-  const resolvedKwargs = {};
-
-  if (appDef.pass_dir_as_kwarg) {
-    for (const pair of appDef.pass_dir_as_kwarg.split(";")) {
-      const [dirKey, kwarg] = pair.split(":").map((s) => s.trim());
-      const raw = paths?.[dirKey]?.raw;
-      const resolved = resolvePath(raw, driveMappings || {});
-      if (resolved && fs.existsSync(resolved)) {
-        resolvedKwargs[kwarg] = resolved;
-        extraArgs.push(`--${kwarg}=${resolved}`);
-      } else {
-        return { ok: false, error: `Directory for "${dirKey}" not found: ${resolved}` };
-      }
+  // Pre-flight: verify the app's required directories resolve BEFORE we
+  // spawn anything, so the operator gets a clear message instead of a
+  // silently-unconfigured app window. The launcher does its own resolution
+  // (it is the component that actually injects the paths) — this block
+  // only reports problems early.
+  const missingDirs = [];
+  for (const pair of (appDef.pass_dir_as_kwarg || "").split(";")) {
+    if (!pair.trim()) continue;
+    const [dirKey] = pair.split(":").map((s) => s.trim());
+    const raw = paths?.[dirKey]?.raw;
+    const resolved = resolvePath(raw, driveMappings || {});
+    if (!resolved || !fs.existsSync(resolved)) {
+      missingDirs.push(`${dirKey} (${resolved || "no drive mapped"})`);
     }
   }
-
-  if (appDef.pass_template_as_kwarg) {
-    const tplDir = path.join(pythonAppRoot(), "Templates");
-    for (const pair of appDef.pass_template_as_kwarg.split(";")) {
-      const [kwarg, pattern] = pair.split(":").map((s) => s.trim());
-      const found = globLatest(tplDir, pattern);
-      if (!found) return { ok: false, error: `Template "${pattern}" not found in Templates/` };
-      resolvedKwargs[kwarg] = found;
-      extraArgs.push(`--${kwarg}=${found}`);
-    }
+  if (missingDirs.length) {
+    return {
+      ok: false,
+      error: `Required director${missingDirs.length === 1 ? "y" : "ies"} not found: ${missingDirs.join(", ")}`,
+    };
   }
 
-  if (appDef.pass_db_as_kwarg) {
-    const dbDir = path.join(pythonAppRoot(), "Databases");
-    for (const pair of appDef.pass_db_as_kwarg.split(";")) {
-      const [kwarg, pattern] = pair.split(":").map((s) => s.trim());
-      const found = globLatest(dbDir, pattern);
-      if (!found) return { ok: false, error: `Database "${pattern}" not found in Databases/` };
-      resolvedKwargs[kwarg] = found;
-      extraArgs.push(`--${kwarg}=${found}`);
-    }
-  }
-
-  // Drive mapping + config arg — these are what the legacy .bat used to
-  // pass via `B8. Gene Synthesis=E:\`. Same contract.
+  // Drive mapping args — these are what the legacy .bat used to pass via
+  // `B8. Gene Synthesis=E:\`. The launcher reads them to resolve the
+  // `Label, "sub\\path"` entries in default_directories.ini.
   const driveArgs = [];
   for (const [label, drive] of Object.entries(driveMappings || {})) {
     driveArgs.push(`${label}=${drive}`);
   }
-  const configArg = `--config=${dirConfigPath()}`;
 
   const py = venvPythonExe();
   if (!fs.existsSync(py)) {
     return { ok: false, error: `Bundled Python venv not found at ${py}.\nRun "npm run stage-python" first.` };
   }
 
-  let cmd;
-  if (category === "streamlit") {
-    cmd = [
-      py, "-m", "streamlit", "run", entry,
-      "--server.headless", "false",
-      "--", configArg, ...driveArgs, ...extraArgs,
-    ];
-  } else if (entry.endsWith(".py")) {
-    cmd = [py, entry, configArg, ...driveArgs, ...extraArgs];
-  } else {
-    return { ok: false, error: `Unknown entry type for "${appDef.name}"` };
+  // Route every Python subapp through the bundled hub_launcher.py.
+  //
+  // The BBI hub launches `tkinter_import` apps IN-PROCESS (importlib +
+  // constructor kwargs injection) and `streamlit` apps as a subprocess. The
+  // Electron shell cannot import Python into its own process, so the
+  // launcher replicates that contract: it reads app_information.txt +
+  // default_directories.ini, resolves the pass_*_as_kwarg paths, then
+  // either importlib-loads the subapp (injecting the kwargs into the
+  // constructor) or spawns streamlit with the kwargs on its command line.
+  //
+  // Spawning the subapp directly with `--kwarg=<path>` (the old behaviour)
+  // silently dropped the paths: only sequencing_reference_files_app.py
+  // parses `--<kwarg>=` args, and every other app takes its paths through
+  // the constructor.
+  const launcher = path.join(pythonAppRoot(), "hub_launcher.py");
+  if (!fs.existsSync(launcher)) {
+    return { ok: false, error: `Hub launcher not found at ${launcher}.` };
   }
+
+  const cmd = [py, launcher, `--app=${appDef.name}`, ...driveArgs];
 
   // Detached: the subapp lives in its own window, the hub stays alive.
   // We don't .unref() because we want the child to outlive a fast hub close,
   // but we also don't await stdout — launch is fire-and-forget.
   try {
     const child = spawn(cmd[0], cmd.slice(1), {
-      cwd: subPath,
+      cwd: pythonAppRoot(),
       detached: true,
       stdio: "ignore",
       windowsHide: false,
@@ -448,6 +435,26 @@ ipcMain.handle("hub:launchApp", async (_evt, { appDef, paths, driveMappings }) =
 ipcMain.handle("hub:openPythonApp", async () => {
   shell.openPath(pythonAppRoot());
   return pythonAppRoot();
+});
+
+// Resolve a set of template / database patterns to the newest matching file
+// in the bundled python-app tree. React subapps receive the *pattern* from
+// app_information.txt (e.g. "Sequencing_order_form_v*.xlsx") and ask the main
+// process which concrete file that pattern points at — same globLatest()
+// semantics the Python launch path uses, so both routes pick the same file.
+ipcMain.handle("hub:resolveBundledFiles", async (_evt, { templates, databases } = {}) => {
+  const out = { templates: {}, databases: {} };
+  const resolve = (patterns, dir, bucket) => {
+    for (const pair of patterns || []) {
+      const [kwarg, pattern] = String(pair).split(":").map((s) => s.trim());
+      if (!kwarg || !pattern) continue;
+      const found = globLatest(dir, pattern);
+      if (found) out[bucket][kwarg] = found;
+    }
+  };
+  resolve(templates, path.join(pythonAppRoot(), "Templates"), "templates");
+  resolve(databases, path.join(pythonAppRoot(), "Databases"), "databases");
+  return out;
 });
 
 // Save arbitrary bytes (e.g. CSV exported by a React subapp) via a native

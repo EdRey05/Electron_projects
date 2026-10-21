@@ -18,7 +18,7 @@ from Bio.SeqRecord import SeqRecord
 from Bio import SeqIO
 from Bio.SeqFeature import SeqFeature, FeatureLocation, CompoundLocation
 
-from .helpers import get_row_for_jobid, get_field_from_row
+from .helpers import get_row_for_work_no, get_field_from_row
 
 
 class VectorMapPrepBioPython:
@@ -47,29 +47,29 @@ class VectorMapPrepBioPython:
             return (start, end - len(s), True)
         return None
 
-    def create_genbank_with_insert(self, jobid, seq_str, insert_seq, out_path):
+    def create_genbank_with_insert(self, work_no, seq_str, insert_sequence, out_path):
         """
         Create a GenBank file, annotating the insert sequence.
         Returns (True, file_path) on success or (False, error_message) on failure.
         """
         seq_str = seq_str.strip().replace(" ", "").replace("\n", "").replace("\r", "")
         if not seq_str:
-            return False, "Empty Final Vector sequence"
+            return False, "Empty Final Vector Sequence"
 
         seq = Seq(seq_str)
         record = SeqRecord(
             seq,
-            id=str(jobid),
-            name=str(jobid),
-            description=f"{jobid} exported by script",
+            id=str(work_no),
+            name=str(work_no),
+            description=f"{work_no} exported by script",
         )
         record.annotations["molecule_type"] = "DNA"
         record.annotations["topology"] = "circular"
 
-        if insert_seq and insert_seq.strip():
-            loc = self.find_subsequence_location(seq_str, insert_seq)
+        if insert_sequence and insert_sequence.strip():
+            loc = self.find_subsequence_location(seq_str, insert_sequence)
             if not loc:
-                return False, "Insert sequence not found in Final Vector"
+                return False, "Insert sequence not found in Final Vector Sequence"
 
             start, end, is_wrap = loc
             qualifiers = {"label": "Insert", "note": "Insert sequence"}
@@ -87,7 +87,7 @@ class VectorMapPrepBioPython:
             )
             record.features.append(feature)
 
-        out_file = os.path.join(out_path, f"{jobid}.gb")
+        out_file = os.path.join(out_path, f"{work_no}.gb")
         try:
             with open(out_file, "w") as fh:
                 SeqIO.write(record, fh, "genbank")
@@ -95,7 +95,7 @@ class VectorMapPrepBioPython:
         except Exception as e:
             return False, f"File write error: {e}"
 
-    def run_processing_task(self, excel_path, output_dir, jobids):
+    def run_processing_task(self, excel_path, output_dir, work_nos):
         """The main processing logic for this workflow, run in a thread."""
         try:
             xls = pd.ExcelFile(excel_path, engine="openpyxl")
@@ -132,50 +132,50 @@ class VectorMapPrepBioPython:
             except Exception as e:
                 self.log_queue.put(f"Warning: Failed to load sheet {sheet}: {e}")
 
-        total = len(jobids)
+        total = len(work_nos)
         successes = 0
         failures = []
-        for i, jid in enumerate(jobids, start=1):
-            self.log_queue.put(f"[{i}/{total}] Processing JobID: {jid}")
+        for i, work_no in enumerate(work_nos, start=1):
+            self.log_queue.put(f"[{i}/{total}] Processing Work No.: {work_no}")
             row = None
             for sheet in sheets_to_load:
-                row = get_row_for_jobid(dfs.get(sheet), jid)
+                row = get_row_for_work_no(dfs.get(sheet), work_no)
                 if row is not None:
                     break
 
             if row is None:
-                self.log_queue.put(f"  -> JobID {jid} not found. Skipping.")
-                failures.append((jid, "Not found"))
+                self.log_queue.put(f"  -> Work No. {work_no} not found. Skipping.")
+                failures.append((work_no, "Not found"))
                 continue
 
-            final_vector = get_field_from_row(
-                row, ["Final Vector", "FinalVector"], fallback_index=8
+            final_vector_sequence = get_field_from_row(
+                row, ["Final Vector Sequence", "Final Vector", "FinalVector"], fallback_index=8
             )
-            insert_seq = get_field_from_row(
-                row, ["Insert Seq", "InsertSeq"], fallback_index=7
+            insert_sequence = get_field_from_row(
+                row, ["Insert Sequence", "Insert Seq", "InsertSeq"], fallback_index=7
             )
 
-            if not final_vector:
-                self.log_queue.put(f"  -> No 'Final Vector' for {jid}. Skipping.")
-                failures.append((jid, "Final Vector missing"))
+            if not final_vector_sequence:
+                self.log_queue.put(f"  -> No 'Final Vector Sequence' for {work_no}. Skipping.")
+                failures.append((work_no, "Final Vector Sequence missing"))
                 continue
 
             ok, result = self.create_genbank_with_insert(
-                jid, final_vector, insert_seq, output_dir
+                work_no, final_vector_sequence, insert_sequence, output_dir
             )
             if ok:
                 successes += 1
                 self.log_queue.put(f"  -> Written: {result}")
             else:
-                self.log_queue.put(f"  -> ERROR for {jid}: {result}")
-                failures.append((jid, result))
+                self.log_queue.put(f"  -> ERROR for {work_no}: {result}")
+                failures.append((work_no, result))
 
         self.log_queue.put(
             f"\nProcessing complete. Successes: {successes}, Failures: {len(failures)}"
         )
         if failures:
             self.log_queue.put("Failure details:")
-            for f_jid, reason in failures:
-                self.log_queue.put(f"  - {f_jid}: {reason}")
+            for f_work_no, reason in failures:
+                self.log_queue.put(f"  - {f_work_no}: {reason}")
 
         self.log_queue.put("DONE")

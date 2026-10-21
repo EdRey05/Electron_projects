@@ -5,24 +5,40 @@
 @tailwind components;
 @tailwind utilities;
 
-html, body, #root { height: 100%; margin: 0; }
+html, body, #root {
+  height: 100%;
+  margin: 0;
+}
 
 body {
-  background: radial-gradient(1200px 800px at 0% 0%, #16294B 0%, #0B1426 60%, #07101E 100%);
-  color: #DCE4EE;
+  background: #F5F7F6;
+  color: #12211D;
   font-family: "IBM Plex Sans", system-ui, sans-serif;
   font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
 
-/* Subtle scrollbar styling for dark theme */
+/* Scrollbars — thin, neutral, matching the light paper surface. */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #1F3A66; border-radius: 6px; }
-::-webkit-scrollbar-thumb:hover { background: #2C4F87; }
+::-webkit-scrollbar-thumb { background: #C8D2CD; border-radius: 6px; }
+::-webkit-scrollbar-thumb:hover { background: #8FA39D; }
+
+.gsh-scroll::-webkit-scrollbar { width: 8px; height: 8px; }
+.gsh-scroll::-webkit-scrollbar-track { background: transparent; }
+.gsh-scroll::-webkit-scrollbar-thumb { background: #C8D2CD; border-radius: 4px; }
+.gsh-scroll::-webkit-scrollbar-thumb:hover { background: #8FA39D; }
+
+.gsh-log::-webkit-scrollbar { width: 8px; height: 8px; }
+.gsh-log::-webkit-scrollbar-track { background: transparent; }
+.gsh-log::-webkit-scrollbar-thumb { background: #2A4A45; border-radius: 4px; }
+.gsh-log::-webkit-scrollbar-thumb:hover { background: #3E6A63; }
 
 /* Allow text selection inside inputs / entries */
 input, textarea, [contenteditable] {
   user-select: text;
 }
+
+/* Table row hover on the shared DataTable */
+table tbody tr:hover { background: #F7FAF9; }
