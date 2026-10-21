@@ -244,6 +244,12 @@ def process_one(src_ab1: Path, out_dir: Path, args, output_name=None) -> dict:
         out_dir.mkdir(parents=True, exist_ok=True)
         out_ab1 = out_dir / (name + ".ab1")
         out_seq = out_dir / (name + ".seq")
+        out_evidence = out_dir / (name + ".evidence.json")
+        evidence = None
+        if getattr(args,'write_evidence',False):
+            if out_evidence.exists():raise ValueError('Evidence output already exists')
+            from .evidence import measure_evidence
+            evidence=measure_evidence(trace,result.channels,args)
         if out_ab1.exists() or (args.emit_seq and out_seq.exists()):
             raise ValueError("Output already exists; choose a fresh result folder")
         provenance = {**processor_identity(),
@@ -268,8 +274,12 @@ def process_one(src_ab1: Path, out_dir: Path, args, output_name=None) -> dict:
             if args.emit_seq:
                 write_seq(staged.with_suffix(".seq"), result.bases, format=args.seq_format,
                           clear_range=result.clear_range if args.seq_range=="clear" else None)
+            if evidence is not None:
+                evidence['provenance']=provenance
+                staged.with_suffix('.evidence.json').write_text(json.dumps(evidence,allow_nan=False),encoding='utf-8')
             staged.rename(out_ab1)
             if args.emit_seq: staged.with_suffix(".seq").rename(out_seq)
+            if evidence is not None:staged.with_suffix('.evidence.json').rename(out_evidence)
         if args.write_sidecar_trace:
             from .sidecar import write_sidecar_trace
             write_sidecar_trace(out_dir, name, {i+1:result.channels[9+i] for i in range(4)},
@@ -287,6 +297,9 @@ def process_one(src_ab1: Path, out_dir: Path, args, output_name=None) -> dict:
              "extended":False,"ext_bases_added":0,
              "revised_bases":len(result.diagnostics["revised_calls"]),
              "display_gain":gain, "analysis":result.diagnostics}
+        if evidence is not None:
+            row['evidence']=str(out_evidence)
+            row['evidence_summary']=evidence['summary']
         emit_event("file_done",**{k:v for k,v in row.items() if k!="status"})
         return row
     except Exception as exc:

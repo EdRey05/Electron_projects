@@ -43,7 +43,7 @@ def plan_batch(in_dir,out_dir,args):
         stem=output_stem(src,args)
         if stem.casefold() in seen:raise ValueError(f'Output filename collision: {stem}')
         seen.add(stem.casefold())
-        for suffix in ('.ab1','.seq'):
+        for suffix in ('.ab1','.seq') + (('.evidence.json',) if getattr(args,'write_evidence',False) else ()):
             dst=out_dir/(stem+suffix)
             if dst.exists():raise ValueError(f'Output already exists: {dst.name}; choose an empty result folder')
         plan.append((src,stem))
