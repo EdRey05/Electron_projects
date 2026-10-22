@@ -1,5 +1,7 @@
 # KM Plotter
 
+> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 005_KM_Plotter`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
+
 Desktop Kaplan-Meier plot generator — the Windows-native version of the
 Streamlit app `003_KM_plotter` from the `Streamlit_projects` repository.
 
@@ -48,29 +50,7 @@ real `lifelines` output on every change. See [Numerical validation](#numerical-v
 
 ## Quick start
 
-```bash
-cd 005_KM_Plotter
-npm install
-node scripts/stage-python.js     # ~2 min: bundles CPython + installs numpy/pandas/openpyxl
-npm run dev                      # dev mode (Vite + Electron)
-```
-
-### Building the Windows executable
-
-```bash
-npm run package:portable   # release/KM Plotter-1.0.0-x64.exe  (single file, ~113 MB)
-npm run package:win        # NSIS installer + portable exe
-```
-
-Output lands in `release/`.
-
-> **First launch of the portable `.exe` takes a few minutes.** electron-builder
-> unpacks the whole app (the Python runtime and venv — ~15 000 files) into a
-> fresh `%TEMP%` folder before the app starts. It looks like a hang; it is
-> not. The `win-unpacked/` folder runs instantly and is the better artifact to
-> test with.
-
----
+Build with the shared Sandbox command above. The portable folder ZIP is the default recommendation. The optional single EXE extracts its bundled runtime at launch. No developer tools are required on the end-user machine.
 
 ## Using the app
 
@@ -115,6 +95,8 @@ runtime — no `lifelines` needed — and asserts the known-good medians.
 
 ### Verification of the shipped build
 
+The table below records earlier project validation. For this portable release, use the dated [shared validation baseline](../build-tools/VALIDATION.md) and artifact-matched runtime test records.
+
 The packaged app is verified end-to-end, not just the source:
 
 | Layer | What it proves | Result |
@@ -155,7 +137,7 @@ resolves Python from `resources/`, the same path the shipped app uses.
 │   │   └── ErrorBoundary.jsx
 │   └── lib/plot.js      # pure plot geometry (shared by screen and export)
 ├── scripts/
-│   ├── stage-python.js  # bundles a portable CPython + venv
+│   ├── stage-python.js  # delegates to the shared Sandbox runtime stager
 │   └── test-python.js   # smoke test
 └── tests/               # lifelines validation scripts
 ```

@@ -1,0 +1,2 @@
+# Empty terminal TSV fields are data, not accidental trailing whitespace.
+005_KM_Plotter/tests/fixtures/*.tsv whitespace=-blank-at-eol

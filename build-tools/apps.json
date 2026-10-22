@@ -56,5 +56,19 @@
       "Bio"
     ],
     "tesseract": false
+  },
+  {
+    "id": "005_KM_Plotter",
+    "python": true,
+    "checks": [
+      "test:python"
+    ],
+    "exclude": [],
+    "pythonImports": [
+      "numpy",
+      "pandas",
+      "openpyxl"
+    ],
+    "tesseract": false
   }
 ]

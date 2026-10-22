@@ -14,23 +14,16 @@ const fs = require("fs");
 const os = require("os");
 const { spawn } = require("child_process");
 
+const runtime = require(app.isPackaged
+  ? path.join(process.resourcesPath, 'build-common', 'runtime.cjs')
+  : path.join(__dirname, '..', '..', 'build-tools', 'runtime.cjs'));
+runtime.configure(app);
+
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 // ---- bundled python location (matches 003_Gene_Synthesis_Hub / 004_Peak_Tracer) ----
 function pythonExePath() {
-  if (app.isPackaged) {
-    const venvPy = path.join(process.resourcesPath, "python-app", "runtime-venv", "Scripts", "python.exe");
-    if (fs.existsSync(venvPy)) return venvPy;
-    const sysPy = path.join(process.resourcesPath, "python-app", "runtime", "python.exe");
-    if (fs.existsSync(sysPy)) return sysPy;
-  }
-  // Development: <repo>/005_KM_Plotter/python-app/runtime-venv/Scripts/python.exe
-  const devVenv = path.join(__dirname, "..", "python-app", "runtime-venv", "Scripts", "python.exe");
-  if (fs.existsSync(devVenv)) return devVenv;
-  const devRuntime = path.join(__dirname, "..", "python-app", "runtime", "python.exe");
-  if (fs.existsSync(devRuntime)) return devRuntime;
-  // Fall back to whatever's on PATH.
-  return "python";
+  return runtime.python(app, path.join(__dirname, '..'));
 }
 
 function coreScriptPath() {

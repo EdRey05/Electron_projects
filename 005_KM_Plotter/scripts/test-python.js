@@ -14,18 +14,16 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 const CORE = path.join(ROOT, "python-app", "km_core.py");
 
-const VENV_PY = path.join(ROOT, "python-app", "runtime-venv", "Scripts", "python.exe");
 const RUNTIME_PY = path.join(ROOT, "python-app", "runtime", "python.exe");
 
 function pickPython() {
-  if (fs.existsSync(VENV_PY)) return VENV_PY;
   if (fs.existsSync(RUNTIME_PY)) return RUNTIME_PY;
-  throw new Error("No bundled Python found. Run: npm run stage-python");
+  throw new Error("No bundled Python found. Run the shared Sandbox builder to stage and validate the locked runtime.");
 }
 
 const TEST_DATA =
   process.env.KM_TEST_DATA ||
-  "C:\\Users\\Administrator\\Desktop\\Github_EdRey05\\Streamlit_projects\\Test_units\\Project 003\\clinical_synthetic.txt";
+  path.join(ROOT, "tests", "fixtures", "clinical_synthetic.tsv");
 
 function runJob(py, job) {
   return new Promise((resolve, reject) => {

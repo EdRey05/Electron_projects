@@ -42,10 +42,10 @@ function invoke(channel, payload) {
 }
 
 async function runE2E() {
-  const clinicalPath =
-    "C:\\Users\\Administrator\\Desktop\\Github_EdRey05\\Streamlit_projects\\Test_units\\Project 003\\clinical_synthetic.txt";
+  const clinicalPath = process.env.KM_TEST_DATA;
 
   try {
+    if (!clinicalPath) throw new Error("Set KM_TEST_DATA to the clinical fixture path or use scripts/run-e2e.js.");
     // 1. Pick + inspect the clinical file (the real picker path).
     const picked = await invoke("dialog:pickFile", {
       title: "clinical",

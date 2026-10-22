@@ -23,7 +23,8 @@ const RELEASE = path.join(ROOT, "release");
 const EVIDENCE = path.join(RELEASE, "e2e-evidence");
 
 const DEFAULT_CLINICAL =
-  "C:\\Users\\Administrator\\Desktop\\Github_EdRey05\\Streamlit_projects\\Test_units\\Project 003\\clinical_synthetic.txt";
+  path.join(ROOT, "tests", "fixtures", "clinical_synthetic.tsv");
+const pkg = require(path.join(ROOT, "package.json"));
 
 const target = process.argv[2] || "portable";
 const clinical = process.env.KM_TEST_DATA || DEFAULT_CLINICAL;
@@ -32,7 +33,7 @@ let exePath;
 if (target === "win-unpacked") {
   exePath = path.join(RELEASE, "win-unpacked", "KM Plotter.exe");
 } else if (target === "portable") {
-  exePath = path.join(RELEASE, "KM Plotter-1.0.0-x64.exe");
+  exePath = path.join(RELEASE, `${pkg.name}-${pkg.version}-win-x64-portable.exe`);
 } else {
   console.error(`Unknown target: ${target}. Use "portable" or "win-unpacked".`);
   process.exit(2);
@@ -65,6 +66,7 @@ const child = spawn(exePath, [], {
   env: {
     ...process.env,
     KM_E2E_TEST: "1",
+    KM_TEST_DATA: clinical,
     KM_E2E_REPORT: reportPath,
     KM_E2E_SAVE_PATH: xlsxPath,
     KM_E2E_PICK_FILES: pickPath,

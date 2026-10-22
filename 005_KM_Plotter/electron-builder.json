@@ -1,0 +1,51 @@
+{
+  "appId": "com.edrey05.kmplotter",
+  "productName": "KM Plotter",
+  "copyright": "Copyright © 2026 EdRey05",
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json",
+    "!**/*.map",
+    "!**/*.ts",
+    "!**/*.tsx",
+    "!**/{.eslintrc,.prettierrc,.editorconfig}",
+    "!**/{__tests__,test,tests}/**",
+    "!**/{.DS_Store,.git,.github,docs,node_modules}/**"
+  ],
+  "extraResources": [
+    {
+      "from": "python-app",
+      "to": "python-app",
+      "filter": [
+        "km_core.py",
+        "kmplot/**/*",
+        "requirements.txt",
+        "runtime/**/*"
+      ]
+    },
+    {
+      "from": "../build-tools/runtime.cjs",
+      "to": "build-common/runtime.cjs"
+    }
+  ],
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      }
+    ],
+    "category": "public.app-category.utilities"
+  },
+  "linux": {
+    "target": [
+      "AppImage"
+    ],
+    "category": "Utility"
+  },
+  "extends": "../build-tools/electron-builder.base.cjs"
+}
