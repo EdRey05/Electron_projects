@@ -1,0 +1,13 @@
+[
+  {
+    "id": "001_FileSync",
+    "python": false,
+    "checks": [
+      "typecheck",
+      "test"
+    ],
+    "exclude": [],
+    "pythonImports": [],
+    "tesseract": false
+  }
+]

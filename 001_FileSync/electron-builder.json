@@ -1,0 +1,22 @@
+{
+  "appId": "com.edrey05.filesync",
+  "productName": "FileSync",
+  "files": [
+    "out/**/*",
+    "package.json",
+    "!**/*.map",
+    "!**/*.ts",
+    "!**/*.tsx",
+    "!**/tests/**"
+  ],
+  "asarUnpack": [
+    "node_modules/sql.js/dist/sql-wasm.wasm"
+  ],
+  "extends": "../build-tools/electron-builder.base.cjs",
+  "extraResources": [
+    {
+      "from": "../build-tools/runtime.cjs",
+      "to": "build-common/runtime.cjs"
+    }
+  ]
+}

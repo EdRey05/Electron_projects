@@ -1,5 +1,7 @@
 # FileSync
 
+> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 001_FileSync`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
+
 Self-built bidirectional file sync app. See [PLAN.md](./PLAN.md) for the full development plan.
 
 ## Status

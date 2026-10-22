@@ -1,0 +1,7 @@
+build-tools/runs/
+build-tools/tests/
+**/node_modules/
+**/python-app/runtime/
+**/python-app/runtime-venv/
+**/python-app/tools/
+**/__pycache__/

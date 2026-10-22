@@ -1,6 +1,17 @@
 import { app, BrowserWindow } from "electron";
+import { mkdirSync } from "node:fs";
+import { dirname } from "node:path";
 import { join } from "node:path";
 import { registerIpcHandlers } from "./ipc";
+
+// Resolve beside the outer EXE, not the self-extractor's temporary resources.
+if (app.isPackaged) {
+  const base = process.env.PORTABLE_EXECUTABLE_DIR || dirname(app.getPath("exe"));
+  const data = join(base, "data");
+  mkdirSync(data, { recursive: true });
+  app.setPath("userData", data);
+  app.setAppLogsPath(join(base, "logs"));
+}
 
 const isDev = !app.isPackaged;
 
