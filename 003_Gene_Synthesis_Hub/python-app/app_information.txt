@@ -1,7 +1,7 @@
 [Ligation Layout]
 category = react_route
 path = Code/Ligation_layout
-entry = ligation_layout_app.py
+entry = LigationLayout.jsx
 class_name = LigationLayoutApp
 icon = 🧬
 version = 3.2
@@ -16,7 +16,7 @@ pass_db_as_kwarg = vector_db_path:Vector_database.xlsx
 [Colony PCR Layout]
 category = react_route
 path = Code/ColonyPCR_layout
-entry = ColonyPCR_layout_app.py
+entry = ColonyPCRLayout.jsx
 class_name = ColonyPCRLayoutApp
 icon = 🧫
 version = 1.5
@@ -30,7 +30,7 @@ pass_template_as_kwarg = colony_pcr_template_path:ColonyPCR_layout_v*.xlsx
 [Primer Finder]
 category = react_route
 path = Code/Primer_finder
-entry = primer_finder_app.py
+entry = PrimerFinder.jsx
 class_name = PrimerFinderApp
 icon = 🔬
 version = 1.1
@@ -43,7 +43,7 @@ pass_dir_as_kwarg = Primer_Log:primer_log_path
 [Sequencing Reference Files]
 category = react_route
 path = Code/Sequencing_reference_files
-entry = Sequencing_reference_files_app.py
+entry = SequencingReferenceFiles.jsx
 class_name = SequencingReferenceFilesApp
 icon = 🧬
 version = 1.2
@@ -56,7 +56,7 @@ pass_dir_as_kwarg = Primer_Log:primer_log_path; Reference_Sequences:reference_fi
 [Sequencing Order Form]
 category = react_route
 path = Code/Sequencing_order_form
-entry = sequencing_order_form_app.py
+entry = SequencingOrderForm.jsx
 class_name = OrderFormGUI
 icon = 📝
 version = 4.5
@@ -70,7 +70,7 @@ pass_template_as_kwarg = empty_form_path:Sequencing_order_form_v*.xlsx; seq_layo
 [Sequencing File Organizer]
 category = react_route
 path = Code/Sequencing_file_organizer
-entry = sequencing_file_organizer_app.py
+entry = SequencingFileOrganizer.jsx
 class_name = SequencingFileOrganizerApp
 icon = 📑
 version = 4.2

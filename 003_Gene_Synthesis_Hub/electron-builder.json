@@ -1,0 +1,89 @@
+{
+  "appId": "com.edrey05.genesynthesishub",
+  "productName": "Gene Synthesis Hub",
+  "copyright": "Copyright © 2026 EdRey05",
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json",
+    "!**/*.map",
+    "!**/*.ts",
+    "!**/*.tsx",
+    "!**/{.eslintrc,.prettierrc,.editorconfig}",
+    "!**/{__tests__,test,tests}/**",
+    "!**/{.DS_Store,.git,.github,docs,node_modules}/**"
+  ],
+  "extraResources": [
+    {
+      "from": "python-app/runtime",
+      "to": "python-app/runtime",
+      "filter": [
+        "**/*"
+      ]
+    },
+    {
+      "from": "python-app/Code",
+      "to": "python-app/Code",
+      "filter": [
+        "**/*"
+      ]
+    },
+    {
+      "from": "python-app/Templates",
+      "to": "python-app/Templates",
+      "filter": [
+        "**/*"
+      ]
+    },
+    {
+      "from": "python-app/Databases",
+      "to": "python-app/Databases",
+      "filter": [
+        "**/*"
+      ]
+    },
+    {
+      "from": "python-app/default_directories.ini",
+      "to": "python-app/default_directories.ini"
+    },
+    {
+      "from": "python-app/app_information.txt",
+      "to": "python-app/app_information.txt"
+    },
+    {
+      "from": "python-app/hub_launcher.py",
+      "to": "python-app/hub_launcher.py"
+    },
+    {
+      "from": "python-app/app_theme_midnight.json",
+      "to": "python-app/app_theme_midnight.json"
+    },
+    {
+      "from": "python-app/tools",
+      "to": "python-app/tools"
+    },
+    {
+      "from": "../build-tools/runtime.cjs",
+      "to": "build-common/runtime.cjs"
+    }
+  ],
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      }
+    ],
+    "category": "public.app-category.productivity"
+  },
+  "linux": {
+    "target": [
+      "AppImage"
+    ],
+    "category": "Science"
+  },
+  "extends": "../build-tools/electron-builder.base.cjs"
+}

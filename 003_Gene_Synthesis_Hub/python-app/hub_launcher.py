@@ -73,10 +73,10 @@ except ImportError:  # pragma: no cover - streamlit-only fallback
 # ---------------------------------------------------------------------------
 
 
-def read_config():
+def read_config(config_path=None):
     """Read the hub's app registry and directory config."""
     app_info_path = os.path.join(SCRIPT_DIR, "app_information.txt")
-    dir_config_path = os.path.join(SCRIPT_DIR, "default_directories.ini")
+    dir_config_path = config_path or os.path.join(SCRIPT_DIR, "default_directories.ini")
 
     app_cfg = configparser.ConfigParser()
     app_cfg.read(app_info_path, encoding="utf-8")
@@ -239,9 +239,10 @@ def launch_streamlit(app, kwargs, dir_config_path, drives):
 def main():
     parser = argparse.ArgumentParser(description="BBI hub launcher (Electron build)")
     parser.add_argument("--app", required=True, help="App name from app_information.txt")
+    parser.add_argument("--config", help="Persistent directory configuration")
     args, extra = parser.parse_known_args()
 
-    app_cfg, dir_cfg, dir_config_path = read_config()
+    app_cfg, dir_cfg, dir_config_path = read_config(args.config)
     drives = drive_dictionary(extra)
 
     section = None

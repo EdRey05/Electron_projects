@@ -154,6 +154,9 @@ try {
             $expectedConfig = if ($folderMode) {'C:\Relocated app with spaces\data\default_directories.ini'} else {'C:\Smoke\data\default_directories.ini'}
             if ($layout.dirConfigPath -ne $expectedConfig -or !(Test-Path $expectedConfig)) { throw 'Hub directory settings are not persistent beside the executable.' }
             $result.checks += 'persistent-hub-directory-config'
+            $saved = Evaluate '(async()=>{const before=await window.api.loadConfig({});const key="Primer_Log";const original=before.paths[key].raw;const value="C:\\SmokeFixtures\\synthetic-primer-log.xlsx";const write=await window.api.saveConfig({[key]:value},{});const after=await window.api.loadConfig({});const restore=await window.api.saveConfig({[key]:original},{});return {write,restore,persisted:after.paths[key].raw===value};})()'
+            if (!$saved.write.ok -or !$saved.restore.ok -or !$saved.persisted) {throw 'Hub directory config save/read regression failed.'}
+            $result.checks += 'hub-directory-config-save-read-and-restore'
             'import streamlit as st; st.write("Portable runtime fixture")' | Set-Content C:\SmokeFixtures\streamlit_app.py -Encoding UTF8
             $server = Start-Process -FilePath $python -ArgumentList '-m streamlit run C:\SmokeFixtures\streamlit_app.py --server.headless=true --server.port=8501 --browser.gatherUsageStats=false' -WindowStyle Hidden -PassThru
             try {

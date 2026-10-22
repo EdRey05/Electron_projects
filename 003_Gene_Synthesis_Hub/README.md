@@ -1,5 +1,7 @@
 # Gene Synthesis Hub
 
+> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 003_Gene_Synthesis_Hub`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
+
 Modern Electron desktop shell for the **Gene Synthesis Hub** previously distributed as
 three `.bat` files plus a Python CustomTkinter GUI. Same workflows, same config files,
 same subapps — just a real UI, a real save dialog, and a portable `.exe` folder that
@@ -47,7 +49,7 @@ Plus a few niceties the old Tkinter UI didn't have:
    using the original `Label, "sub\path"` form when possible.
 5. The right panel lists every subapp. Apps whose `requires` keys are still missing
    show a red warning and the Launch button stays disabled.
-6. Click **Launch**. The hub spawns `python-app/runtime-venv/Scripts/python.exe` with
+6. Click **Launch**. The hub spawns `python-app/runtime/python.exe` with
    the right CLI args, in the subapp folder. The subapp opens in its own window.
 
 ## Project layout
@@ -62,7 +64,7 @@ Plus a few niceties the old Tkinter UI didn't have:
 │   ├── main.jsx             # ReactDOM mount
 │   └── styles.css           # Tailwind directives + Google Fonts
 ├── scripts/
-│   ├── stage-python.js      # Copies portable CPython into python-app/runtime/ + builds venv
+│   ├── stage-python.js      # Compatibility entry point for the shared Sandbox runtime stager
 │   └── stage-subapps.js     # Refreshes python-app/ from BBI_projects/
 ├── python-app/              # Subapp source + templates + databases
 │   ├── Code/                # 10 subapps (Tkinter + Streamlit)
@@ -109,7 +111,7 @@ node scripts/stage-subapps.js   # refreshes python-app/ from BBI_projects/
 To pull in upstream dependency changes:
 
 1. Edit `python-app/requirements.txt`.
-2. `node scripts/stage-python.js --no-copy` (rebuilds venv only).
+2. Deliberately regenerate the complete Python lock in an isolated development environment, then rebuild using build-tools/Build-Apps.ps1. Release builds never update locks.
 
 ## Why Electron, not "X"
 
@@ -159,29 +161,7 @@ one at a time and remove its Python entry from `app_information.txt`. See
 
 ## Building the portable .exe
 
-```bash
-npm install                  # 30-60s
-node scripts/stage-python.js # stages Python runtime + venv (~5-10 min)
-node scripts/stage-subapps.js
-npm run build                # Vite bundle (~10s)
-npm run package:portable     # electron-builder → release/ (~5-10 min)
-```
-
-Output:
-- `release/Gene Synthesis Hub-1.0.0-x64.exe` — single-file portable launcher (~150 MB)
-- `release/win-unpacked/` — full portable folder (~691 MB) the `.exe` depends on
-
-Ship the entire `win-unpacked/` folder (NOT just the `.exe`). See `BUILD.md`
-for details and verification steps.
-
-The React component lives at `src/subapps/<Name>/` and is registered in
-`src/App.jsx` under `REACT_SUBAPPS`. When `app_information.txt` lists a section
-with `category = react_route` and `entry = <Name>.jsx`, the hub mounts the
-component in-process instead of spawning `python.exe`.
-
-This is the pattern for all future ports: drop a folder under `src/subapps/`,
-add it to `REACT_SUBAPPS`, flip the section in `app_information.txt` to
-`category = react_route`, delete the matching `python-app/Code/<x>/` folder.
+Use the shared Sandbox command above. It stages a complete locked Python interpreter and Tesseract, runs validation, and exports both portable formats. Legacy .doc conversion requires Microsoft Word; .docx and bundled OCR do not.
 
 ### Why the SnapGene QC Digestion workflow stays Python
 

@@ -50,4 +50,8 @@ if (!fs.existsSync(SRC)) {
 console.log(`Staging subapps from:\n  ${SRC}\ninto:\n  ${DST}\n`);
 for (const d of COPY_DIRS) copyDir(path.join(SRC, d), path.join(DST, d));
 for (const f of COPY_FILES) copyFile(path.join(SRC, f), path.join(DST, f));
+// Upstream keeps Python filenames; this Electron shell routes these tools to React.
+const { normalize } = require('./react-registry.cjs');
+const registryPath = path.join(DST, 'app_information.txt');
+fs.writeFileSync(registryPath, normalize(fs.readFileSync(registryPath, 'utf8')), 'utf8');
 console.log("\n✅ Done.");

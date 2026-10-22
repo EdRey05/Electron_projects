@@ -47,18 +47,13 @@ function runtimeDir() {
   return path.join(pythonAppRoot(), "runtime");
 }
 
-function venvDir() {
-  // A `.venv` sibling to the runtime, where deps are installed into.
-  return path.join(pythonAppRoot(), "runtime-venv");
-}
-
 function pythonExe() {
   // Windows: python.exe inside the runtime. We never call `python` on PATH.
-  return path.join(runtimeDir(), "python.exe");
+  return runtime.python(app, path.join(__dirname, ".."));
 }
 
 function venvPythonExe() {
-  return path.join(venvDir(), "Scripts", "python.exe");
+  return pythonExe();
 }
 
 function appInfoPath() {
@@ -66,7 +61,7 @@ function appInfoPath() {
 }
 
 function dirConfigPath() {
-  return path.join(pythonAppRoot(), "default_directories.ini");
+  return runtime.seedConfig(app, path.join(pythonAppRoot(), "default_directories.ini"));
 }
 
 // ---------------------------------------------------------------------------
@@ -231,6 +226,11 @@ function escapeRegex(s) {
 // Window
 // ---------------------------------------------------------------------------
 
+const runtime = require(app.isPackaged
+  ? path.join(process.resourcesPath, 'build-common', 'runtime.cjs')
+  : path.join(__dirname, '..', '..', 'build-tools', 'runtime.cjs'));
+runtime.configure(app);
+
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 function createWindow() {
@@ -323,7 +323,7 @@ ipcMain.handle("hub:saveConfig", async (_evt, { newValues, driveMappings }) => {
     if (!seen.has(k)) newLines.push(`${k} = ${v}`);
   }
 
-  await fsp.writeFile(filePath, newLines.join(os.EOL()), "utf8");
+  await fsp.writeFile(filePath, newLines.join(os.EOL), "utf8");
   return { ok: true };
 });
 
@@ -411,7 +411,7 @@ ipcMain.handle("hub:launchApp", async (_evt, { appDef, paths, driveMappings }) =
     return { ok: false, error: `Hub launcher not found at ${launcher}.` };
   }
 
-  const cmd = [py, launcher, `--app=${appDef.name}`, ...driveArgs];
+  const cmd = [py, launcher, `--app=${appDef.name}`, `--config=${dirConfigPath()}`, ...driveArgs];
 
   // Detached: the subapp lives in its own window, the hub stays alive.
   // We don't .unref() because we want the child to outlive a fast hub close,
@@ -661,7 +661,8 @@ ipcMain.handle("hub:getLayout", async () => {
   return {
     pythonAppRoot: pythonAppRoot(),
     runtimeDir: runtimeDir(),
-    venvDir: venvDir(),
+    // Compatibility field for existing UI; packages live in the full runtime.
+    venvDir: runtimeDir(),
     pythonExe: pythonExe(),
     venvPythonExe: venvPythonExe(),
     appInfoPath: appInfoPath(),

@@ -17,5 +17,26 @@
     "exclude": [],
     "pythonImports": [],
     "tesseract": false
+  },
+  {
+    "id": "003_Gene_Synthesis_Hub",
+    "python": true,
+    "checks": [
+      "verify:quick"
+    ],
+    "exclude": [],
+    "pythonImports": [
+      "numpy",
+      "pandas",
+      "openpyxl",
+      "streamlit",
+      "customtkinter",
+      "Bio",
+      "docx",
+      "PIL",
+      "pytesseract",
+      "win32com.client"
+    ],
+    "tesseract": true
   }
 ]
