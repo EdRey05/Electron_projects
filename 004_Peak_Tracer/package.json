@@ -1,6 +1,6 @@
 {
   "name": "peak-tracer",
-  "version": "2.0.0-dev",
+  "version": "2.0.1",
   "private": true,
   "description": "Sanger trace resolution with preserved raw evidence, conservative calls and reproducible comparison metrics.",
   "main": "electron/main.js",
@@ -10,9 +10,14 @@
     "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron .\"",
     "build": "vite build",
     "start": "electron .",
-    "package": "npm run build && electron-builder",
-    "package:win": "npm run build && electron-builder --win",
-    "package:portable": "npm run build && electron-builder --win portable"
+    "package": "npm run build && electron-builder --config electron-builder.json --win portable --x64 --publish never",
+    "package:win": "npm run build && electron-builder --config electron-builder.json --win portable --x64 --publish never",
+    "package:portable": "npm run build && electron-builder --config electron-builder.json --win portable --x64 --publish never",
+    "package:folder": "npm run build && electron-builder --config electron-builder.json --win dir --x64 --publish never",
+    "validate": "node ../build-tools/validate.cjs && npm run test:python",
+    "test:packaged": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-tools/Test-Packaged.ps1 -App 004_Peak_Tracer",
+    "stage-python": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-tools/Stage-LocalPython.ps1",
+    "test:python": "node ../build-tools/test-python.cjs python-app/tests/test_analysis_contract.py python-app/tests/test_evidence.py"
   },
   "dependencies": {
     "lucide-react": "^0.460.0",
@@ -23,64 +28,15 @@
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
     "concurrently": "^9.1.0",
-    "electron": "^33.3.0",
-    "electron-builder": "^25.1.8",
+    "electron": "33.4.11",
+    "electron-builder": "25.1.8",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "vite": "^5.4.11",
     "wait-on": "^8.0.1"
   },
-  "build": {
-    "appId": "com.edrey05.peaktracer",
-    "productName": "Peak Tracer",
-    "copyright": "Copyright © 2026 EdRey05",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "python-app/peaktrace/**/*",
-      "python-app/peaktrace_core.py",
-      "python-app/requirements.txt",
-      "package.json",
-      "!**/*.map",
-      "!**/*.ts",
-      "!**/*.tsx",
-      "!**/{.eslintrc,.prettierrc,.editorconfig}",
-      "!**/{__tests__,test,tests}/**",
-      "!**/{.DS_Store,.git,.github,docs,node_modules}/**",
-      "!**/runtime-venv/**"
-    ],
-    "extraResources": [
-      {
-        "from": "python-app",
-        "to": "python-app",
-        "filter": ["peaktrace/**/*", "peaktrace_core.py", "requirements.txt", "runtime/**/*"]
-      }
-    ],
-    "win": {
-      "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
-      ],
-      "artifactName": "${productName}-${version}-${arch}.${ext}"
-    },
-    "nsis": {
-      "oneClick": false,
-      "perMachine": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    },
-    "mac": {
-      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
-      "category": "public.app-category.utilities"
-    },
-    "linux": {
-      "target": ["AppImage"],
-      "category": "Utility"
-    }
-  }
+  "engines": {
+    "node": "22.22.0"
+  },
+  "packageManager": "npm@10.9.4"
 }

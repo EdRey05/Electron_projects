@@ -38,5 +38,23 @@
       "win32com.client"
     ],
     "tesseract": true
+  },
+  {
+    "id": "004_Peak_Tracer",
+    "python": true,
+    "checks": [
+      "test:python"
+    ],
+    "exclude": [
+      "build",
+      "docs",
+      "python-app/experiments"
+    ],
+    "pythonImports": [
+      "numpy",
+      "scipy",
+      "Bio"
+    ],
+    "tesseract": false
   }
 ]

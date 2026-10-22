@@ -1,4 +1,6 @@
-# Peak Tracer v2.0 development
+# Peak Tracer v2.0.1
+
+> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 004_Peak_Tracer`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
 
 Sanger chromatogram processing for post-Seq7 AB1 files, with an Electron interface
 and a Python CLI. The current pipeline resolves measured overlapping peaks,
@@ -54,5 +56,4 @@ sample data or network services are required by the production processor.
 ## Electron
 
 The interface and main process share validated advanced defaults. See `BUILD.md`
-for the existing build workflow. v1.9 has not yet been built or packaged; the
-current development milestone is CLI processing and validation.
+for historical development details. The supported portable build and validation workflow is now [the shared Sandbox manual](../build-tools/README.md). This packaging release preserves the existing scientific pipeline and its documented experimental limits.

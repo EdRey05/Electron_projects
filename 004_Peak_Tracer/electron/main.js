@@ -15,22 +15,16 @@ const fs = require("fs");
 const { spawn } = require("child_process");
 const { advancedDefaults, advancedArgs } = require("./parameters");
 
+const runtime = require(app.isPackaged
+  ? path.join(process.resourcesPath, 'build-common', 'runtime.cjs')
+  : path.join(__dirname, '..', '..', 'build-tools', 'runtime.cjs'));
+runtime.configure(app);
+
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 // ---- bundled python location (matches 003_Gene_Synthesis_Hub pattern) ----
 function pythonExePath() {
-  // Production: python-app/runtime/Scripts/python.exe (Windows)
-  if (app.isPackaged) {
-    const venvPy = path.join(process.resourcesPath, "python-app", "runtime", "Scripts", "python.exe");
-    if (fs.existsSync(venvPy)) return venvPy;
-    const sysPy = path.join(process.resourcesPath, "python-app", "runtime", "python.exe");
-    if (fs.existsSync(sysPy)) return sysPy;
-  }
-  // Development: <repo>/004_Peak_Tracer/python-app/runtime/Scripts/python.exe
-  const devVenv = path.join(__dirname, "..", "python-app", "runtime", "Scripts", "python.exe");
-  if (fs.existsSync(devVenv)) return devVenv;
-  // Fall back to whatever's on PATH
-  return "python";
+  return runtime.python(app, path.join(__dirname, '..'));
 }
 
 function peaktraceScriptPath() {
