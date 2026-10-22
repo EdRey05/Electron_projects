@@ -168,6 +168,7 @@ export default function SequenceBindingFinder() {
   // at a path the user picks. If main is unavailable (web preview), fall
   // back to the original browser-download behavior so the JSX can also run
   // outside Electron.
+  const [exportSaved, setExportSaved] = useState(false);
   const persistResultsXLSX = useCallback(async (data) => {
     const rows = data.map((r) => ({
       Name: r.name,
@@ -191,6 +192,7 @@ export default function SequenceBindingFinder() {
 
   const runAnalysis = async () => {
     if (!refClean || entries.length === 0) return;
+    setExportSaved(false);
     setRunning(true);
     setProgress(0);
     setResults(null);
@@ -251,7 +253,7 @@ export default function SequenceBindingFinder() {
     setResults(out);
     setRunning(false);
     setProgress(100);
-    await persistResultsXLSX(out);
+    setExportSaved(await persistResultsXLSX(out));
   };
 
   const reset = () => {
@@ -471,7 +473,7 @@ export default function SequenceBindingFinder() {
           )}
           {!running && results && (
             <p className="text-xs mt-2 flex items-center gap-1" style={{ color: "#5B706A" }}>
-              <Download size={12} /> binding_results.xlsx was saved.
+              <Download size={12} /> {exportSaved ? "binding_results.xlsx was saved." : "Results ready. Workbook was not saved."}
             </p>
           )}
         </section>

@@ -1,5 +1,7 @@
 # Sequence Binding Finder
 
+> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 002_Sequence_Binding_Finder`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
+
 Local forward / reverse-complement alignment of sequences against a reference.
 Drop in an `.xlsx` of candidate sequences, pick an identity threshold, get back
 a `.xlsx` of matches with positions, strand, and per-base alignment track.

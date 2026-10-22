@@ -1,80 +1,15 @@
-# Building the portable Windows app
+# Portable Windows build
 
-## Prerequisites
+The authoritative workflow is the [shared build manual](../build-tools/README.md).
 
-- **Node.js 18+** and **npm**.
-- A Windows host (for the `.exe`). `electron-builder` produces Windows
-  artifacts on Windows; cross-compiling from Linux/macOS works for some targets
-  but is not exercised here.
+From the repository root:
 
-## First-time setup
-
-```bash
-cd 002_Sequence_Binding_Finder
-npm install
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 002_Sequence_Binding_Finder
 ```
 
-## Dev mode
+Add other app IDs separated by commas to build them in the same disposable Sandbox. Omit -Apps to build all registered apps. The host needs Windows Sandbox and Git; it does not need a new Node, npm, Python, or uv installation.
 
-```bash
-npm run dev
-```
+The runner installs locked dependencies in separate app environments, reuses download caches, validates and packages the app, exports the portable EXE and folder ZIP plus checksums/logs to Desktop/App_builds, and discards its guest. Run the shared Test-Apps.ps1 against the completed run/output directory for offline artifact checks.
 
-This runs the Vite dev server (port 5173) and launches Electron pointed at it.
-DevTools open in detached mode.
-
-## Production build (Windows)
-
-```bash
-npm run build           # bundles React into dist/
-npm run package:win     # produces both NSIS installer and portable folder
-```
-
-Outputs (in `release/`):
-
-| File | Description | Size |
-|---|---|---|
-| `Sequence Binding Finder-1.0.0-x64.exe` | Portable single-exe launcher | ~71 MB |
-| `win-unpacked/Sequence Binding Finder.exe` | Portable folder launcher | ~180 MB |
-| `win-unpacked/` | Self-contained portable folder | ~268 MB |
-| `Sequence Binding Finder Setup 1.0.0 x64.exe` | NSIS installer (when built) | ~115 MB |
-
-Note: the build emits to `release/` (not `dist/`) so the in-progress Electron-build
-artifacts don't get recursively packaged.
-
-### Distributing
-
-**Recommended:** ship the entire `win-unpacked/` folder. The `.exe` depends on
-sibling DLLs (`ffmpeg.dll`, `vk_swiftshader.dll`, etc.); copying only the `.exe`
-fails with "missing ffmpeg.dll".
-
-## Rebuilding from scratch
-
-If `node_modules/`, `dist/`, or `out/` are missing, just re-run `npm install`
-and `npm run build` — both are disposable artifacts (gitignored).
-
-## Project layout
-
-```
-002_Sequence_Binding_Finder/
-├── electron/
-│   ├── main.js          # Electron main process + IPC handlers
-│   └── preload.js       # contextBridge — exposes window.api
-├── src/
-│   ├── App.jsx          # The whole React component (single-file)
-│   ├── main.jsx         # ReactDOM mount
-│   └── styles.css       # Tailwind directives + Google Fonts import
-├── index.html           # Vite entry / mount point
-├── package.json         # deps + build config (electron-builder via "build" key)
-├── vite.config.js       # React + base: "./" for file:// loading
-├── tailwind.config.js
-└── postcss.config.js
-```
-
-## Verifying the build
-
-1. Launch `dist/win-unpacked/Sequence Binding Finder.exe`.
-2. Paste a reference sequence in the "Reference sequence" textarea.
-3. Drop an `.xlsx` (columns A + B = name, C = sequence) onto the upload zone.
-4. Pick a threshold and click **Run analysis**.
-5. Confirm a save dialog appears; results are written to the chosen path.
+End users extract the ZIP and double-click the application EXE. Keep the folder together and preserve data/ across updates. The single portable EXE is also available; Python-heavy apps start faster from an extracted folder. See the manual for exact versions, validation coverage, migration, and adding future apps.

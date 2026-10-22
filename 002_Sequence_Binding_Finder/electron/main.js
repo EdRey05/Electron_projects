@@ -7,6 +7,11 @@ const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs/promises");
 
+const runtime = require(app.isPackaged
+  ? path.join(process.resourcesPath, 'build-common', 'runtime.cjs')
+  : path.join(__dirname, '..', '..', 'build-tools', 'runtime.cjs'));
+runtime.configure(app);
+
 const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 function createWindow() {

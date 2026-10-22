@@ -1,0 +1,41 @@
+{
+  "appId": "com.edrey05.sequencebindingfinder",
+  "productName": "Sequence Binding Finder",
+  "copyright": "Copyright © 2026 EdRey05",
+  "files": [
+    "dist/**/*",
+    "electron/**/*",
+    "package.json",
+    "!**/*.map",
+    "!**/*.ts",
+    "!**/*.tsx",
+    "!**/{.eslintrc,.prettierrc,.editorconfig}",
+    "!**/{__tests__,test,tests}/**",
+    "!**/{.DS_Store,.git,.github,docs,node_modules}/**"
+  ],
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": [
+          "arm64",
+          "x64"
+        ]
+      }
+    ],
+    "category": "public.app-category.utilities"
+  },
+  "linux": {
+    "target": [
+      "AppImage"
+    ],
+    "category": "Utility"
+  },
+  "extends": "../build-tools/electron-builder.base.cjs",
+  "extraResources": [
+    {
+      "from": "../build-tools/runtime.cjs",
+      "to": "build-common/runtime.cjs"
+    }
+  ]
+}

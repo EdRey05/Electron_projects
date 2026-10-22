@@ -9,5 +9,13 @@
     "exclude": [],
     "pythonImports": [],
     "tesseract": false
+  },
+  {
+    "id": "002_Sequence_Binding_Finder",
+    "python": false,
+    "checks": [],
+    "exclude": [],
+    "pythonImports": [],
+    "tesseract": false
   }
 ]
