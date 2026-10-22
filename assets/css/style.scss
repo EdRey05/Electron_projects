@@ -1,0 +1,11 @@
+---
+---
+@import "jekyll-theme-cayman";
+.main-content { max-width: 76rem; }
+.main-content img { max-width: 100%; border-radius: 12px; border: 1px solid #dce5e1; }
+.main-content table { display: block; overflow-x: auto; }
+.main-content h2 { padding-top: 1rem; border-top: 1px solid #e8eceb; }
+.main-content p, .main-content li { line-height: 1.7; }
+@media (max-width: 42em) { .main-content { padding: 1.5rem 1rem; } }
+
+.main-content > h1:first-child { display: none; }

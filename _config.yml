@@ -1,0 +1,15 @@
+title: Electron desktop projects
+description: Portable Windows tools by Eduardo Reyes Alvarez, Ph.D.
+theme: jekyll-theme-cayman
+show_downloads: false
+url: https://edrey05.github.io
+baseurl: /Electron_projects
+exclude:
+  - 001_FileSync
+  - 002_Sequence_Binding_Finder
+  - 003_Gene_Synthesis_Hub
+  - 004_Peak_Tracer
+  - 005_KM_Plotter
+  - build-tools
+  - demo-tools
+  - AGENTS.md

@@ -1,0 +1,77 @@
+{
+  "capture": "continuous renderer frames with measured timestamps",
+  "recordedAt": "2026-10-22",
+  "fileChoosers": "automatically supplied synthetic paths",
+  "results": [
+    {
+      "frames": 260,
+      "height": 1000,
+      "app": "001_FileSync",
+      "width": 1600,
+      "preview": "Images_GIFs_Videos/001_FileSync.gif",
+      "durationSeconds": 21.666667,
+      "synthetic": true,
+      "status": "passed",
+      "codec": "h264",
+      "video": "Images_GIFs_Videos/001_FileSync.mp4",
+      "poster": "Images_GIFs_Videos/001_FileSync.png",
+      "sha256": "8EEE0FA904CC099B6CA3C3EC8A1227C1DCF0D7067880353357E4C99BF11C84BC"
+    },
+    {
+      "frames": 289,
+      "height": 1000,
+      "app": "002_Sequence_Binding_Finder",
+      "width": 1600,
+      "preview": "Images_GIFs_Videos/002_Sequence_Binding_Finder.gif",
+      "durationSeconds": 24.083333,
+      "synthetic": true,
+      "status": "passed",
+      "codec": "h264",
+      "video": "Images_GIFs_Videos/002_Sequence_Binding_Finder.mp4",
+      "poster": "Images_GIFs_Videos/002_Sequence_Binding_Finder.png",
+      "sha256": "47D016BD2996EFD92F3384374BBF6CD68BF90B1160320AD5740B2851655E8E77"
+    },
+    {
+      "frames": 392,
+      "height": 1000,
+      "app": "003_Gene_Synthesis_Hub",
+      "width": 1600,
+      "preview": "Images_GIFs_Videos/003_Gene_Synthesis_Hub.gif",
+      "durationSeconds": 32.666667,
+      "synthetic": true,
+      "status": "passed",
+      "codec": "h264",
+      "video": "Images_GIFs_Videos/003_Gene_Synthesis_Hub.mp4",
+      "poster": "Images_GIFs_Videos/003_Gene_Synthesis_Hub.png",
+      "sha256": "F7A648B6A4FF65D8C52F46958B0E87E6EDEC47DC5F493E7E576521AB4CD84CBB"
+    },
+    {
+      "frames": 308,
+      "height": 1000,
+      "app": "004_Peak_Tracer",
+      "width": 1600,
+      "preview": "Images_GIFs_Videos/004_Peak_Tracer.gif",
+      "durationSeconds": 25.666667,
+      "synthetic": true,
+      "status": "passed",
+      "codec": "h264",
+      "video": "Images_GIFs_Videos/004_Peak_Tracer.mp4",
+      "poster": "Images_GIFs_Videos/004_Peak_Tracer.png",
+      "sha256": "71FA6169E5B5E214E8DAB60FF39E6D7ACBC4FA6AEFFD0C627337D1F5A23C1F66"
+    },
+    {
+      "frames": 315,
+      "height": 1000,
+      "app": "005_KM_Plotter",
+      "width": 1600,
+      "preview": "Images_GIFs_Videos/005_KM_Plotter.gif",
+      "durationSeconds": 26.25,
+      "synthetic": true,
+      "status": "passed",
+      "codec": "h264",
+      "video": "Images_GIFs_Videos/005_KM_Plotter.mp4",
+      "poster": "Images_GIFs_Videos/005_KM_Plotter.png",
+      "sha256": "4B256CBDEF93FDE80A64C13608A227EBA84B1F5E38C3FFB4A143842B9091DF15"
+    }
+  ]
+}
