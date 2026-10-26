@@ -1,6 +1,6 @@
 ---
 layout: default
-title: Electron desktop projects
+title: Electron projects
 ---
 
 {% include_relative README.md %}
