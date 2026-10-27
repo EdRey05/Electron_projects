@@ -2,22 +2,34 @@
 ---
 @import "jekyll-theme-cayman";
 
-// Deep Ocean banner, with a solid-color fallback.
-.page-header {
-  background-color: #17345c;
-  background-image: linear-gradient(120deg, #17345c, #146b80);
-}
+$catalog-heading: #146b80;
+.page-header { background-color: #17345c; background-image: linear-gradient(120deg, #17345c, #146b80); }
 
-// Match the Streamlit catalog's compact desktop banner and full-width content.
-@include large {
-  .page-header { padding: 2rem 6rem; }
-}
-
+// Streamlit catalog layout; preserve Cayman typography and spacing.
+@include large { .page-header { padding: 2rem 6rem; } }
 .main-content { max-width: 100%; margin: auto; }
-.main-content img { max-width: 100%; border-radius: 12px; border: 1px solid #dce5e1; }
+.main-content h1, .main-content h2, .main-content h3,
+.main-content h4, .main-content h5, .main-content h6 { color: $catalog-heading; }
+.main-content kbd { background-color: #e1e1e2; }
+.main-content hr { height: 10px; }
+.two-columns { display: flex; width: 100%; }
+.two-columns > div { min-width: 0; }
+.left-column-35 { flex: 35%; padding-right: 35px; }
+.right-column-65 { flex: 65%; }
+.left-column-50 { flex: 50%; padding-right: 25px; }
+.right-column-50 { flex: 50%; padding-left: 25px; }
+.main-content video { display: block; width: 100%; height: auto; }
 .main-content table { display: block; overflow-x: auto; }
-.main-content h2 { padding-top: 1rem; border-top: 1px solid #e8eceb; }
-.main-content p, .main-content li { line-height: 1.7; }
-@media (max-width: 42em) { .main-content { padding: 1.5rem 1rem; } }
-
-.main-content > h1:first-child { display: none; }
+details > summary { width: 100%; cursor: pointer; color: #0366d6; list-style: none; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: '▶▶'; display: inline-block; padding-right: 8px; transition: transform 0.3s ease; }
+details[open] > summary::before { transform: rotate(90deg); }
+details > summary:hover { text-decoration: underline; }
+details > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+.justify-text, .two-columns p, .two-columns li { text-align: justify; }
+.center-text, .center-text p { text-align: center; }
+@media screen and (max-width: 768px) {
+  .two-columns { flex-direction: column; }
+  .left-column-35, .right-column-65, .left-column-50, .right-column-50 { flex-basis: 100%; padding-left: 0; padding-right: 0; }
+}
+@media (prefers-reduced-motion: reduce) { details > summary::before { transition: none; } }
