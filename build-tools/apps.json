@@ -13,7 +13,9 @@
   {
     "id": "002_Sequence_Binding_Finder",
     "python": false,
-    "checks": [],
+    "checks": [
+      "test"
+    ],
     "exclude": [],
     "pythonImports": [],
     "tesseract": false

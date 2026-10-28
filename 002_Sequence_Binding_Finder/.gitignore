@@ -10,3 +10,7 @@ coverage
 tests/.tmp
 build
 release
+
+test_assets/*.xlsx
+test_assets/harness/results*.json
+electron/build-info.json

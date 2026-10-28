@@ -116,16 +116,16 @@ try {
         $result.checks += 'xlsx-write-ipc-preserved-workbook'
         Evaluate '(()=>{const e=document.querySelector("textarea");Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,"value").set.call(e,"TTTTACGTACGTGGGG");e.dispatchEvent(new Event("input",{bubbles:true}));return true;})()' | Out-Null
         $doc = Send-Cdp 'DOM.getDocument' @{}
-        $fileNode = Send-Cdp 'DOM.querySelector' @{nodeId=$doc.root.nodeId;selector='input[type=file]'}
+        $fileNode = Send-Cdp 'DOM.querySelector' @{nodeId=$doc.root.nodeId;selector='input[type=file][accept=".xlsx,.xls"]'}
         Send-Cdp 'DOM.setFileInputFiles' @{nodeId=$fileNode.nodeId;files=@($fixture)} | Out-Null
         Start-Sleep -Seconds 2
         $loaded = Evaluate 'document.body.innerText'
-        if ($loaded -notmatch '1 sequence\(s\) loaded') { throw 'Sequence workbook fixture did not load.' }
+        if ($loaded -notmatch '1 entries loaded') { throw 'Sequence workbook fixture did not load.' }
         Evaluate '(()=>{const b=[...document.querySelectorAll("button")].find(e=>e.innerText.includes("Run analysis"));if(!b||b.disabled)throw Error("Analysis button disabled");b.click();return true;})()' | Out-Null
         Start-Sleep -Seconds 3
         $analysis = Evaluate 'document.body.innerText'
         $analysis | Set-Content C:\TestExport\sequence-functional.txt -Encoding UTF8
-        if ($analysis -notmatch 'PortableFixture' -or $analysis -notmatch '100(?:\.0)?%') { throw 'Expected perfect-match alignment result was not rendered.' }
+        if ($analysis -notmatch 'PortableFixture' -or $analysis -notmatch '100(?:\.0+)?%') { throw 'Expected perfect-match alignment result was not rendered.' }
         $result.checks += 'xlsx-fixture-loaded','perfect-match-alignment-rendered'
         $result.exportNote = 'Workbook write IPC verified byte-for-byte; native save-dialog selection still requires manual acceptance.'
     }

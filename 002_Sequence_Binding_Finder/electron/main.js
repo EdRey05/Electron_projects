@@ -6,6 +6,9 @@
 const { app, BrowserWindow, ipcMain, dialog } = require("electron");
 const path = require("path");
 const fs = require("fs/promises");
+const { createUnivecService } = require("./univec.cjs");
+let univec;
+const readableFiles = new Set();
 
 const runtime = require(app.isPackaged
   ? path.join(process.resourcesPath, 'build-common', 'runtime.cjs')
@@ -20,7 +23,7 @@ function createWindow() {
     height: 900,
     title: "Sequence Binding Finder",
     autoHideMenuBar: true,
-    backgroundColor: "#F5F7F6",
+    backgroundColor: "#C9DDD2",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -41,15 +44,35 @@ function createWindow() {
 //   1) renderer asks for a path via "dialog:saveResults"
 //   2) renderer asks main to write bytes to that path via "file:writeXlsx"
 ipcMain.handle("dialog:saveResults", async (_evt, defaultName) => {
+  const csv = String(defaultName || "").endsWith(".csv");
   const result = await dialog.showSaveDialog({
     title: "Save binding results",
     defaultPath: defaultName || "binding_results.xlsx",
     filters: [
-      { name: "Excel", extensions: ["xlsx"] },
+      { name: csv ? "CSV" : "Excel", extensions: [csv ? "csv" : "xlsx"] },
       { name: "All files", extensions: ["*"] },
     ],
   });
   return result.canceled ? null : result.filePath;
+});
+
+ipcMain.handle("dialog:openText", async () => {
+  const result = await dialog.showOpenDialog({ title: "Load one sequence", properties: ["openFile"], filters: [{ name: "Sequence text", extensions: ["fasta", "fa", "fna", "txt"] }] });
+  if (result.canceled) return null;
+  const file = result.filePaths[0]; readableFiles.add(file); return file;
+});
+ipcMain.handle("file:readText", async (_event, file) => {
+  if (!readableFiles.has(file)) throw Error("Select the sequence file first.");
+  return { name: path.basename(file), text: await fs.readFile(file, "utf8") };
+});
+ipcMain.handle("app:getVersion", () => {
+  let buildDate = "development";
+  try { buildDate = require("./build-info.json").date; } catch {}
+  return { version: app.getVersion(), buildDate };
+});
+ipcMain.handle("univec:fetch", async (event, { which, force = false, requestId }) => {
+  univec ||= createUnivecService(path.join(app.getPath("userData"), "univec_cache"));
+  return univec.fetch({ which, force, onProgress: progress => { if (!event.sender.isDestroyed()) event.sender.send("univec:progress", { ...progress, which, requestId }); } });
 });
 
 ipcMain.handle("file:writeXlsx", async (_evt, { filePath, bytes }) => {

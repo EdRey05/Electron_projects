@@ -165,7 +165,11 @@ open **Sequencing Reference Files**, load a synthetic Primer Log workbook contai
 
 **Summary**
 
-**Find forward and reverse-complement matches against a reference DNA sequence.** The app reports identity, orientation, positions, and a per-base alignment track.
+**Search a sequence against a reference database, or screen many candidates against one reference.** Paste one probe and load an Excel database to find matching phage, vector or host-background sequences. Switch modes to keep the original candidate-screening workflow. Both orientations are checked, and either sequence may be longer; results identify the coordinate axis, strand, hit length and probe coverage.
+
+Choose an identity threshold from 50% to 100%, inspect ranked hits and expand per-base alignments. Mismatches appear in amber; N positions are masked from identity. Short previews keep large entries readable, and full sequences can be copied. A fixed progress area tracks the background search and keeps the controls and results heading stationary.
+
+Load a single-record FASTA/TXT or reuse workbooks with names in columns A/B and sequence in column C. Fetch current UniVec or UniVec_Core on demand, reuse a seven-day local cache, and inspect database size and provenance. Save XLSX or CSV only when you choose; analysis never opens a save prompt. The portable Windows app includes its runtime and runs locally without Node, npm or Python installation. Sequence identity is a targeted screening aid, not binding affinity, a phage-abundance estimate or BLAST-equivalent evidence.
 
 </div>
 <div class="right-column-65" markdown="1">
@@ -196,9 +200,9 @@ open **Sequencing Reference Files**, load a synthetic Primer Log workbook contai
 
 **In the demo**
 
-load three synthetic candidates, calculate forward/reverse-complement matches, inspect the results, and save the XLSX workbook. A perfect match is checked automatically.
+Search an M13 read against 12 accession-linked references, distinguish vector and host controls, inspect a reverse-complement lambda hit, adjust the T4 threshold, and export results manually. The supplied corpus includes real reference sequences, deterministic mutated queries and one random negative control.
 
-[Sample data and example outputs](demo-data/synthetic-data-and-outputs.zip)
+[Test corpus and demo inputs](002_Sequence_Binding_Finder/test_assets/README_test_assets.md)
 
 </div>
 </div>

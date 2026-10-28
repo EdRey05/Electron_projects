@@ -1,6 +1,11 @@
 ﻿[CmdletBinding()]
-param([string]$Artifacts=(Join-Path ([Environment]::GetFolderPath('Desktop')) 'App_build_standardization\release-validation'),[string]$Output=(Join-Path ([Environment]::GetFolderPath('Desktop')) 'App_build_standardization\demos'),[switch]$PrepareOnly)
+param([string]$Artifacts=(Join-Path ([Environment]::GetFolderPath('Desktop')) 'App_build_standardization\release-validation'),[string]$Output=(Join-Path ([Environment]::GetFolderPath('Desktop')) 'App_build_standardization\demos'),[switch]$PrepareOnly,[string]$App,[string]$Artifact)
 $ErrorActionPreference='Stop'
+if($App -eq '002_Sequence_Binding_Finder'){
+ & (Join-Path $PSScriptRoot 'Record-SequenceBindingFinderDemo.ps1') -Artifact $Artifact -Output $Output -PrepareOnly:$PrepareOnly
+ return
+}
+if($App){throw 'Use the per-app recorder or omit -App for the legacy batch recording.'}
 $Artifacts=(Resolve-Path $Artifacts).Path
 $Output=[IO.Path]::GetFullPath($Output)
 New-Item -ItemType Directory -Path $Output -Force|Out-Null
