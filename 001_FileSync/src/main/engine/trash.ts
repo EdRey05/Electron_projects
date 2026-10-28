@@ -1,5 +1,4 @@
 import {
-  copyFile,
   mkdir,
   readdir,
   rename,
@@ -9,7 +8,7 @@ import {
 } from "node:fs/promises";
 import { existsSync, statSync } from "node:fs";
 import { dirname, join, sep } from "node:path";
-import { syscallPath } from "./copier";
+import { copyAtomic, syscallPath } from "./copier";
 
 export const TRASH_DIR_NAME = ".filesync-trash";
 
@@ -39,6 +38,14 @@ export interface MoveToTrashResult {
   bytes: number;
 }
 
+/** Preserve the old version without removing the live destination. Used only
+ * after its replacement has been verified, so a failed copy leaves it usable.
+ */
+export async function backupToTrash(opts: MoveToTrashOptions): Promise<void> {
+  const target = join(opts.sideRoot, TRASH_DIR_NAME, opts.jobId, opts.runTimestamp, opts.relPath);
+  await copyAtomic({ src: opts.filePath, dest: target, preserveTimestamps: true });
+}
+
 /**
  * Move a file under sideRoot/.filesync-trash/<jobId>/<runTimestamp>/<relPath>.
  * Uses rename() if the trash is on the same volume; falls back to copy+unlink
@@ -60,8 +67,8 @@ export async function moveToTrash(opts: MoveToTrashOptions): Promise<MoveToTrash
     await rename(syscallPath(opts.filePath), syscallPath(target));
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === "EXDEV") {
-      // Cross-device rename — fall back to copy + unlink.
-      await copyFile(syscallPath(opts.filePath), syscallPath(target));
+      // Never remove the original until the cross-volume copy is verified.
+      await copyAtomic({ src: opts.filePath, dest: target, preserveTimestamps: true });
       await unlink(syscallPath(opts.filePath));
     } else {
       throw err;

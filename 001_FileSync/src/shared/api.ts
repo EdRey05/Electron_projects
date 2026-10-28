@@ -1,4 +1,6 @@
 import type {
+  AnalysisProgress,
+  ActionKind,
   ConflictPolicy,
   DiffPlan,
   Job,
@@ -11,6 +13,8 @@ import type {
 import type { SyncItem } from "./inventory";
 
 export interface DryRunRequest {
+  /** Correlates progress to this particular analysis, including ad-hoc jobs. */
+  requestId?: string;
   /** Omit for ad-hoc Workspace runs — main derives a stable id from the path pair. */
   jobId?: string;
   sideA: string;
@@ -23,6 +27,10 @@ export interface DryRunRequest {
   deleteExtraneous?: boolean;
   /** Per-path user action overrides from the sync table. */
   overrides?: OverrideMap;
+}
+
+export interface AnalyzeProgressEvent extends AnalysisProgress {
+  requestId: string;
 }
 
 export interface DryRunResponse {
@@ -64,6 +72,8 @@ export interface ApplyResponse {
 }
 
 export interface ApplyProgressEvent {
+  currentAction?: ActionKind;
+  stage?: "actions" | "trash-cleanup" | "complete";
   jobId: string;
   doneActions: number;
   totalActions: number;
@@ -114,6 +124,7 @@ export interface FileSyncAPI {
   engine: {
     walkAndPersist(req: WalkRequest): Promise<WalkResult & { sessionId: string; dbPath: string }>;
     dryRun(req: DryRunRequest): Promise<DryRunResponse>;
+    onAnalyzeProgress(cb: (p: AnalyzeProgressEvent) => void): () => void;
     apply(req: ApplyRequest): Promise<ApplyResponse>;
     /** Subscribe to apply progress events. Returns an unsubscribe fn. */
     onApplyProgress(cb: (p: ApplyProgressEvent) => void): () => void;

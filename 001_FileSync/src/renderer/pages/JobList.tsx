@@ -52,13 +52,13 @@ export function JobList({
           {onBack && (
             <button
               onClick={onBack}
-              className="text-xs text-slate-400 hover:text-slate-200"
+              className="text-xs text-slate-700 hover:text-slate-900"
             >
               ← Back to Workspace
             </button>
           )}
           <h1 className="text-2xl font-semibold tracking-tight mt-1">Saved jobs</h1>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <p className="text-slate-700 text-xs mt-0.5">
             Saved configurations for repeat sync workflows. For one-off operations, use the
             Workspace.
           </p>
@@ -69,28 +69,28 @@ export function JobList({
       </header>
 
       {error && (
-        <div className="rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200 mb-4">
+        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 mb-4">
           {error}
         </div>
       )}
 
-      {jobs === null && <p className="text-slate-400 text-sm">Loading…</p>}
+      {jobs === null && <p className="text-slate-700 text-sm">Loading…</p>}
 
       {jobs?.length === 0 && (
-        <div className="rounded-md border border-dashed border-slate-700 p-8 text-center text-slate-400">
-          No jobs yet. Click <strong className="text-slate-200">New job</strong> to create your
+        <div className="rounded-md border border-dashed border-slate-400 p-8 text-center text-slate-700">
+          No jobs yet. Click <strong className="text-slate-900">New job</strong> to create your
           first sync pair.
         </div>
       )}
 
       {jobs && jobs.length > 0 && (
-        <div className="overflow-hidden rounded-md border border-slate-800">
+        <div className="overflow-hidden rounded-md border border-outline">
           <table className="w-full text-sm">
-            <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wide">
+            <thead className="bg-panel-muted text-slate-700 text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left px-4 py-2 font-medium">Name</th>
-                <th className="text-left px-4 py-2 font-medium">Side A</th>
-                <th className="text-left px-4 py-2 font-medium">Side B</th>
+                <th className="text-left px-4 py-2 font-medium">Folder A</th>
+                <th className="text-left px-4 py-2 font-medium">Folder B</th>
                 <th className="text-left px-4 py-2 font-medium">Direction</th>
                 <th className="text-left px-4 py-2 font-medium">Conflict</th>
                 <th className="text-right px-4 py-2 font-medium">Actions</th>
@@ -98,14 +98,14 @@ export function JobList({
             </thead>
             <tbody>
               {jobs.map((j) => (
-                <tr key={j.id} className="border-t border-slate-800 hover:bg-slate-900/40">
-                  <td className="px-4 py-2 text-slate-100">{j.name}</td>
-                  <td className="px-4 py-2 text-slate-300 font-mono text-xs">{j.sideA}</td>
-                  <td className="px-4 py-2 text-slate-300 font-mono text-xs">{j.sideB}</td>
-                  <td className="px-4 py-2 text-slate-400 text-xs">
+                <tr key={j.id} className="border-t border-outline hover:bg-panel">
+                  <td className="px-4 py-2 text-slate-900">{j.name}</td>
+                  <td className="px-4 py-2 text-slate-700 font-mono text-xs">{j.sideA}</td>
+                  <td className="px-4 py-2 text-slate-700 font-mono text-xs">{j.sideB}</td>
+                  <td className="px-4 py-2 text-slate-700 text-xs">
                     {DIRECTION_LABELS[j.direction] ?? j.direction}
                   </td>
-                  <td className="px-4 py-2 text-slate-400 text-xs">{j.onConflict}</td>
+                  <td className="px-4 py-2 text-slate-700 text-xs">{j.onConflict}</td>
                   <td className="px-4 py-2 text-right space-x-1">
                     <Button variant="primary" onClick={() => onRun(j)}>
                       Run

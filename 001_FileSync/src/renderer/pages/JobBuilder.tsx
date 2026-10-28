@@ -146,7 +146,7 @@ export function JobBuilder({
         </Field>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Field label="Side A folder">
+          <Field label="Folder A folder">
             <div className="flex gap-2">
               <TextInput
                 value={draft.sideA}
@@ -156,7 +156,7 @@ export function JobBuilder({
               <Button onClick={() => pickFolder("sideA")}>Browse</Button>
             </div>
           </Field>
-          <Field label="Side B folder">
+          <Field label="Folder B folder">
             <div className="flex gap-2">
               <TextInput
                 value={draft.sideB}
@@ -184,8 +184,8 @@ export function JobBuilder({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm text-slate-200">{d.label}</span>
-                  <span className="block text-xs text-slate-500">{d.help}</span>
+                  <span className="block text-sm text-slate-900">{d.label}</span>
+                  <span className="block text-xs text-slate-600">{d.help}</span>
                 </span>
               </label>
             ))}
@@ -201,10 +201,10 @@ export function JobBuilder({
               className="mt-1"
             />
             <span>
-              <span className="block text-slate-200">
+              <span className="block text-slate-900">
                 Delete files that exist only on the destination side
               </span>
-              <span className="block text-xs text-slate-500">
+              <span className="block text-xs text-slate-600">
                 Turn this off to copy without ever removing anything from the destination.
               </span>
             </span>
@@ -227,8 +227,8 @@ export function JobBuilder({
                   className="mt-1"
                 />
                 <span>
-                  <span className="block text-sm text-slate-200">{p.label}</span>
-                  <span className="block text-xs text-slate-500">{p.help}</span>
+                  <span className="block text-sm text-slate-900">{p.label}</span>
+                  <span className="block text-xs text-slate-600">{p.help}</span>
                 </span>
               </label>
             ))}
@@ -325,7 +325,7 @@ export function JobBuilder({
         </div>
 
         {error && (
-          <div className="rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200 whitespace-pre-wrap">
+          <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 whitespace-pre-wrap">
             {error}
           </div>
         )}

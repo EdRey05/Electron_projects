@@ -1,45 +1,59 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { DiffPlan, ItemAction, OverrideMap, SyncDirection } from "@shared/types";
-import type { SyncItem } from "@shared/inventory";
 import type {
   ApplyProgressEvent,
   ApplyResponse,
   DryRunResponse,
 } from "@shared/api";
-import { applyOverrides, resolveOverride } from "@shared/overrides";
+import { applyOverrides } from "@shared/overrides";
 import { Button } from "../components/Button";
+import { PlanOverview } from "../components/PlanOverview";
+import { TransferProgress } from "../components/TransferProgress";
+import { AnalyzeProgress } from "../components/AnalyzeProgress";
+import { useAnalysis } from "../lib/useAnalysis";
 import { SyncTable } from "../components/SyncTable";
-import { formatBytes, formatDuration, formatTime } from "../lib/format";
+import { formatBytes, formatDuration } from "../lib/format";
 
 const DIRECTIONS: {
   value: SyncDirection;
   label: string;
   help: string;
   glyph: string;
+  colors: { idle: string; selected: string };
 }[] = [
   {
     value: "a-to-b",
-    label: "Mirror →",
-    help:
-      "Make B match A. New / changed files copy A→B. Files only on B are deleted (unless you turn that off below).",
+    label: "Mirror",
+    help: "Copy Folder A into B. Files only in B are removed only when deletion is enabled.",
     glyph: "→",
-  },
-  {
-    value: "b-to-a",
-    label: "Mirror ←",
-    help: "Make A match B. Inverse of mirror right.",
-    glyph: "←",
+    colors: {
+      idle: "border-blue-300 bg-blue-100 text-blue-900 hover:bg-blue-200",
+      selected: "border-blue-800 bg-blue-700 text-white ring-2 ring-blue-200",
+    },
   },
   {
     value: "sync",
-    label: "Sync ↔",
-    help:
-      "Bidirectional. Uses a saved state file to detect deletes vs new files; conflicts resolved by newer-wins.",
+    label: "Sync",
+    help: "Update both folders using the last sync. If both copies changed, the newer version wins.",
     glyph: "↔",
+    colors: {
+      idle: "border-violet-300 bg-violet-100 text-violet-900 hover:bg-violet-200",
+      selected: "border-violet-800 bg-violet-700 text-white ring-2 ring-violet-200",
+    },
+  },
+  {
+    value: "b-to-a",
+    label: "Mirror",
+    help: "Copy Folder B into A. Files only in A are removed only when deletion is enabled.",
+    glyph: "←",
+    colors: {
+      idle: "border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200",
+      selected: "border-amber-800 bg-amber-700 text-white ring-2 ring-amber-200",
+    },
   },
 ];
 
-type Phase = "idle" | "scanning" | "ready" | "applying" | "applied" | "error";
+type Phase = "idle" | "scanning" | "verifying" | "ready" | "applying" | "applied" | "error";
 
 const DEFAULT_EXCLUDES = [".filesync-trash/", "node_modules/", ".git/"];
 
@@ -51,6 +65,7 @@ const DEFAULT_FILTERS = {
 };
 
 export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
+  const { analyze: analyzeFolders, progress: analysisProgress, startedAt: analysisStartedAt } = useAnalysis();
   const [sideA, setSideA] = useState("");
   const [sideB, setSideB] = useState("");
   const [direction, setDirection] = useState<SyncDirection>("a-to-b");
@@ -65,6 +80,11 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
+
+  function invalidateAnalysis() {
+    setDryRun(null); setApplyResult(null); setOverrides({}); setSelected(null);
+    setError(null); setPhase("idle");
+  }
 
   async function pickFolder(side: "a" | "b") {
     const picked = await window.api.dialog.openDirectory();
@@ -91,21 +111,19 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
     async (preserveOverrides = false) => {
       if (!sideA || !sideB) return;
       if (sideA.toLowerCase() === sideB.toLowerCase()) {
-        setError("Side A and Side B must be different folders.");
+        setError("Folder A and Folder B must be different folders.");
         setPhase("error");
         return;
       }
-      setPhase("scanning");
+      setPhase(preserveOverrides ? "verifying" : "scanning");
       setError(null);
-      setApplyResult(null);
-      setProgress(null);
-      setDryRun(null);
+      if (!preserveOverrides) { setApplyResult(null); setProgress(null); setDryRun(null); }
       if (!preserveOverrides) {
         setOverrides({});
         setSelected(null);
       }
       try {
-        const r = await window.api.engine.dryRun({
+        const r = await analyzeFolders({
           sideA,
           sideB,
           direction,
@@ -113,13 +131,13 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
           filters: DEFAULT_FILTERS,
         });
         setDryRun(r);
-        setPhase("ready");
+        setPhase(preserveOverrides ? "applied" : "ready");
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         setPhase("error");
       }
     },
-    [sideA, sideB, direction, deleteExtraneous],
+    [sideA, sideB, direction, deleteExtraneous, analyzeFolders],
   );
 
   // The runnable plan: the differ's plan with the user's per-item choices
@@ -244,103 +262,88 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
   }
 
   const canAnalyze =
-    !!sideA && !!sideB && phase !== "scanning" && phase !== "applying";
-  const canRun = phase === "ready" && actionable.length > 0;
+    !!sideA && !!sideB && phase !== "scanning" && phase !== "verifying" && phase !== "applying";
+  const canRun = (phase === "ready" || phase === "applied") && actionable.length > 0;
+  const busy = ["scanning", "verifying", "applying"].includes(phase);
   const overrideCount = Object.keys(overrides).length;
-
-  const selectedItem = useMemo(
-    () => dryRun?.inventory.find((i) => i.path === selected) ?? null,
-    [dryRun, selected],
-  );
 
   return (
     <div className="min-h-full p-6 max-w-[1400px] mx-auto">
       <header className="flex items-start justify-between mb-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">FileSync</h1>
-          <p className="text-slate-400 text-xs mt-0.5">
+          <p className="text-slate-700 text-xs mt-0.5">
             Pick two folders, choose a direction, click Analyze, review the table, pick per-item
             actions, click Run.
           </p>
         </div>
-        <Button onClick={onOpenJobs} variant="ghost">
+        <Button onClick={onOpenJobs} variant="ghost" disabled={busy}>
           Saved jobs →
         </Button>
       </header>
 
-      <section className="rounded-md border border-slate-800 bg-slate-900/40 p-4 space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto_1fr] gap-3 items-end">
+      <section className="rounded-md border border-outline bg-panel p-4 space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] gap-x-5 gap-y-4 items-end">
           <FolderField
-            label="Side A"
+            label="Folder A"
             value={sideA}
             onPick={() => pickFolder("a")}
-            onChange={setSideA}
+            onChange={value => { setSideA(value); invalidateAnalysis(); }}
+            disabled={busy}
           />
-          <DirectionPicker value={direction} onChange={setDirection} />
+          <DirectionPicker value={direction} onChange={value => { setDirection(value); invalidateAnalysis(); }} disabled={busy} />
           <FolderField
-            label="Side B"
+            label="Folder B"
             value={sideB}
             onPick={() => pickFolder("b")}
-            onChange={setSideB}
+            onChange={value => { setSideB(value); invalidateAnalysis(); }}
+            disabled={busy}
           />
-        </div>
-
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="text-xs text-slate-500 max-w-xl">
-              {DIRECTIONS.find((d) => d.value === direction)?.help}
-            </span>
-            {direction !== "sync" && (
-              <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={deleteExtraneous}
-                  onChange={(e) => setDeleteExtraneous(e.target.checked)}
-                />
-                Delete files only on the destination
-              </label>
-            )}
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => analyze(false)} disabled={!canAnalyze}>
-              {phase === "scanning" ? "Analyzing…" : "Analyze"}
+          <div className="flex justify-center gap-3 md:col-start-2">
+            <Button className="min-w-28" onClick={() => analyze(false)} disabled={!canAnalyze}>
+              {phase === "verifying" ? "Checking…" : phase === "scanning" ? "Analyzing…" : "Analyze"}
             </Button>
-            <Button variant="primary" onClick={run} disabled={!canRun}>
-              {phase === "applying"
-                ? "Running…"
-                : `Run${actionable.length > 0 ? ` (${actionable.length})` : ""}`}
+            <Button className="min-w-28" variant="primary" onClick={run} disabled={!canRun}>
+              {phase === "applying" ? "Running…" : "Run"}
             </Button>
           </div>
         </div>
+        {direction !== "sync" && (
+          <label className="flex justify-center items-center gap-2 text-sm text-slate-700 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={deleteExtraneous}
+              disabled={busy}
+              onChange={(e) => { setDeleteExtraneous(e.target.checked); invalidateAnalysis(); }}
+            />
+            Delete files only on the destination
+          </label>
+        )}
       </section>
 
-      {phase === "scanning" && (
-        <div className="mt-3 rounded-md border border-slate-800 bg-slate-900/50 p-3 text-sm text-slate-300">
-          Walking both sides and computing diff…
-        </div>
+      {(phase === "scanning" || phase === "verifying") && (
+        <AnalyzeProgress progress={analysisProgress} startedAt={analysisStartedAt} purpose={phase === "verifying" ? "verify" : "analyze"} />
       )}
 
-      {phase === "applying" && progress && <ApplyProgressBar progress={progress} />}
+      {phase === "applying" && progress && <TransferProgress progress={progress} />}
 
-      {phase === "applied" && applyResult && <ApplySummary result={applyResult} />}
+      {applyResult && <ApplySummary result={applyResult} />}
 
       {error && (
-        <div className="mt-3 rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200">
+        <div className="mt-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900">
           {error}
         </div>
       )}
 
+      {dryRun && effectivePlan && <>
+        {phase === "verifying" && <p className="mt-3 text-sm text-slate-700">Checking results · previous totals shown.</p>}
+        <PlanOverview plan={effectivePlan} direction={direction} walkA={dryRun.walkA} walkB={dryRun.walkB} durationMs={dryRun.totalDurationMs} validated={phase === "applied" && applyResult?.status === "ok" && dryRun.plan.actions.every(a => a.kind === "noop" || a.kind === "drop-from-state")} />
+      </>}
+      {phase === "applied" && <p className="mt-3 text-sm font-medium text-sky-900">Check complete · remaining differences below.</p>}
       {(phase === "ready" || phase === "applied") && dryRun && effectivePlan && (
         <>
-          <SummaryStats
-            plan={effectivePlan}
-            totalDurationMs={dryRun.totalDurationMs}
-            walkA={dryRun.walkA}
-            walkB={dryRun.walkB}
-          />
-
           {conflictCount > 0 && (
-            <div className="mt-3 rounded-md border border-amber-700/50 bg-amber-900/20 p-3 text-xs text-amber-200">
+            <div className="mt-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs text-amber-900">
               {conflictCount} conflict{conflictCount === 1 ? "" : "s"} need a decision. Pick
               <strong> Keep A </strong> or <strong> Keep B </strong> in the Action column of the
               conflicting row (or set the folder's action to apply to all of them).
@@ -348,10 +351,10 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
           )}
 
           <div className="mt-3 flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-xs text-slate-500">
+            <div className="text-xs text-slate-600">
               {overrideCount > 0 ? (
                 <>
-                  <span className="text-emerald-400">{overrideCount}</span> custom action
+                  <span className="text-emerald-800">{overrideCount}</span> custom action
                   {overrideCount === 1 ? "" : "s"} set
                 </>
               ) : (
@@ -365,7 +368,7 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
             )}
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-[1fr_18rem] gap-4 items-start">
+          <div className="w-full">
             <SyncTable
               items={dryRun.inventory}
               overrides={overrides}
@@ -379,72 +382,10 @@ export function Workspace({ onOpenJobs }: { onOpenJobs(): void }) {
               selected={selected}
               onSelect={setSelected}
             />
-            <DetailPane
-              item={selectedItem}
-              effective={
-                selectedItem ? resolveOverride(selectedItem.path, overrides) : "auto"
-              }
-            />
+
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-function DetailPane({
-  item,
-  effective,
-}: {
-  item: SyncItem | null;
-  effective: ItemAction;
-}) {
-  if (!item) {
-    return (
-      <div className="mt-4 rounded-md border border-slate-800 bg-slate-900/30 p-3 text-xs text-slate-500">
-        Select a row to see both sides side by side.
-      </div>
-    );
-  }
-  return (
-    <div className="mt-4 rounded-md border border-slate-800 bg-slate-900/30 p-3 text-xs space-y-2">
-      <div className="text-slate-200 font-medium break-all">{item.path}</div>
-      <div className="grid grid-cols-2 gap-2">
-        <div className="rounded border border-slate-800 p-2">
-          <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-            Side A
-          </div>
-          {item.aExists ? (
-            <>
-              <div className="text-slate-300">{formatBytes(item.aSize ?? 0)}</div>
-              <div className="text-slate-500 text-[10px]">
-                {formatTime(item.aMtime ?? 0)}
-              </div>
-            </>
-          ) : (
-            <div className="text-slate-600">missing</div>
-          )}
-        </div>
-        <div className="rounded border border-slate-800 p-2">
-          <div className="text-[10px] uppercase tracking-wide text-slate-500 mb-1">
-            Side B
-          </div>
-          {item.bExists ? (
-            <>
-              <div className="text-slate-300">{formatBytes(item.bSize ?? 0)}</div>
-              <div className="text-slate-500 text-[10px]">
-                {formatTime(item.bMtime ?? 0)}
-              </div>
-            </>
-          ) : (
-            <div className="text-slate-600">missing</div>
-          )}
-        </div>
-      </div>
-      <div className="text-slate-500 text-[10px] leading-relaxed">{item.reason}</div>
-      <div className="text-slate-400 text-[10px]">
-        Effective action: <span className="text-emerald-400">{effective}</span>
-      </div>
     </div>
   );
 }
@@ -454,26 +395,29 @@ function FolderField({
   value,
   onPick,
   onChange,
+  disabled,
 }: {
   label: string;
   value: string;
   onPick(): void;
   onChange(v: string): void;
+  disabled?: boolean;
 }) {
   return (
     <div>
-      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+      <label className="block text-xs uppercase tracking-wide text-slate-700 mb-1">
         {label}
       </label>
       <div className="flex gap-2">
         <input
           type="text"
           value={value}
+          disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
           placeholder="Choose a folder…"
-          className="w-full bg-slate-950 border border-slate-700 rounded-md px-3 py-1.5 text-sm font-mono text-slate-100 focus:outline-none focus:border-emerald-500"
+          className="min-w-0 flex-1 bg-panel border border-slate-400 rounded-md px-3 py-1.5 text-sm font-mono text-slate-900 focus:outline-none focus:border-emerald-500"
         />
-        <Button onClick={onPick}>Browse</Button>
+        <Button onClick={onPick} disabled={disabled}>Browse</Button>
       </div>
     </div>
   );
@@ -482,64 +426,43 @@ function FolderField({
 function DirectionPicker({
   value,
   onChange,
+  disabled,
 }: {
   value: SyncDirection;
   onChange(v: SyncDirection): void;
+  disabled?: boolean;
 }) {
+  const [info, setInfo] = useState<SyncDirection | null>(null);
   return (
-    <div className="flex flex-col items-center">
-      <span className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+    <div className="relative flex flex-col items-center">
+      <span className="block text-xs uppercase tracking-wide text-slate-700 mb-1">
         Direction
       </span>
-      <div className="inline-flex rounded-md border border-slate-700 overflow-hidden">
+      <div className="flex justify-center gap-2" role="group" aria-label="Synchronization direction">
         {DIRECTIONS.map((d) => (
-          <button
-            key={d.value}
-            onClick={() => onChange(d.value)}
-            title={d.help}
-            className={`px-3 py-1.5 text-sm border-r border-slate-700 last:border-r-0 transition-colors ${
-              value === d.value
-                ? "bg-emerald-600 text-white"
-                : "bg-slate-900 text-slate-300 hover:bg-slate-800"
-            }`}
-          >
-            <span className="text-base mr-1">{d.glyph}</span>
-            <span className="text-xs">{d.label.replace(/[→←↔]/g, "").trim()}</span>
-          </button>
+          <div key={d.value} onMouseEnter={() => setInfo(d.value)} onMouseLeave={() => setInfo(null)}>
+            <button
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(d.value)}
+              onFocus={() => setInfo(d.value)}
+              onBlur={() => setInfo(null)}
+              onKeyDown={e => { if (e.key === "Escape") setInfo(null); }}
+              aria-label={d.value === "sync" ? "Sync both folders" : d.value === "a-to-b" ? "Mirror Folder A to Folder B" : "Mirror Folder B to Folder A"}
+              aria-pressed={value === d.value}
+              aria-describedby={info === d.value ? `direction-info-${d.value}` : undefined}
+              className={`flex min-w-24 flex-col items-center rounded-lg border-2 px-4 py-2 font-semibold transition-colors ${value === d.value ? d.colors.selected : d.colors.idle}`}
+            >
+              <span className="text-sm">{d.label}</span>
+              <span className="text-2xl leading-7" aria-hidden="true">{d.glyph}</span>
+            </button>
+            {info === d.value && (
+              <div id={`direction-info-${d.value}`} role="tooltip" className="absolute left-1/2 top-full z-30 mt-3 w-72 max-w-[calc(100vw-4rem)] -translate-x-1/2 rounded-xl border border-outline bg-panel p-4 text-left text-base leading-relaxed text-slate-900 shadow-lg">
+                {d.help}
+              </div>
+            )}
+          </div>
         ))}
-      </div>
-    </div>
-  );
-}
-
-function ApplyProgressBar({ progress }: { progress: ApplyProgressEvent }) {
-  const pct = progress.totalActions
-    ? Math.round((progress.doneActions / progress.totalActions) * 100)
-    : 0;
-  return (
-    <div className="mt-3 rounded-md border border-emerald-700/40 bg-emerald-900/10 p-4">
-      <div className="text-sm text-emerald-200 mb-2">
-        Running… {progress.doneActions} / {progress.totalActions} actions
-        {progress.errors > 0 && (
-          <span className="text-red-300 ml-2">
-            ({progress.errors} error{progress.errors > 1 ? "s" : ""})
-          </span>
-        )}
-      </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-emerald-500 transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="mt-2 text-xs text-slate-400 flex justify-between">
-        <span className="font-mono truncate max-w-[60%]">
-          {progress.currentPath || "—"}
-        </span>
-        <span className="tabular-nums">
-          {formatBytes(progress.bytesTransferred)} /{" "}
-          {formatBytes(progress.bytesTotal)}
-        </span>
       </div>
     </div>
   );
@@ -551,18 +474,19 @@ function ApplySummary({ result }: { result: ApplyResponse }) {
     <div
       className={`mt-3 rounded-md border p-3 text-sm ${
         ok
-          ? "border-emerald-700/40 bg-emerald-900/20 text-emerald-200"
-          : "border-amber-700/40 bg-amber-900/20 text-amber-200"
+          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+          : "border-amber-300 bg-amber-50 text-amber-900"
       }`}
     >
       <div className="font-medium">
         {ok ? "Run complete." : `Run finished with status: ${result.status}.`}
       </div>
-      <div className="text-xs mt-0.5 text-slate-300">
+      <div className="text-xs mt-0.5 text-slate-700">
         {result.filesCopied} copied, {result.filesDeleted} deleted (to trash),{" "}
         {formatBytes(result.bytesTransferred)} in{" "}
         {formatDuration(result.endedAt - result.startedAt)}.
         {result.errors.length > 0 && ` ${result.errors.length} error(s).`}
+        {" "}Trash: 30 days · cleaned on later runs.
         {result.trashSweep && result.trashSweep.removedDirs > 0 && (
           <>
             {" "}
@@ -571,41 +495,6 @@ function ApplySummary({ result }: { result: ApplyResponse }) {
           </>
         )}
       </div>
-    </div>
-  );
-}
-
-function SummaryStats({
-  plan,
-  totalDurationMs,
-  walkA,
-  walkB,
-}: {
-  plan: DiffPlan;
-  totalDurationMs: number;
-  walkA: { fileCount: number; totalBytes: number };
-  walkB: { fileCount: number; totalBytes: number };
-}) {
-  const s = plan.summary;
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-2 mt-4">
-      <Stat label="A→B" value={s.copyAToB.toLocaleString()} />
-      <Stat label="B→A" value={s.copyBToA.toLocaleString()} />
-      <Stat label="Delete A" value={s.deleteA.toLocaleString()} />
-      <Stat label="Delete B" value={s.deleteB.toLocaleString()} />
-      <Stat label="Conflicts" value={s.conflicts.toLocaleString()} />
-      <Stat label="To transfer" value={formatBytes(s.bytesToTransfer)} />
-      <Stat label="A / B files" value={`${walkA.fileCount} / ${walkB.fileCount}`} />
-      <Stat label="Scan time" value={formatDuration(totalDurationMs)} />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded bg-slate-950/40 border border-slate-800 px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="text-base font-medium tabular-nums truncate">{value}</div>
     </div>
   );
 }

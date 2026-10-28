@@ -1,5 +1,6 @@
 import { contextBridge, ipcRenderer } from "electron";
 import type {
+  AnalyzeProgressEvent,
   ApplyProgressEvent,
   ApplyRequest,
   ApplyResponse,
@@ -22,6 +23,11 @@ const api: FileSyncAPI = {
   engine: {
     walkAndPersist: (req: WalkRequest) => ipcRenderer.invoke("engine:walkAndPersist", req),
     dryRun: (req: DryRunRequest) => ipcRenderer.invoke("engine:dryRun", req),
+    onAnalyzeProgress: (cb: (p: AnalyzeProgressEvent) => void) => {
+      const listener = (_evt: unknown, payload: AnalyzeProgressEvent) => cb(payload);
+      ipcRenderer.on("engine:analyze:progress", listener);
+      return () => ipcRenderer.off("engine:analyze:progress", listener);
+    },
     apply: (req: ApplyRequest): Promise<ApplyResponse> => ipcRenderer.invoke("engine:apply", req),
     onApplyProgress: (cb: (p: ApplyProgressEvent) => void) => {
       const listener = (_evt: unknown, payload: ApplyProgressEvent) => cb(payload);

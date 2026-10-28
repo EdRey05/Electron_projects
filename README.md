@@ -217,7 +217,11 @@ load three synthetic candidates, calculate forward/reverse-complement matches, i
 
 **Summary**
 
-**Review a synchronization plan before changing files.** FileSync supports one-way mirroring and bidirectional synchronization, with per-item decisions, saved jobs, and history.
+**Compare, review and synchronize two folders locally.** FileSync v1.0.0 supports one-way mirroring in either direction and bidirectional synchronization. An expandable tree shows new, changed, missing and conflicting files before you run the plan. Choose actions for one file, a whole folder or everything: copy either way, keep both versions, remove or skip.
+
+Live Analyze counters show files, folders, discovered sizes and elapsed time. Four summary cards distinguish folder totals from pending changes. Run shows the current operation, path, completed actions and copy payload. The result check refreshes the table; a clean result turns the cards green with checkmarks. Saved jobs, per-side filters and history support recurring backups.
+
+Copied files are independently checked with SHA-256 before replacement. Optional local trash keeps old versions and removals for recovery; expired entries are cleaned during later runs. Analyze and the final result check compare size and modification time, so unchanged files are not checksum-audited. Extract the portable Windows folder and run its EXE, with no Node, npm or Python installation; settings and logs stay beside the app.
 
 </div>
 <div class="right-column-65" markdown="1">
@@ -237,20 +241,20 @@ load three synthetic candidates, calculate forward/reverse-complement matches, i
 
 **How to use it**
 
-1. Choose folders for side A and side B.
+1. Choose separate folders A and B; neither may contain the other.
 2. Choose the direction: mirror A → B, mirror B → A, or synchronize both ways.
 3. Decide whether extra destination files should be deleted. Start with disposable folders when learning the workflow.
 4. Click **Analyze**, review the proposed actions, and adjust any per-item choices.
-5. Click **Run**, inspect the result, and save a reusable job when needed.
+5. Click **Run**, follow the operations and result check, then inspect any remaining differences. Use saved jobs for recurring folder pairs.
 
 </div>
 <div class="right-column-50" markdown="1">
 
 **In the demo**
 
-compare a small synthetic project with an older destination copy, review differences, copy the files, and verify their contents match. The demo disables deletion of extra destination files.
+mirror 1,000 synthetic text files per folder, with 700 unchanged. Expand nested batches, review 300 copies/updates and 200 removals, then watch transfer progress and the checked result. Analyze playback is labeled at 1/6 speed; Run stays at normal speed.
 
-[Sample data and example outputs](demo-data/synthetic-data-and-outputs.zip)
+[FileSync demo folders](demo-data/001_FileSync-inputs.zip) · [Recording recipe](demo-tools/FileSync-recording.md)
 
 </div>
 </div>

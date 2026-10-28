@@ -106,8 +106,9 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     "engine:dryRun",
     async (
-      _evt,
+      evt,
       req: {
+        requestId?: string;
         jobId?: string;
         sideA: string;
         sideB: string;
@@ -133,6 +134,11 @@ export function registerIpcHandlers(): void {
         followSymlinks: req.followSymlinks,
         deleteExtraneous: req.deleteExtraneous,
         overrides: req.overrides,
+        onProgress: progress => {
+          if (!evt.sender.isDestroyed()) {
+            evt.sender.send("engine:analyze:progress", { ...progress, requestId: req.requestId ?? "" });
+          }
+        },
       });
     },
   );

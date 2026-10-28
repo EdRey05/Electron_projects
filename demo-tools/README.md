@@ -1,5 +1,7 @@
 # Reproducible app recordings
 
+FileSync v1.0.0 now has a dedicated offline recipe: [FileSync-recording.md](FileSync-recording.md). Use `Record-FileSyncDemo.ps1` for its current recording; the older batch below retains historical app-version assumptions. Do not use the old FileSync workflow to replace the v1.0.0 demo.
+
 Record-Demos.ps1 starts a Windows Sandbox using the already validated portable folder ZIPs. It does not install developer tools on the host. The guest extracts the apps, downloads a checksum-pinned FFmpeg encoder, generates synthetic inputs, and records actual application windows while a CDP-driven test harness operates the UI.
 
 The recording guest needs networking only to obtain FFmpeg. No private or production data is supplied. Capture-Frames.ps1 continuously captures the real renderer, waiting 200 ms between captures and retaining measured timestamps. FFmpeg encodes those frames as H.264 MP4 at 12 fps with the original timing, without audio or OS desktop capture. This works when Windows GDI capture is unavailable in Sandbox. GIF previews show the whole workflow at twice the speed. A small demo caption describes each step. File dialogs are supplied deterministic fixture paths through the Electron main-process debugger; alignment, synchronization, sequence extraction, AB1 processing, survival calculations, and file writes run through the real application code. No simulated result screens are inserted.

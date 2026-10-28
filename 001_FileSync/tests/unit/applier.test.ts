@@ -262,15 +262,15 @@ describe("applier — idempotency (the critical invariant)", () => {
 });
 
 describe("applier — robustness", () => {
-  it("removes stale .tmp.<pid>.<rand> artifacts at the start of a run", async () => {
+  it("leaves unowned temp-pattern files untouched instead of deleting user data", async () => {
     const a = track(buildTree({ "a.txt": "x" }));
     const b = track(buildTree({}));
     const jobDir = freshJobDir();
     const dbPath = join(jobDir, "job.sqlite");
 
-    // Drop a stale temp on side B (as if a previous run was killed mid-copy).
+    // A matching name alone is not permission to remove a user's file.
     const stale = join(b.root, "stale.txt.tmp.99999.deadbeef");
-    writeFileSync(stale, "should be cleaned");
+    writeFileSync(stale, "must be preserved");
     expect(existsSync(stale)).toBe(true);
 
     await runDryThenApply({
@@ -280,8 +280,9 @@ describe("applier — robustness", () => {
       stateDbPath: dbPath,
     });
 
-    expect(existsSync(stale)).toBe(false);
+    expect(existsSync(stale)).toBe(true);
     expect(existsSync(join(b.root, "a.txt"))).toBe(true);
+    expect(existsSync(join(a.root, "stale.txt.tmp.99999.deadbeef"))).toBe(false);
   });
 
   it("emits progress for each action via onProgress callback", async () => {

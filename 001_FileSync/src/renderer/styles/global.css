@@ -1,5 +1,17 @@
 @import "tailwindcss";
 
+/* Muted blue surfaces keep the window distinct from white documentation
+ * pages and recordings, while preserving dark, high-contrast text.
+ */
+@theme {
+  --color-workspace: #cbdce7;
+  --color-panel: #e1edf4;
+  --color-panel-muted: #d4e4ee;
+  --color-outline: #97b2c5;
+  --color-analysis: #b9dfef;
+  --color-analysis-border: #659eb7;
+}
+
 html,
 body,
 #root {
@@ -8,10 +20,47 @@ body,
 
 body {
   margin: 0;
+  color-scheme: light;
   font-family:
     ui-sans-serif,
     system-ui,
     -apple-system,
     "Segoe UI",
     sans-serif;
+}
+
+/* The light palette is shared by workspace, jobs, run results and history.
+ * Keep small labels legible and make keyboard focus independent of color.
+ */
+input, select, textarea {
+  accent-color: #047857;
+}
+
+input::placeholder, textarea::placeholder {
+  color: #475569;
+  opacity: 1;
+}
+
+button:focus-visible, input:focus-visible, select:focus-visible,
+textarea:focus-visible, a:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid #047857;
+  outline-offset: 3px;
+}
+
+::selection {
+  background: #a7f3d0;
+  color: #0f172a;
+}
+
+@keyframes analysis-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(300%); }
+}
+
+.analysis-activity {
+  animation: analysis-sweep 1.7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analysis-activity { animation: none; }
 }

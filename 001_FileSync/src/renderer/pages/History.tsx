@@ -43,11 +43,11 @@ export function History({ job, onBack }: { job: Job; onBack(): void }) {
     <div className="p-8 max-w-6xl mx-auto">
       <header className="flex items-center justify-between mb-4">
         <div>
-          <button onClick={onBack} className="text-xs text-slate-400 hover:text-slate-200">
+          <button onClick={onBack} className="text-xs text-slate-700 hover:text-slate-900">
             ← Back to jobs
           </button>
           <h1 className="text-2xl font-semibold mt-1">{job.name} — history</h1>
-          <p className="text-xs text-slate-400 font-mono mt-0.5">
+          <p className="text-xs text-slate-700 font-mono mt-0.5">
             {job.sideA} ↔ {job.sideB}
           </p>
         </div>
@@ -55,23 +55,23 @@ export function History({ job, onBack }: { job: Job; onBack(): void }) {
       </header>
 
       {error && (
-        <div className="rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200 mb-3">
+        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 mb-3">
           {error}
         </div>
       )}
 
-      {runs === null && <p className="text-slate-400 text-sm">Loading…</p>}
+      {runs === null && <p className="text-slate-700 text-sm">Loading…</p>}
 
       {runs?.length === 0 && (
-        <div className="rounded-md border border-dashed border-slate-700 p-8 text-center text-slate-400 text-sm">
+        <div className="rounded-md border border-dashed border-slate-400 p-8 text-center text-slate-700 text-sm">
           No runs yet. The first dry-run + Apply you do will show up here.
         </div>
       )}
 
       {runs && runs.length > 0 && (
-        <div className="rounded-md border border-slate-800 overflow-hidden">
+        <div className="rounded-md border border-outline overflow-hidden">
           <table className="w-full text-sm">
-            <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase tracking-wide">
+            <thead className="bg-panel-muted text-slate-700 text-xs uppercase tracking-wide">
               <tr>
                 <th className="text-left px-3 py-2 font-medium">When</th>
                 <th className="text-left px-3 py-2 font-medium">Status</th>
@@ -103,13 +103,13 @@ export function History({ job, onBack }: { job: Job; onBack(): void }) {
 function statusColor(s: string | null): string {
   switch (s) {
     case "ok":
-      return "text-emerald-400";
+      return "text-emerald-800";
     case "partial":
-      return "text-amber-400";
+      return "text-amber-800";
     case "error":
-      return "text-red-400";
+      return "text-red-700";
     default:
-      return "text-slate-400";
+      return "text-slate-700";
   }
 }
 
@@ -129,44 +129,44 @@ function RunRow({
     <>
       <tr
         onClick={onToggle}
-        className="border-t border-slate-800 hover:bg-slate-900/40 cursor-pointer"
+        className="border-t border-outline hover:bg-panel cursor-pointer"
       >
-        <td className="px-3 py-2 text-slate-200 tabular-nums text-xs">
-          <span className="text-slate-500 mr-1">{expanded ? "▼" : "▶"}</span>
+        <td className="px-3 py-2 text-slate-900 tabular-nums text-xs">
+          <span className="text-slate-600 mr-1">{expanded ? "▼" : "▶"}</span>
           {new Date(run.started_at).toLocaleString()}
         </td>
         <td className={`px-3 py-2 text-xs ${statusColor(run.status)}`}>
           {run.status ?? "—"}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
           {run.files_copied}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
           {run.files_deleted}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
           {run.conflicts}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
           {formatBytes(run.bytes_transferred)}
         </td>
-        <td className="px-3 py-2 text-right tabular-nums text-slate-300">
+        <td className="px-3 py-2 text-right tabular-nums text-slate-700">
           {dur > 0 ? formatDuration(dur) : "—"}
         </td>
       </tr>
       {expanded && (
-        <tr className="bg-slate-950/40">
+        <tr className="bg-panel-muted">
           <td colSpan={7} className="px-3 py-2">
             {!actions ? (
-              <p className="text-xs text-slate-500">Loading actions…</p>
+              <p className="text-xs text-slate-600">Loading actions…</p>
             ) : actions.length === 0 ? (
-              <p className="text-xs text-slate-500 italic">
+              <p className="text-xs text-slate-600 italic">
                 No per-action records (this run was a pure no-op).
               </p>
             ) : (
-              <div className="overflow-hidden border border-slate-800 rounded">
+              <div className="overflow-hidden border border-outline rounded">
                 <table className="w-full text-xs">
-                  <thead className="bg-slate-900/60 text-slate-500">
+                  <thead className="bg-panel-muted text-slate-600">
                     <tr>
                       <th className="text-left px-2 py-1 font-medium">Path</th>
                       <th className="text-left px-2 py-1 font-medium">Action</th>
@@ -176,17 +176,17 @@ function RunRow({
                   </thead>
                   <tbody className="font-mono">
                     {actions.map((a, i) => (
-                      <tr key={i} className="border-t border-slate-800/60">
-                        <td className="px-2 py-1 text-slate-200 truncate max-w-md">
+                      <tr key={i} className="border-t border-outline">
+                        <td className="px-2 py-1 text-slate-900 truncate max-w-md">
                           {a.path}
                         </td>
-                        <td className="px-2 py-1 text-slate-400">{a.action}</td>
-                        <td className="px-2 py-1 text-right text-slate-400 tabular-nums">
+                        <td className="px-2 py-1 text-slate-700">{a.action}</td>
+                        <td className="px-2 py-1 text-right text-slate-700 tabular-nums">
                           {a.bytes ? formatBytes(a.bytes) : "—"}
                         </td>
                         <td
                           className={`px-2 py-1 ${
-                            a.ok ? "text-emerald-400" : "text-red-400"
+                            a.ok ? "text-emerald-800" : "text-red-700"
                           }`}
                         >
                           {a.ok ? "ok" : a.message ?? "fail"}

@@ -1,4 +1,4 @@
-param([string]$Directory)
+﻿param([string]$Directory,[int]$IntervalMs=200)
 $ErrorActionPreference='Stop'
 New-Item -ItemType Directory -Path $Directory -Force|Out-Null
 $targets=Invoke-RestMethod http://127.0.0.1:9222/json/list
@@ -19,7 +19,7 @@ try{
   }while($reply.id -ne $id)
   if(!$reply.result.data){throw 'Renderer frame capture failed'}
   $file=('{0:D6}.jpg' -f $id);[IO.File]::WriteAllBytes((Join-Path $Directory $file),[Convert]::FromBase64String($reply.result.data))
-  $frames+=@{file=$file;seconds=$at};Start-Sleep -Milliseconds 200
+  $frames+=@{file=$file;seconds=$at};Start-Sleep -Milliseconds $IntervalMs
  }
  $frames|ConvertTo-Json|Set-Content (Join-Path $Directory 'timings.json')
  $lines=@()

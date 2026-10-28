@@ -109,6 +109,24 @@ export interface WalkResult {
   entries: WalkEntry[];
 }
 
+export interface WalkProgress {
+  fileCount: number;
+  dirCount: number;
+  totalBytes: number;
+  currentPath: string;
+  lastEntryAt: number;
+  complete: boolean;
+}
+
+export interface AnalysisProgress {
+  jobId: string;
+  stage: "scanning" | "loading-state" | "comparing" | "inventory" | "complete" | "failed";
+  startedAt: number;
+  updatedAt: number;
+  a: WalkProgress;
+  b: WalkProgress;
+}
+
 export interface WalkRequest {
   root: string;
   filters?: JobFilters;

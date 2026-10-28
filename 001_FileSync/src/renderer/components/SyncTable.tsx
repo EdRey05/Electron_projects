@@ -250,13 +250,13 @@ export function SyncTable({
   }
 
   return (
-    <div className="mt-4 rounded-md border border-slate-800 overflow-hidden">
-      <div className="bg-slate-900/80 px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs uppercase tracking-wide text-slate-400 flex items-center gap-3">
+    <div className="mt-4 rounded-md border border-outline overflow-hidden">
+      <div className="bg-panel-muted px-3 py-2 flex items-center justify-between gap-3 flex-wrap">
+        <div className="text-xs uppercase tracking-wide text-slate-700 flex items-center gap-3">
           <span>
             {items.length.toLocaleString()} item{items.length === 1 ? "" : "s"}
           </span>
-          <span className={pendingCount > 0 ? "text-amber-400" : "text-emerald-400"}>
+          <span className={pendingCount > 0 ? "text-amber-800" : "text-emerald-800"}>
             {pendingCount.toLocaleString()} need attention
           </span>
         </div>
@@ -266,9 +266,9 @@ export function SyncTable({
             value={filter}
             onChange={(e) => onChangeFilter(e.target.value)}
             placeholder="Filter paths…"
-            className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs font-mono text-slate-100 focus:outline-none focus:border-emerald-500 w-40"
+            className="bg-panel border border-slate-400 rounded px-2 py-1 text-xs font-mono text-slate-900 focus:outline-none focus:border-emerald-500 w-40"
           />
-          <label className="flex items-center gap-1.5 text-xs text-slate-400 cursor-pointer select-none">
+          <label className="flex items-center gap-1.5 text-xs text-slate-700 cursor-pointer select-none">
             <input
               type="checkbox"
               checked={showOnlyChanges}
@@ -282,21 +282,21 @@ export function SyncTable({
       {/* "Apply to everything" — the AllwaySync master action. Setting it
           writes the root key ("") into the override map, which every path
           inherits. */}
-      <div className="bg-slate-900/40 border-t border-slate-800 px-3 py-2 flex items-center gap-2 flex-wrap">
-        <span className="text-[11px] uppercase tracking-wide text-slate-500">
+      <div className="bg-panel border-t border-outline px-3 py-2 flex items-center gap-2 flex-wrap">
+        <span className="text-xs uppercase tracking-wide text-slate-600">
           Apply to all
         </span>
-        <div className="inline-flex rounded border border-slate-700 overflow-hidden">
+        <div className="inline-flex rounded border border-slate-400 overflow-hidden">
           {(["auto", "copy-a-to-b", "copy-b-to-a", "keep-both", "skip"] as ItemAction[]).map(
             (a) => (
               <button
                 key={a}
                 onClick={() => onApplyToAll(a)}
                 title={ACTION_LABELS[a]}
-                className={`px-2 py-1 text-[11px] border-r border-slate-700 last:border-r-0 transition-colors ${
+                className={`px-2 py-1 text-xs border-r border-slate-400 last:border-r-0 transition-colors ${
                   rootAction === a
-                    ? "bg-emerald-600 text-white"
-                    : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                    ? "bg-emerald-700 text-white"
+                    : "bg-panel-muted text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {a === "auto"
@@ -313,13 +313,14 @@ export function SyncTable({
           )}
         </div>
         {rootAction !== "auto" && (
-          <span className="text-[11px] text-emerald-400">
+          <span className="text-xs text-emerald-800">
             every item is set to “{ACTION_LABELS[rootAction]}”
           </span>
         )}
       </div>
 
-      <div className="bg-slate-900/60 px-3 py-1.5 text-[11px] uppercase tracking-wide text-slate-500 grid grid-cols-[1fr_9rem_9rem_11rem_8rem] gap-2">
+      <div className="overflow-x-auto"><div className="min-w-[760px]">
+      <div className="bg-panel-muted px-3 py-1.5 text-xs uppercase tracking-wide text-slate-600 grid grid-cols-[minmax(10rem,1.2fr)_5rem_5rem_11rem_minmax(12rem,1.5fr)] gap-2">
         <span>Name</span>
         <span className="text-right">A</span>
         <span className="text-right">B</span>
@@ -329,7 +330,7 @@ export function SyncTable({
 
       <div className="max-h-[58vh] overflow-y-auto font-mono text-xs">
         {tree.filter((n) => n.visible).length === 0 ? (
-          <div className="text-sm text-slate-500 italic px-3 py-6 border-t border-slate-900/80">
+          <div className="text-sm text-slate-600 italic px-3 py-6 border-t border-outline">
             {filter
               ? "No paths match the filter."
               : "Nothing to show — both sides are already in sync."}
@@ -353,6 +354,7 @@ export function SyncTable({
             ))
         )}
       </div>
+      </div></div>
     </div>
   );
 }
@@ -392,20 +394,20 @@ function Row({
     return (
       <>
         <div
-          className={`grid grid-cols-[1fr_9rem_9rem_11rem_8rem] gap-2 items-center px-3 py-1 border-t border-slate-900/80 hover:bg-slate-900/40 ${
-            isSelected ? "bg-slate-900/60" : ""
+          className={`grid grid-cols-[minmax(10rem,1.2fr)_5rem_5rem_11rem_minmax(12rem,1.5fr)] gap-2 items-center px-3 py-1 border-t border-outline hover:bg-panel ${
+            isSelected ? "bg-emerald-50" : ""
           }`}
           style={{ paddingLeft: pad }}
         >
           <button
-            className="text-left text-slate-300 hover:text-slate-100 truncate flex items-center gap-1"
+            className="text-left text-slate-700 hover:text-slate-900 truncate flex items-center gap-1"
             onClick={() => onToggle(node.path)}
             title={isCollapsed ? "Expand" : "Collapse"}
           >
-            <span className="text-slate-500 select-none">{isCollapsed ? "▶" : "▼"}</span>
+            <span className="text-slate-600 select-none">{isCollapsed ? "▶" : "▼"}</span>
             <span className="truncate">{node.name}/</span>
             {node.pending > 0 && (
-              <span className="text-[10px] text-amber-400">({node.pending})</span>
+              <span className="text-xs text-amber-800">({node.pending})</span>
             )}
           </button>
           <span className="text-right text-slate-600">—</span>
@@ -415,7 +417,7 @@ function Row({
             onChange={(a) => onApplyToSubtree(node.path, a)}
             title="Applies to this folder and everything inside it"
           />
-          <span className="text-slate-500 text-[10px]">
+          <span className="text-slate-600 text-xs">
             {node.total} item{node.total === 1 ? "" : "s"}
           </span>
         </div>
@@ -450,14 +452,14 @@ function Row({
 
   return (
     <div
-      className={`grid grid-cols-[1fr_9rem_9rem_11rem_8rem] gap-2 items-center px-3 py-1 border-t border-slate-900/80 hover:bg-slate-900/40 ${
-        isSelected ? "bg-slate-900/60" : ""
+      className={`grid grid-cols-[minmax(10rem,1.2fr)_5rem_5rem_11rem_minmax(12rem,1.5fr)] gap-2 items-center px-3 py-1 border-t border-outline hover:bg-panel ${
+        isSelected ? "bg-emerald-50" : ""
       }`}
       style={{ paddingLeft: pad }}
       onClick={() => onSelect(item.path)}
     >
       <span
-        className={`truncate ${isOverridden ? "text-emerald-300" : "text-slate-200"}`}
+        className={`truncate ${isOverridden ? "text-emerald-800" : "text-slate-900"}`}
         title={item.path}
       >
         {node.name}
@@ -480,12 +482,12 @@ function Row({
       <span
         className={
           item.inSync
-            ? "text-slate-500 text-[10px]"
-            : "text-amber-400 text-[10px] truncate"
+            ? "text-slate-600 text-xs"
+            : "text-amber-800 text-xs break-words whitespace-normal"
         }
         title={item.reason}
       >
-        {item.inSync ? "in sync" : item.reason.split("(")[0].trim()}
+        {isOverridden ? `Selected: ${ACTION_LABELS[effective]}. ${item.reason}` : item.inSync ? "Same size and modification time" : item.reason}
       </span>
     </div>
   );
@@ -501,11 +503,11 @@ function SideCell({
   mtime: number | null;
 }) {
   if (!exists) {
-    return <span className="text-right text-slate-700 text-[10px]">missing</span>;
+    return <span className="text-right text-slate-600 text-xs">missing</span>;
   }
   return (
     <span
-      className="text-right text-slate-400 text-[10px] truncate"
+      className="text-right text-slate-700 text-xs truncate"
       title={mtime ? formatTime(mtime) : ""}
     >
       {formatBytes(size ?? 0)}
@@ -528,10 +530,10 @@ function ActionSelect({
       title={title}
       onClick={(e) => e.stopPropagation()}
       onChange={(e) => onChange(e.target.value as ItemAction)}
-      className={`w-full bg-slate-950 border rounded px-1.5 py-0.5 text-[11px] focus:outline-none focus:border-emerald-500 ${
+      className={`w-full bg-panel border rounded px-1.5 py-0.5 text-xs focus:outline-none focus:border-emerald-500 ${
         value === "auto"
-          ? "border-slate-700 text-slate-400"
-          : "border-emerald-700 text-emerald-300"
+          ? "border-slate-400 text-slate-700"
+          : "border-emerald-700 text-emerald-800"
       }`}
     >
       {ACTION_MENU_ORDER.map((a) => (

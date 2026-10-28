@@ -1,0 +1,111 @@
+{
+  "recordingRun": "20261027-FileSync-1.0.0-take3-tree",
+  "mp4Timing": "Analyze segment at visibly labeled 1/6 speed; all other footage real time; no cuts",
+  "capture": "Actual packaged renderer; CDP controls; no mocked results",
+  "metadata": {
+    "programs": [],
+    "stream_groups": [],
+    "streams": [
+      {
+        "codec_name": "h264",
+        "width": 1280,
+        "height": 900,
+        "r_frame_rate": "12/1",
+        "side_data_list": [
+          {}
+        ]
+      }
+    ],
+    "format": {
+      "duration": "70.000000",
+      "size": "673532"
+    }
+  },
+  "checks": [
+    "v1.0.0",
+    "four-cards-one-row",
+    "300-copies-200-removals",
+    "1000-destination-hashes-match",
+    "300-trash-recovery-hashes",
+    "nested-folder-tree",
+    "copy-only-byte-total",
+    "four-green-checkmarks-after-result-check"
+  ],
+  "recordedAt": "2026-10-27",
+  "fixtureSha256": "EB58A90E65E79200B18A273C02F61D482AC17835C387DC8840EFDE58E59665C6",
+  "runActualSeconds": 14.04,
+  "phases": [
+    {
+      "phase": "idle",
+      "at": 1793154447014,
+      "text": ""
+    },
+    {
+      "phase": "analyze",
+      "at": 1793154447041,
+      "text": "Starting analysis�\nElapsed 0m 0s\nFolder A\nScanning�\n0 files\n0 folders � 0 B discovered\n\nWaiting for the first matching entry�\n\nFolder B\nScanning�\n0 files\n0 folders � 0 B discovered\n\nWaiting for the first matching entry�\n\n0 files found\nWaiting for the engine�\n\nActivity only � no ETA. Discovered size ? copied data."
+    },
+    {
+      "phase": "idle",
+      "at": 1793154447578,
+      "text": ""
+    },
+    {
+      "phase": "run",
+      "at": 1793154479626,
+      "text": "Preparing file operations�\n0 of 500 actions � 0%\nFinishing�\nCopied payload: 0 B of 20.2 MB\n\nCopy payload only � excludes trash and verification I/O. Counts update per file."
+    },
+    {
+      "phase": "result-check",
+      "at": 1793154493666,
+      "text": "Checking results � Starting analysis�\nElapsed 0m 0s\nFolder A\nScanning�\n0 files\n0 folders � 0 B discovered\n\nWaiting for the first matching entry�\n\nFolder B\nScanning�\n0 files\n0 folders � 0 B discovered\n\nWaiting for the first matching entry�\n\n0 files found\nWaiting for the engine�\n\nSize/time check � not a whole-drive checksum check. Activity only � no ETA. Discovered size ? copied data."
+    },
+    {
+      "phase": "idle",
+      "at": 1793154494144,
+      "text": ""
+    }
+  ],
+  "gifTiming": "2x edited MP4 speed, 5 fps",
+  "media": [
+    {
+      "file": "001_FileSync.mp4",
+      "sha256": "0A37375335346D7684D031D16FD19E30BD0C00C344C9E0FD84110BF3EBAA5399",
+      "bytes": 673532
+    },
+    {
+      "file": "001_FileSync.gif",
+      "sha256": "64C308F6FC703122595B6E4492D2C66044F0B93C1F3E12FF6E10CAA9AB8D52FC",
+      "bytes": 1057597
+    },
+    {
+      "file": "001_FileSync.png",
+      "sha256": "89C80B27E9A010200FA89784289D94A7A03FFADAF3660B223A00BD9C81CE4026",
+      "bytes": 407214
+    }
+  ],
+  "app": "001_FileSync",
+  "edit": {
+    "method": "Minimum frame-creation timestamp minus measured capture-request time; includes 200ms boundary margins",
+    "analyzeActualSeconds": 0.537,
+    "editedSha256": "0A37375335346D7684D031D16FD19E30BD0C00C344C9E0FD84110BF3EBAA5399",
+    "captureEpochEstimate": 1793154437233.2776,
+    "rawSecondsStart": 9.607722412109375,
+    "otherSegments": "Real time; no cuts",
+    "rawSha256": "B2F70A7A45CCE5534DFCF8CFCE7A42327AF2B74A7DD03D5CFCD2CFCF1E04C06E",
+    "rawSecondsEnd": 10.544722412109374,
+    "analyzePlaybackFactor": 6,
+    "label": "Analyze - 1/6 speed"
+  },
+  "branch": "dev-FS",
+  "artifactSha256": "C609A895C81CAC059F77287DD8A57CDE7B8688A2F82EFA1F28A9EBBAD9B4FADA",
+  "visualReview": "Contact sheet; full-size Analyze, nested tree, Run and final frames",
+  "version": "1.0.0",
+  "limits": "Mapped synthetic folders; not a local-HDD speed benchmark or checksum scan of unchanged files.",
+  "buildRun": "20261027-215822-097-batch",
+  "artifact": "filesync-1.0.0-win-x64-folder.zip",
+  "fullyDecoded": true,
+  "synthetic": true,
+  "fixture": "1000 text files per side; 700 identical, 100 updates, 200 new notes, 200 removals; nested folders",
+  "sourceStateAtRecording": "Uncommitted dev-FS working tree; runtime source matches the validated v1.0.0 build manifest."
+}

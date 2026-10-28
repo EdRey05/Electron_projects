@@ -1,6 +1,7 @@
-import { walk as fsWalk } from "@nodelib/fs.walk";
+import { walkStream, type Entry } from "@nodelib/fs.walk";
 import { sep, posix, relative } from "node:path";
-import type { WalkEntry, WalkRequest, WalkResult } from "@shared/types";
+import type { WalkEntry, WalkRequest, WalkResult, WalkProgress } from "@shared/types";
+import { TEMP_SUFFIX_RE } from "./copier";
 
 const TRASH_DIR = ".filesync-trash";
 
@@ -55,7 +56,12 @@ export function matchesFilters(relPosix: string, f: CompiledFilters): boolean {
   return f.include.some((rx) => rx.test(relPosix));
 }
 
-export async function walk(req: WalkRequest): Promise<WalkResult> {
+interface WalkOptions extends WalkRequest {
+  onProgress?(progress: WalkProgress): void;
+  signal?: AbortSignal;
+}
+
+export async function walk(req: WalkOptions): Promise<WalkResult> {
   const started = Date.now();
   const filters = compileFilters(req.filters);
   const followSymlinks = req.followSymlinks ?? false;
@@ -71,11 +77,23 @@ export async function walk(req: WalkRequest): Promise<WalkResult> {
   let fileCount = 0;
   let dirCount = 0;
   let totalBytes = 0;
+  let currentPath = "";
+  let lastEntryAt = started;
+  let lastSentAt = 0;
+  function notify(complete = false, force = false) {
+    const now = Date.now();
+    if (force || now - lastSentAt >= 250) {
+      req.onProgress?.({ fileCount, dirCount, totalBytes, currentPath, lastEntryAt, complete });
+      lastSentAt = now;
+    }
+  }
+  if (req.signal?.aborted) throw new Error("Analysis stopped");
+  notify(false, true);
 
-  await new Promise<void>((resolve, reject) => {
-    fsWalk(
+  const stream = walkStream(
       req.root,
       {
+        concurrency: 16,
         stats: true,
         followSymbolicLinks: followSymlinks,
         throwErrorOnBrokenSymbolicLink: false,
@@ -91,28 +109,37 @@ export async function walk(req: WalkRequest): Promise<WalkResult> {
           const rel = toPosix(relative(req.root, entry.path));
           if (rel === "") return false;
           if (rel.startsWith(TRASH_DIR)) return false;
+          if (TEMP_SUFFIX_RE.test(entry.name)) return false;
           if (sideExtras.exclude.some((rx) => rx.test(rel))) return false;
           return matchesFilters(rel, filters);
         },
-      },
-      (err, results) => {
-        if (err) return reject(err);
-        for (const e of results) {
-          const rel = toPosix(relative(req.root, e.path));
-          const isDir = e.dirent.isDirectory();
-          const size = isDir ? 0 : Number(e.stats?.size ?? 0);
-          const mtimeMs = Number(e.stats?.mtimeMs ?? 0);
-          entries.push({ relPath: rel, size, mtimeMs, isDirectory: isDir });
-          if (isDir) dirCount++;
-          else {
-            fileCount++;
-            totalBytes += size;
-          }
-        }
-        resolve();
-      },
-    );
-  });
+      });
+  const abort = () => { stream.destroy(new Error("Analysis stopped")); };
+  req.signal?.addEventListener("abort", abort, { once: true });
+  try {
+    // Consume entries as discovered, rather than waiting for the library
+    // to materialize a second full-tree array before reporting anything.
+    for await (const e of stream as AsyncIterable<Entry>) {
+      const rel = toPosix(relative(req.root, e.path));
+      const isDir = e.dirent.isDirectory();
+      const size = isDir ? 0 : Number(e.stats?.size ?? 0);
+      const mtimeMs = Number(e.stats?.mtimeMs ?? 0);
+      entries.push({ relPath: rel, size, mtimeMs, isDirectory: isDir });
+      currentPath = rel;
+      lastEntryAt = Date.now();
+      if (isDir) dirCount++;
+      else {
+        fileCount++;
+        totalBytes += size;
+      }
+      notify();
+      if (entries.length % 1000 === 0) await new Promise<void>(resolve => setImmediate(resolve));
+    }
+    notify(true, true);
+  } finally {
+    req.signal?.removeEventListener("abort", abort);
+    if (!stream.destroyed) stream.destroy();
+  }
 
   return {
     root: req.root,

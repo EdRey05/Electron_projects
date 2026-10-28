@@ -1,8 +1,8 @@
 {
   "name": "filesync",
-  "version": "0.0.7",
+  "version": "1.0.0",
   "private": true,
-  "description": "Bidirectional file sync — self-built replacement for AllwaySync / GoodSync",
+  "description": "Local folder comparison, verified file transfers, and bidirectional synchronization",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

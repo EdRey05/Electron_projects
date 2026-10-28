@@ -7,6 +7,10 @@ import type {
 } from "@shared/api";
 import { applyOverrides } from "@shared/overrides";
 import { Button } from "../components/Button";
+import { PlanOverview } from "../components/PlanOverview";
+import { TransferProgress } from "../components/TransferProgress";
+import { AnalyzeProgress } from "../components/AnalyzeProgress";
+import { useAnalysis } from "../lib/useAnalysis";
 import { SyncTable } from "../components/SyncTable";
 import { formatBytes, formatDuration } from "../lib/format";
 
@@ -31,12 +35,14 @@ const TABS: { key: Exclude<Tab, "tree">; label: string; pred(a: Action): boolean
 type Phase =
   | "idle"
   | "scanning"
+  | "verifying"
   | "ready"
   | "applying"
   | "applied"
   | "error";
 
 export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
+  const { analyze: analyzeFolders, progress: analysisProgress, startedAt: analysisStartedAt } = useAnalysis();
   const [phase, setPhase] = useState<Phase>("idle");
   const [dryRun, setDryRun] = useState<DryRunResponse | null>(null);
   const [applyResult, setApplyResult] = useState<ApplyResponse | null>(null);
@@ -49,14 +55,12 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
   const [selected, setSelected] = useState<string | null>(null);
   const unsubRef = useRef<(() => void) | null>(null);
 
-  async function scan() {
-    setPhase("scanning");
+  async function scan(preserveResult = false) {
+    setPhase(preserveResult ? "verifying" : "scanning");
     setError(null);
-    setApplyResult(null);
-    setProgress(null);
-    setDryRun(null);
+    if (!preserveResult) { setApplyResult(null); setProgress(null); setDryRun(null); }
     try {
-      const r = await window.api.engine.dryRun({
+      const r = await analyzeFolders({
         jobId: job.id,
         sideA: job.sideA,
         sideB: job.sideB,
@@ -68,7 +72,7 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         overrides: job.overrides,
       });
       setDryRun(r);
-      setPhase("ready");
+      setPhase(preserveResult ? "applied" : "ready");
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase("error");
@@ -77,12 +81,13 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
 
   async function applyPlan() {
     if (!dryRun || !effectivePlan) return;
+    const executionPlan = { ...effectivePlan, actions: effectivePlan.actions.filter(a => !["noop", "drop-from-state", "conflict"].includes(a.kind)) };
     setPhase("applying");
     setError(null);
     setProgress({
       jobId: job.id,
       doneActions: 0,
-      totalActions: effectivePlan.actions.length,
+      totalActions: executionPlan.actions.length,
       bytesTransferred: 0,
       bytesTotal: effectivePlan.summary.bytesToTransfer,
       currentPath: "",
@@ -97,7 +102,7 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         jobId: job.id,
         sideA: job.sideA,
         sideB: job.sideB,
-        plan: effectivePlan,
+        plan: executionPlan,
         trash: job.trash,
         preserveTimestamps: job.preserveTimestamps,
       });
@@ -105,7 +110,7 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
       setPhase("applied");
       // Re-scan to show the post-apply state (should be all noops). The
       // user's per-item decisions survive, so a second Apply honours them.
-      await scan();
+      await scan(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setPhase("error");
@@ -136,7 +141,7 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
 
   const actionable = effectivePlan
     ? effectivePlan.actions.filter(
-        (a) => a.kind !== "noop" && a.kind !== "drop-from-state",
+        (a) => a.kind !== "noop" && a.kind !== "drop-from-state" && a.kind !== "conflict",
       ).length > 0
     : false;
 
@@ -174,21 +179,21 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
     <div className="p-8 max-w-6xl mx-auto">
       <header className="flex items-center justify-between mb-4">
         <div>
-          <button onClick={onBack} className="text-xs text-slate-400 hover:text-slate-200">
+          <button onClick={onBack} disabled={["scanning", "verifying", "applying"].includes(phase)} className="text-xs text-slate-700 hover:text-slate-900 disabled:opacity-60">
             ← Back to jobs
           </button>
           <h1 className="text-2xl font-semibold mt-1">{job.name}</h1>
-          <p className="text-xs text-slate-400 font-mono mt-0.5">
+          <p className="text-xs text-slate-700 font-mono mt-0.5">
             {job.sideA} ↔ {job.sideB}
           </p>
         </div>
         <div className="flex gap-2">
-          <Button onClick={scan} disabled={phase === "scanning" || phase === "applying"}>
+          <Button onClick={() => scan()} disabled={phase === "scanning" || phase === "verifying" || phase === "applying"}>
             {phase === "scanning" ? "Scanning…" : "Re-scan"}
           </Button>
           <Button
             variant="primary"
-            disabled={phase !== "ready" || !actionable}
+            disabled={!["ready", "applied"].includes(phase) || !actionable}
             onClick={applyPlan}
             title={
               !actionable
@@ -201,37 +206,38 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
         </div>
       </header>
 
-      {phase === "scanning" && (
-        <div className="rounded-md border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-300">
-          Walking both sides and computing diff…
-        </div>
+      {(phase === "scanning" || phase === "verifying") && (
+        <AnalyzeProgress progress={analysisProgress} startedAt={analysisStartedAt} purpose={phase === "verifying" ? "verify" : "analyze"} />
       )}
 
       {phase === "applying" && progress && (
-        <ApplyProgressBar progress={progress} />
+        <TransferProgress progress={progress} trashEnabled={job.trash.enabled} />
       )}
 
-      {phase === "applied" && applyResult && (
-        <ApplySummary result={applyResult} />
+      {applyResult && (
+        <ApplySummary result={applyResult} trash={job.trash} />
       )}
 
       {error && (
-        <div className="rounded-md border border-red-700/60 bg-red-900/30 p-3 text-sm text-red-200 mt-3">
+        <div className="rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 mt-3">
           {error}
         </div>
       )}
 
+      {dryRun && effectivePlan && <PlanOverview plan={effectivePlan} direction={job.direction} walkA={dryRun.walkA} walkB={dryRun.walkB} durationMs={dryRun.totalDurationMs} validated={phase === "applied" && applyResult?.status === "ok" && dryRun.plan.actions.every(a => a.kind === "noop" || a.kind === "drop-from-state")} />}
+      {phase === "verifying" && <p className="mt-3 text-sm text-slate-700">Checking results · previous totals shown.</p>}
+      {phase === "applied" && <p className="mt-3 text-sm font-medium text-sky-900">Check complete · remaining differences below.</p>}
       {(phase === "ready" || phase === "applied") && dryRun && effectivePlan && (
         <>
-          <SummaryStats result={dryRun} />
 
-          <div className="mt-6 border-b border-slate-800 flex gap-1 overflow-x-auto">
+
+          <div className="mt-6 border-b border-outline flex gap-1 overflow-x-auto">
             <button
               onClick={() => setTab("tree")}
               className={`px-3 py-2 text-sm border-b-2 -mb-px whitespace-nowrap ${
                 tab === "tree"
-                  ? "border-emerald-500 text-emerald-300"
-                  : "border-transparent text-slate-400 hover:text-slate-200"
+                  ? "border-emerald-500 text-emerald-800"
+                  : "border-transparent text-slate-700 hover:text-slate-900"
               }`}
             >
               Sync table
@@ -242,12 +248,12 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
                 onClick={() => setTab(c.key)}
                 className={`px-3 py-2 text-sm border-b-2 -mb-px whitespace-nowrap ${
                   tab === c.key
-                    ? "border-emerald-500 text-emerald-300"
-                    : "border-transparent text-slate-400 hover:text-slate-200"
+                    ? "border-emerald-500 text-emerald-800"
+                    : "border-transparent text-slate-700 hover:text-slate-900"
                 }`}
               >
                 {c.label}{" "}
-                <span className="text-xs text-slate-500 tabular-nums">
+                <span className="text-xs text-slate-600 tabular-nums">
                   ({effectivePlan.actions.filter(c.pred).length})
                 </span>
               </button>
@@ -277,56 +283,25 @@ export function RunView({ job, onBack }: { job: Job; onBack(): void }) {
   );
 }
 
-function ApplyProgressBar({ progress }: { progress: ApplyProgressEvent }) {
-  const pct = progress.totalActions
-    ? Math.round((progress.doneActions / progress.totalActions) * 100)
-    : 0;
-  const bytePct = progress.bytesTotal
-    ? Math.round((progress.bytesTransferred / progress.bytesTotal) * 100)
-    : 0;
-  return (
-    <div className="rounded-md border border-emerald-700/40 bg-emerald-900/10 p-4 mt-3">
-      <div className="text-sm text-emerald-200 mb-2">
-        Applying… {progress.doneActions} / {progress.totalActions} actions
-        {progress.errors > 0 && (
-          <span className="text-red-300 ml-2">({progress.errors} error{progress.errors > 1 ? "s" : ""})</span>
-        )}
-      </div>
-      <div className="h-2 bg-slate-800 rounded-full overflow-hidden">
-        <div
-          className="h-full bg-emerald-500 transition-all"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="mt-2 text-xs text-slate-400 flex justify-between">
-        <span className="font-mono truncate max-w-[60%]">{progress.currentPath || "—"}</span>
-        <span className="tabular-nums">
-          {formatBytes(progress.bytesTransferred)} / {formatBytes(progress.bytesTotal)}
-          {progress.bytesTotal > 0 && ` (${bytePct}%)`}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function ApplySummary({ result }: { result: ApplyResponse }) {
+function ApplySummary({ result, trash }: { result: ApplyResponse; trash: Job["trash"] }) {
   const ok = result.status === "ok";
   return (
     <div
       className={`rounded-md border p-4 mt-3 text-sm ${
         ok
-          ? "border-emerald-700/40 bg-emerald-900/20 text-emerald-200"
-          : "border-amber-700/40 bg-amber-900/20 text-amber-200"
+          ? "border-emerald-300 bg-emerald-50 text-emerald-900"
+          : "border-amber-300 bg-amber-50 text-amber-900"
       }`}
     >
       <div className="font-medium">
         {ok ? "Apply complete." : `Apply finished with status: ${result.status}.`}
       </div>
-      <div className="text-xs mt-1 text-slate-300">
-        {result.filesCopied} copied, {result.filesDeleted} deleted (to trash),{" "}
+      <div className="text-xs mt-1 text-slate-700">
+        {result.filesCopied} copied, {result.filesDeleted} {trash.enabled ? "moved to trash" : "permanently deleted"},{" "}
         {formatBytes(result.bytesTransferred)} transferred in{" "}
         {formatDuration(result.endedAt - result.startedAt)}.
         {result.errors.length > 0 && ` ${result.errors.length} error(s) — see history.`}
+        {trash.enabled && <> Trash: {trash.retainDays} days · cleaned on later runs.</>}
         {result.trashSweep && result.trashSweep.removedDirs > 0 && (
           <>
             {" "}Trash sweep freed {formatBytes(result.trashSweep.freedBytes)} from{" "}
@@ -338,42 +313,18 @@ function ApplySummary({ result }: { result: ApplyResponse }) {
   );
 }
 
-function SummaryStats({ result }: { result: DryRunResponse }) {
-  const s = result.plan.summary;
-  return (
-    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mt-4">
-      <Stat label="A→B" value={s.copyAToB.toLocaleString()} />
-      <Stat label="B→A" value={s.copyBToA.toLocaleString()} />
-      <Stat label="Delete A" value={s.deleteA.toLocaleString()} />
-      <Stat label="Delete B" value={s.deleteB.toLocaleString()} />
-      <Stat label="Conflicts" value={s.conflicts.toLocaleString()} />
-      <Stat label="Bytes to transfer" value={formatBytes(s.bytesToTransfer)} />
-      <Stat label="Total time" value={formatDuration(result.totalDurationMs)} />
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded bg-slate-950/40 border border-slate-800 px-3 py-2">
-      <div className="text-[11px] uppercase tracking-wide text-slate-500">{label}</div>
-      <div className="text-base font-medium tabular-nums truncate">{value}</div>
-    </div>
-  );
-}
-
 function ActionTable({ actions }: { actions: Action[] }) {
   if (actions.length === 0) {
     return (
-      <div className="mt-4 text-sm text-slate-500 italic px-2 py-6">
+      <div className="mt-4 text-sm text-slate-600 italic px-2 py-6">
         Nothing in this category.
       </div>
     );
   }
   return (
-    <div className="mt-4 rounded-md border border-slate-800 overflow-hidden">
+    <div className="mt-4 rounded-md border border-outline overflow-hidden">
       <table className="w-full text-xs">
-        <thead className="bg-slate-900/80 text-slate-400 uppercase tracking-wide">
+        <thead className="bg-panel-muted text-slate-700 uppercase tracking-wide">
           <tr>
             <th className="text-left px-3 py-2 font-medium">Path</th>
             <th className="text-left px-3 py-2 font-medium">Action</th>
@@ -383,19 +334,19 @@ function ActionTable({ actions }: { actions: Action[] }) {
         </thead>
         <tbody className="font-mono">
           {actions.slice(0, 1000).map((a, i) => (
-            <tr key={`${a.path}-${i}`} className="border-t border-slate-800 hover:bg-slate-900/40">
-              <td className="px-3 py-1 text-slate-200 truncate max-w-md">{a.path}</td>
-              <td className="px-3 py-1 text-slate-400">{a.kind}</td>
-              <td className="px-3 py-1 text-right text-slate-400 tabular-nums">
+            <tr key={`${a.path}-${i}`} className="border-t border-outline hover:bg-panel">
+              <td className="px-3 py-1 text-slate-900 truncate max-w-md">{a.path}</td>
+              <td className="px-3 py-1 text-slate-700">{a.kind}</td>
+              <td className="px-3 py-1 text-right text-slate-700 tabular-nums">
                 {a.bytes ? formatBytes(a.bytes) : "—"}
               </td>
-              <td className="px-3 py-1 text-slate-400 break-all">{a.reason}</td>
+              <td className="px-3 py-1 text-slate-700 break-all">{a.reason}</td>
             </tr>
           ))}
         </tbody>
       </table>
       {actions.length > 1000 && (
-        <div className="px-3 py-2 text-xs text-slate-500 border-t border-slate-800">
+        <div className="px-3 py-2 text-xs text-slate-600 border-t border-outline">
           …and {actions.length - 1000} more (truncated for display).
         </div>
       )}

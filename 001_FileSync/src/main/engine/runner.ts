@@ -5,7 +5,10 @@ import { oneWayDiff } from "./oneway-diff";
 import { openStateDb, loadStateMap } from "./state-db";
 import { buildInventory, type SyncItem } from "@shared/inventory";
 import { applyOverrides } from "@shared/overrides";
+import { validateRoots } from "./paths";
 import type {
+  AnalysisProgress,
+  WalkProgress,
   ConflictPolicy,
   DiffPlan,
   JobFilters,
@@ -17,6 +20,7 @@ import type {
 } from "@shared/types";
 
 export interface DryRunOptions {
+  onProgress?(progress: AnalysisProgress): void;
   jobId: string;
   sideA: string;
   sideB: string;
@@ -67,82 +71,122 @@ function entriesToMap(walk: WalkResult): Map<string, SideMeta> {
  * or touches either side. The Apply phase consumes the returned plan.
  */
 export async function dryRun(opts: DryRunOptions): Promise<DryRunResult> {
+  await validateRoots(opts.sideA, opts.sideB);
   const t0 = Date.now();
   const direction: SyncDirection = opts.direction ?? "sync";
 
-  const [walkA, walkB] = await Promise.all([
-    walk({
-      root: opts.sideA,
-      filters: opts.filters,
-      followSymlinks: opts.followSymlinks,
-      sideExcludes: opts.filters?.excludeA,
-    }),
-    walk({
-      root: opts.sideB,
-      filters: opts.filters,
-      followSymlinks: opts.followSymlinks,
-      sideExcludes: opts.filters?.excludeB,
-    }),
-  ]);
-
-  let plan: DiffPlan;
-  let stateLoadedRows = 0;
-
-  if (direction === "sync") {
-    let state: Map<string, StateRecord> = new Map();
-    if (existsSync(opts.stateDbPath)) {
-      const db = await openStateDb(opts.stateDbPath);
-      try {
-        state = loadStateMap(db);
-        stateLoadedRows = state.size;
-      } finally {
-        db.close();
-      }
+  const empty = (): WalkProgress => ({ fileCount: 0, dirCount: 0, totalBytes: 0, currentPath: "", lastEntryAt: t0, complete: false });
+  let a = empty();
+  let b = empty();
+  let stage: AnalysisProgress["stage"] = "scanning";
+  let lastSentAt = 0;
+  const emit = (force = false) => {
+    const now = Date.now();
+    if (force || now - lastSentAt >= 250) {
+      opts.onProgress?.({ jobId: opts.jobId, stage, startedAt: t0, updatedAt: now, a: { ...a }, b: { ...b } });
+      lastSentAt = now;
     }
-    plan = diff({
-      walkA: entriesToMap(walkA),
-      walkB: entriesToMap(walkB),
-      state,
-      policy: opts.policy ?? "newer-wins",
-      toleranceMs: opts.toleranceMs,
-    });
-  } else {
-    // Mirror mode — pure stateless diff between current snapshots.
-    plan = oneWayDiff({
-      walkA: entriesToMap(walkA),
-      walkB: entriesToMap(walkB),
-      direction,
-      toleranceMs: opts.toleranceMs,
-      deleteExtraneous: opts.deleteExtraneous,
-    });
-  }
-
-  // Build the full sync table, then fold the user's per-item overrides into
-  // the runnable plan so the table, the counters and the Run button agree.
-  const inventory = buildInventory(walkA, walkB, plan.actions);
-  const overrides = opts.overrides ?? {};
-  if (Object.keys(overrides).length > 0) {
-    plan = applyOverrides(plan, overrides);
-  }
-
-  return {
-    jobId: opts.jobId,
-    sideA: opts.sideA,
-    sideB: opts.sideB,
-    direction,
-    walkA: {
-      fileCount: walkA.fileCount,
-      totalBytes: walkA.totalBytes,
-      durationMs: walkA.durationMs,
-    },
-    walkB: {
-      fileCount: walkB.fileCount,
-      totalBytes: walkB.totalBytes,
-      durationMs: walkB.durationMs,
-    },
-    stateLoadedRows,
-    plan,
-    inventory,
-    totalDurationMs: Date.now() - t0,
   };
+  const phase = async (next: AnalysisProgress["stage"]) => {
+    stage = next;
+    emit(true);
+    await new Promise<void>(resolve => setImmediate(resolve));
+  };
+  const controller = new AbortController();
+  // Keep a backend heartbeat even while a slow HDD has not yielded a new entry.
+  const heartbeat = setInterval(() => emit(true), 1000);
+  try {
+    emit(true);
+    const [walkA, walkB] = await Promise.all([
+      walk({
+        root: opts.sideA,
+        filters: opts.filters,
+        followSymlinks: opts.followSymlinks,
+        sideExcludes: opts.filters?.excludeA,
+        signal: controller.signal,
+        onProgress: progress => { a = progress; emit(progress.complete); },
+      }),
+      walk({
+        root: opts.sideB,
+        filters: opts.filters,
+        followSymlinks: opts.followSymlinks,
+        sideExcludes: opts.filters?.excludeB,
+        signal: controller.signal,
+        onProgress: progress => { b = progress; emit(progress.complete); },
+      }),
+    ]);
+
+    let plan: DiffPlan;
+    let stateLoadedRows = 0;
+
+    if (direction === "sync") {
+      await phase("loading-state");
+      let state: Map<string, StateRecord> = new Map();
+      if (existsSync(opts.stateDbPath)) {
+        const db = await openStateDb(opts.stateDbPath);
+        try {
+          state = loadStateMap(db);
+          stateLoadedRows = state.size;
+        } finally {
+          db.close();
+        }
+      }
+      await phase("comparing");
+      plan = diff({
+        walkA: entriesToMap(walkA),
+        walkB: entriesToMap(walkB),
+        state,
+        policy: opts.policy ?? "newer-wins",
+        toleranceMs: opts.toleranceMs,
+      });
+    } else {
+      await phase("comparing");
+      // Mirror mode — pure stateless diff between current snapshots.
+      plan = oneWayDiff({
+        walkA: entriesToMap(walkA),
+        walkB: entriesToMap(walkB),
+        direction,
+        toleranceMs: opts.toleranceMs,
+        deleteExtraneous: opts.deleteExtraneous,
+      });
+    }
+
+    // Build the full sync table, then fold the user's per-item overrides into
+    // the runnable plan so the table, the counters and the Run button agree.
+    await phase("inventory");
+    const inventory = buildInventory(walkA, walkB, plan.actions);
+    const overrides = opts.overrides ?? {};
+    if (Object.keys(overrides).length > 0) {
+      plan = applyOverrides(plan, overrides);
+    }
+
+    await phase("complete");
+    return {
+      jobId: opts.jobId,
+      sideA: opts.sideA,
+      sideB: opts.sideB,
+      direction,
+      walkA: {
+        fileCount: walkA.fileCount,
+        totalBytes: walkA.totalBytes,
+        durationMs: walkA.durationMs,
+      },
+      walkB: {
+        fileCount: walkB.fileCount,
+        totalBytes: walkB.totalBytes,
+        durationMs: walkB.durationMs,
+      },
+      stateLoadedRows,
+      plan,
+      inventory,
+      totalDurationMs: Date.now() - t0,
+    };
+  } catch (err) {
+    stage = "failed";
+    emit(true);
+    throw err;
+  } finally {
+    clearInterval(heartbeat);
+    controller.abort();
+  }
 }
