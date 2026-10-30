@@ -50,15 +50,13 @@ export function folderNameFor(jobId, plasmidNumber) {
  *   { type: "other" }    - skipped
  */
 export function classifyFile(filename) {
-  if (filename.endsWith(".seq")) return { type: "seq" };
+  if (filename.toLowerCase().endsWith(".seq")) return { type: "seq" };
   if (
-    filename.startsWith("POS") ||
-    filename.startsWith("Pos") ||
-    filename.startsWith("pos")
+    /^pos/i.test(filename)
   ) {
     return { type: "pos" };
   }
-  if (!(filename.endsWith(".ab1") || filename.endsWith(".fasta"))) {
+  if (!(filename.toLowerCase().endsWith(".ab1") || filename.toLowerCase().endsWith(".fasta"))) {
     return { type: "other" };
   }
   const { jobId, plasmidNumber } = extractInfo(filename);

@@ -35,8 +35,12 @@ import {
   FONT_DISPLAY,
   FONT_MONO,
 } from "./ui/kit.jsx";
+import BatchQCReport from "./subapps/BatchQCReport/BatchQCReport.jsx";
+import LabelGenerator from "./subapps/LabelGenerator/LabelGenerator.jsx";
+import IntegraWorklist from "./subapps/IntegraWorklist/IntegraWorklist.jsx";
 import PrimerFinder from "./subapps/PrimerFinder/PrimerFinder.jsx";
-import QCVectorMap from "./subapps/QCVectorMap/QCVectorMap.jsx";
+import QCFilePrep from "./subapps/QCFilePrep/QCFilePrep.jsx";
+import QCDesign from "./subapps/QCDesign/QCDesign.jsx";
 import SequencingReferenceFiles from "./subapps/SequencingReferenceFiles/SequencingReferenceFiles.jsx";
 import SequencingOrderForm from "./subapps/SequencingOrderForm/SequencingOrderForm.jsx";
 import SequencingFileOrganizer from "./subapps/SequencingFileOrganizer/SequencingFileOrganizer.jsx";
@@ -48,8 +52,12 @@ import LigationLayout from "./subapps/LigationLayout/LigationLayout.jsx";
 // swaps to the matching React component instead of spawning a subprocess.
 // Add new entries here as you port more subapps.
 const REACT_SUBAPPS = {
+  "BatchQCReport.jsx": BatchQCReport,
+  "LabelGenerator.jsx": LabelGenerator,
+  "IntegraWorklist.jsx": IntegraWorklist,
   "PrimerFinder.jsx": PrimerFinder,
-  "QCVectorMap.jsx": QCVectorMap,
+  "QCDesign.jsx": QCDesign,
+  "QCFilePrep.jsx": QCFilePrep,
   "SequencingReferenceFiles.jsx": SequencingReferenceFiles,
   "SequencingOrderForm.jsx": SequencingOrderForm,
   "SequencingFileOrganizer.jsx": SequencingFileOrganizer,
@@ -64,30 +72,6 @@ const REACT_SUBAPPS = {
 function displayKey(key) {
   return key.replace(/_/g, " ");
 }
-
-/** Which lifecycle stage a hub app belongs to — used to group the app grid. */
-const GROUPS = [
-  { id: "prep", label: "Pre-Cloning", hint: "Primers, vector maps and layouts", icon: <Wrench size={14} /> },
-  { id: "cloning", label: "Cloning", hint: "Ligation, colony PCR and sequencing files", icon: <Boxes size={14} /> },
-  { id: "qc", label: "QC & Reporting", hint: "QC packages, digestion design and batch reports", icon: <LayoutGrid size={14} /> },
-  { id: "utility", label: "Utilities", hint: "Worklists, labels and vector logging", icon: <TerminalSquare size={14} /> },
-];
-
-const GROUP_OF = {
-  "Primer Finder": "prep",
-  "QC Vector Map Prep": "prep",
-  "Ligation Layout": "prep",
-  "Colony PCR Layout": "cloning",
-  "Sequencing Reference Files": "cloning",
-  "Sequencing Order Form": "cloning",
-  "Sequencing File Organizer": "cloning",
-  "QC File Prep": "qc",
-  "QC Digestion Design": "qc",
-  "BATCH QC Report": "qc",
-  "Integra Worklist": "utility",
-  "Label Generator": "utility",
-  "Backup Vector Logger": "utility",
-};
 
 // Parse the "Label, \"Sub\Path\"" format into [label, subpath] pairs.
 // (Same logic as Electron's resolvePath but used for *display* of pending edits.)
@@ -149,7 +133,7 @@ function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange })
     <div
       className="rounded-md border px-3 py-2.5 mb-2"
       style={{
-        background: exists ? "#FBFDFC" : C.coralSoft,
+        background: exists ? C.surface : C.coralSoft,
         borderColor: exists ? C.border : "rgba(193,85,61,0.40)",
       }}
     >
@@ -218,127 +202,15 @@ function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange })
   );
 }
 
-function AppCard({ app, missingKeys, onLaunch, launching }) {
-  const [expanded, setExpanded] = useState(false);
-  const requires = (app.requires || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const missingReqs = requires.filter((k) => missingKeys.includes(k));
-  const canLaunch = missingReqs.length === 0 && !launching;
-  const isReact = (app.category || "").toLowerCase() === "react_route";
-
-  return (
-    <div
-      className="rounded-lg border p-3.5"
-      style={{
-        background: C.surface,
-        borderColor: missingReqs.length ? "rgba(193,85,61,0.40)" : C.border,
-      }}
-    >
-      <div className="flex items-start gap-3">
-        <div
-          className="w-9 h-9 rounded-md flex items-center justify-center text-base shrink-0"
-          style={{ background: isReact ? C.tealSoft : C.navySoft }}
-          title={isReact ? "Runs in-process (React)" : "Runs as a Python app"}
-        >
-          {app.icon || "🔧"}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between gap-2">
-            <h3
-              className="font-semibold text-sm truncate"
-              style={{ fontFamily: FONT_DISPLAY, color: C.ink }}
-            >
-              {app.name}
-            </h3>
-            <span className="text-[11px] shrink-0" style={{ fontFamily: FONT_MONO, color: C.inkFaint }}>
-              v{app.version || "?"} · {app.date_released || "—"}
-            </span>
-          </div>
-          {app.message && (
-            <p className="mt-1 text-xs leading-snug" style={{ color: C.inkMuted }}>
-              {app.message}
-            </p>
-          )}
-          {missingReqs.length > 0 && (
-            <p className="mt-1.5 text-xs font-medium" style={{ color: C.coral }}>
-              Missing required directories: {missingReqs.map(displayKey).join(", ")}
-            </p>
-          )}
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <Pill
-              tone={isReact ? "good" : "info"}
-              icon={isReact ? <Rocket size={11} /> : <TerminalSquare size={11} />}
-            >
-              {isReact ? "Built-in" : "Python app"}
-            </Pill>
-            {app.status && (
-              <Pill
-                tone={app.status === "success" ? "good" : app.status === "warning" ? "warn" : "bad"}
-                icon={<Info size={11} />}
-              >
-                {app.status}
-              </Pill>
-            )}
-            <button
-              onClick={() => setExpanded((e) => !e)}
-              className="text-[11px] inline-flex items-center gap-1"
-              style={{ color: C.inkMuted }}
-            >
-              {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              {expanded ? "Hide" : "Show"} wiring
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {expanded && (
-        <div
-          className="mt-3 ml-12 text-[11px] rounded px-3 py-2 space-y-0.5"
-          style={{
-            fontFamily: FONT_MONO,
-            color: C.inkMuted,
-            background: C.subtle,
-            border: "1px solid " + C.border,
-          }}
-        >
-          <div>
-            <span style={{ color: C.inkFaint }}>path:</span> Code/{app.path}/{app.entry}
-          </div>
-          {app.requires && (
-            <div>
-              <span style={{ color: C.inkFaint }}>requires:</span> {app.requires}
-            </div>
-          )}
-          {app.pass_dir_as_kwarg && (
-            <div>
-              <span style={{ color: C.inkFaint }}>dir_args:</span> {app.pass_dir_as_kwarg}
-            </div>
-          )}
-          {app.pass_template_as_kwarg && (
-            <div>
-              <span style={{ color: C.inkFaint }}>tpl_args:</span> {app.pass_template_as_kwarg}
-            </div>
-          )}
-          {app.pass_db_as_kwarg && (
-            <div>
-              <span style={{ color: C.inkFaint }}>db_args:</span> {app.pass_db_as_kwarg}
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="mt-3 flex justify-end">
-        <Button
-          variant={canLaunch ? "primary" : "secondary"}
-          size="sm"
-          disabled={!canLaunch}
-          onClick={() => onLaunch(app)}
-        >
-          <Rocket size={13} />
-          {launching ? "Launching…" : "Launch"}
-        </Button>
-      </div>
-    </div>
-  );
+function AppCard({ app, onLaunch, launching }) {
+  return <article className="gsh-tool-card">
+    <div className="gsh-tool-icon" aria-hidden="true">{app.icon || "🧬"}</div>
+    <h3>{app.name}</h3>
+    <p>{app.message}</p>
+    <Button variant="primary" onClick={() => onLaunch(app)} disabled={launching} aria-label={`Open ${app.name}`}>
+      {launching ? "Opening…" : "Open"}
+    </Button>
+  </article>;
 }
 
 // ===========================================================================
@@ -404,17 +276,6 @@ export default function App() {
     if (!q) return apps;
     return apps.filter((a) => a.name.toLowerCase().includes(q));
   }, [apps, searchQuery]);
-
-  const groupedApps = useMemo(() => {
-    const byGroup = new Map(GROUPS.map((g) => [g.id, []]));
-    const other = [];
-    for (const app of filteredApps) {
-      const gid = GROUP_OF[app.name];
-      if (gid && byGroup.has(gid)) byGroup.get(gid).push(app);
-      else other.push(app);
-    }
-    return { byGroup, other };
-  }, [filteredApps]);
 
   const dirty = useMemo(() => {
     return Object.entries(draftValues).some(([k, v]) => paths[k]?.raw !== v);
@@ -530,19 +391,7 @@ export default function App() {
         return;
       }
 
-      setLaunchingApp(app.name);
-      try {
-        const r = await window.api.launchApp(app, paths, driveMappings);
-        if (!r.ok) {
-          showToast(`Launch failed: ${r.error}`, "error");
-        } else {
-          showToast(`Launched ${app.name} (pid ${r.pid})`, "success");
-        }
-      } catch (err) {
-        showToast(`Launch error: ${err.message}`, "error");
-      } finally {
-        setLaunchingApp(null);
-      }
+      showToast(`No native Electron route for ${app.name}. Refresh the supported catalog.`, "error");
     },
     [paths, driveMappings, showToast]
   );
@@ -570,7 +419,7 @@ export default function App() {
         icon={<FlaskConical size={18} color="#fff" />}
         title="Gene Synthesis Hub"
         subtitle="Bio Basic Inc."
-        meta={`${apps.length} apps · ${Object.keys(driveMappings).length} drives mapped`}
+        meta={`${apps.length} tools`}
         actions={
           <>
             <Button
@@ -581,16 +430,6 @@ export default function App() {
             >
               <Cog size={14} /> Directories
             </Button>
-            {layout && (
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => window.api.openPythonApp()}
-                title="Open bundled python-app folder"
-              >
-                <FolderOpen size={14} /> python-app
-              </Button>
-            )}
             <Button variant="primary" size="sm" onClick={refreshAll} disabled={scanning}>
               <RefreshCw size={14} className={scanning ? "animate-spin" : ""} />
               {scanning ? "Scanning…" : "Rescan"}
@@ -599,7 +438,7 @@ export default function App() {
         }
       />
 
-      <DriveStrip driveMappings={driveMappings} />
+
 
       {/* Main grid */}
       <main className="flex-1 grid grid-cols-1 gap-4 p-4 overflow-hidden min-h-0">
@@ -614,7 +453,7 @@ export default function App() {
           >
             <h2
               className="font-semibold flex items-center gap-2 shrink-0"
-              style={{ fontFamily: FONT_DISPLAY, fontSize: 14, color: C.ink }}
+              style={{ fontFamily: FONT_DISPLAY, fontSize: 18, color: C.ink }}
             >
               <Rocket size={15} style={{ color: C.teal }} /> Available tools
             </h2>
@@ -635,8 +474,8 @@ export default function App() {
                     border: "1px solid " + C.border,
                     borderRadius: 6,
                     color: C.ink,
-                    fontFamily: "IBM Plex Sans, sans-serif",
-                    fontSize: 13,
+                    fontFamily: "Segoe UI, system-ui, sans-serif",
+                    fontSize: 16,
                   }}
                 />
               </div>
@@ -655,101 +494,18 @@ export default function App() {
                 title={apps.length === 0 ? "Loading apps…" : "No apps match your search."}
                 hint={
                   apps.length === 0
-                    ? "Reading app_information.txt from the bundled python-app folder."
+                    ? "Please wait."
                     : "Try a different name."
                 }
               />
             ) : (
-              <div className="space-y-5">
-                {GROUPS.map((g) => {
-                  const list = groupedApps.byGroup.get(g.id) || [];
-                  if (list.length === 0) return null;
-                  return (
-                    <div key={g.id}>
-                      <div className="flex items-center gap-2 mb-2">
-                        <span style={{ color: C.teal }}>{g.icon}</span>
-                        <h3
-                          className="text-xs font-semibold uppercase tracking-wider"
-                          style={{ color: C.inkMuted }}
-                        >
-                          {g.label}
-                        </h3>
-                        <span
-                          className="px-1.5 py-0.5 rounded-full text-[10px]"
-                          style={{ background: C.subtle, color: C.inkFaint }}
-                        >
-                          {list.length}
-                        </span>
-                        <span className="text-[11px] truncate" style={{ color: C.inkFaint }}>
-                          {g.hint}
-                        </span>
-                      </div>
-                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                        {list.map((app) => (
-                          <AppCard
-                            key={app.name}
-                            app={app}
-                            missingKeys={missing}
-                            onLaunch={handleLaunch}
-                            launching={launchingApp === app.name}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-                {groupedApps.other.length > 0 && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3
-                        className="text-xs font-semibold uppercase tracking-wider"
-                        style={{ color: C.inkMuted }}
-                      >
-                        Other
-                      </h3>
-                      <span
-                        className="px-1.5 py-0.5 rounded-full text-[10px]"
-                        style={{ background: C.subtle, color: C.inkFaint }}
-                      >
-                        {groupedApps.other.length}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3">
-                      {groupedApps.other.map((app) => (
-                        <AppCard
-                          key={app.name}
-                          app={app}
-                          missingKeys={missing}
-                          onLaunch={handleLaunch}
-                          launching={launchingApp === app.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div className="gsh-tool-grid">
+                {filteredApps.map(app => <AppCard key={app.name} app={app} onLaunch={handleLaunch} launching={launchingApp === app.name} />)}
               </div>
             )}
           </div>
         </section>
       </main>
-
-      {/* Footer */}
-      {layout && (
-        <footer
-          className="px-6 py-1.5 text-[10px] flex items-center gap-3 overflow-hidden"
-          style={{
-            borderTop: "1px solid " + C.border,
-            background: C.subtle2,
-            color: C.inkFaint,
-            fontFamily: FONT_MONO,
-          }}
-        >
-          <span className="shrink-0">{layout.isPackaged ? "packaged" : "dev"}</span>
-          <span className="truncate" title={layout.venvPythonExe}>
-            {layout.venvPythonExe}
-          </span>
-        </footer>
-      )}
 
       {/* Directories modal */}
       <Modal

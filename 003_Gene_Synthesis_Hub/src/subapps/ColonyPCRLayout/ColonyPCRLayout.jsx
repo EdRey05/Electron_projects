@@ -76,11 +76,11 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
     ligationInputRef.current?.click();
   };
   const onLigationInputChange = (e) => {
-    const files = Array.from(e.target.files || []);
+    const files = Array.from(e.target.files || []).map(f=>({name:f.name,path:window.api.getPathForFile(f)})).filter(f=>f.path);
     setLigationFiles((prev) => {
       const next = [...prev];
       for (const f of files) {
-        if (!next.some((p) => p.name === f.name)) next.push(f);
+        if (!next.some((p) => p.path.toLowerCase() === f.path.toLowerCase())) next.push(f);
       }
       return next;
     });
@@ -314,7 +314,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) setPrimerLogPath(f.path);
+                  if (f) setPrimerLogPath(window.api.getPathForFile(f));
                   e.target.value = "";
                 }}
               />
@@ -339,7 +339,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
                 className="hidden"
                 onChange={(e) => {
                   const f = e.target.files?.[0];
-                  if (f) setTemplatePath(f.path);
+                  if (f) setTemplatePath(window.api.getPathForFile(f));
                   e.target.value = "";
                 }}
               />
@@ -440,7 +440,7 @@ function CloneCountModal({ jobDetails, values, onChange, onConfirm, onCancel }) 
       </div>
       <div className="mt-1">
         {jobDetails.map((d, i) => {
-          const key = makeKey(d.JobID, d.SourceFile);
+          const key = makeKey(d["Work No."], d.SourceFile);
           const val = values[key] ?? 4;
           return (
             <div

@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import * as XLSX from 'xlsx';
+import {writeLayoutRows,serializeWorkbook} from '../src/subapps/LigationLayout/workbookBuilder.js';
+import {readLigationLayout} from '../src/subapps/ColonyPCRLayout/extractor.js';
+const template=fs.readFileSync(new URL('../python-app/Templates/Ligation_Template_v6.xlsx',import.meta.url));
+const wb=XLSX.read(template,{type:'array'});
+writeLayoutRows(wb,[{job_id:'TEST-WORK',bbid:'TEST-BBI',vector:'pUC57',enzyme:'EcoRI',length:1200,host:'TOP10',temperature:'37C'}],{digested:{},resistance:{},length:{}});
+assert(wb.Sheets.Layout['!ref'].startsWith('A1:'),'Ligation range must include column A');
+const result=readLigationLayout(serializeWorkbook(wb,template),'synthetic-ligation.xlsx');
+assert(result.log.includes('columns resolved by name'));
+assert.equal(result.rows[0].Name,'TEST-WORK');
+assert.equal(result.rows[0]['BBI ID'],'TEST-BBI');
+assert.equal(result.rows[0].Vector,'pUC57');
+console.log('Ligation → Colony PCR: column A, canonical header mapping, Work No., BBI ID and vector remain aligned.');

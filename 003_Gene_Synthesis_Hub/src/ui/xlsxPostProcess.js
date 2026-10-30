@@ -73,7 +73,7 @@ export function forceFullCalcOnLoad(workbookXml) {
  * @returns {Uint8Array} the patched bytes
  */
 export function applyFullCalcOnLoad(bytes) {
-  const files = unzipSync(bytes);
+  const files = unzipSync(bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes));
   const workbookXml = files["xl/workbook.xml"];
   if (!workbookXml) return bytes;
 

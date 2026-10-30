@@ -1,0 +1,27 @@
+import assert from 'node:assert/strict';
+import * as XLSX from 'xlsx';
+import {loadPrimerCandidatesFromFile} from '../src/subapps/PrimerFinder/excelReader.js';
+import {findBinding,reverseComplement} from '../src/subapps/PrimerFinder/sequenceUtils.js';
+
+const sequence='ACGTTGCAACCT';
+const wb=XLSX.utils.book_new();
+const sheet=XLSX.utils.aoa_to_sheet([]);
+XLSX.utils.sheet_add_aoa(sheet,[['Wells','Oligo\nName',"Sequence (5' to 3')"]],{origin:'A34'});
+XLSX.utils.sheet_add_aoa(sheet,[['A1','First',sequence]],{origin:'A35'});
+XLSX.utils.sheet_add_aoa(sheet,[['B1','Late-row-150',reverseComplement(sequence)]],{origin:'A150'});
+XLSX.utils.sheet_add_aoa(sheet,[['B2','Invalid','AAAAA?AAAAA']],{origin:'A151'});
+XLSX.utils.book_append_sheet(wb,sheet,'S-order');
+const fallback=XLSX.utils.aoa_to_sheet([]);
+XLSX.utils.sheet_add_aoa(fallback,[['Legacy',sequence]],{origin:'A35'});
+XLSX.utils.book_append_sheet(wb,fallback,'v-legacy');
+XLSX.utils.book_append_sheet(wb,sheet,'Ignored');
+const bytes=XLSX.write(wb,{type:'array',bookType:'xlsx'});
+const result=await loadPrimerCandidatesFromFile({arrayBuffer:async()=>bytes});
+assert.deepEqual(result.candidates.map(p=>p.name),['First','Late-row-150','Legacy']);
+assert.deepEqual(result.resolutions.map(r=>r.byName),[true,false]);
+const target='TTT'+sequence+'GGG';
+assert.deepEqual(findBinding(sequence,target,reverseComplement(target)),{orientation:'Forward (Exact Match)',position:4});
+assert.deepEqual(findBinding(reverseComplement(sequence),target,reverseComplement(target)),{orientation:'Reverse (Binds to Target)',position:4});
+assert.equal(findBinding('',target,reverseComplement(target)),null);
+assert.equal(findBinding('NNNNNNNNNN',target,reverseComplement(target)),null);
+console.log('Primer Finder: late-row inclusion, shifted/legacy columns, sheet filter, invalid bases, both orientations and empty-primer guard passed.');

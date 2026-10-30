@@ -1,11 +1,10 @@
 
 numpy==2.4.2
-pandas==2.3.3 # Limited by streamlit
+pandas==2.3.3 # Retain the tested version
 openpyxl==3.1.5
 xlrd==2.0.2
 python-dateutil==2.9.0.post0
 
-streamlit==1.55.0
 customtkinter==5.2.2
 
 biopython==1.86

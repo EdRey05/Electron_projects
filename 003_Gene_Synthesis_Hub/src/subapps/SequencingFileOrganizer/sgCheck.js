@@ -27,9 +27,9 @@ export function classifyFolderForSgCheck(folderName, folderContents) {
     return { valid: false, reason: "folder not found" };
   }
   const hasAb1 = folderContents.some(
-    (fn) => fn.endsWith(".ab1") || fn.endsWith(".fasta")
+    (fn) => fn.toLowerCase().endsWith(".ab1") || fn.toLowerCase().endsWith(".fasta")
   );
-  const hasTxt = folderContents.some((fn) => fn.endsWith(".txt"));
+  const hasTxt = folderContents.some((fn) => fn.toLowerCase().endsWith(".txt"));
   const missing = [];
   if (!hasAb1) missing.push("no .ab1/.fasta");
   if (!hasTxt) missing.push("no .txt");

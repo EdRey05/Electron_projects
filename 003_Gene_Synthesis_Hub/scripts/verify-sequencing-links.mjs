@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {unzipSync,strFromU8} from 'fflate';
+import {relinkSequencingLayout} from '../src/ui/sequencingLinks.js';
+const input=fs.readFileSync(new URL('../python-app/Templates/Sequencing_layout_v6.xlsx',import.meta.url));
+const name='Sequencing_order_form_U1029-1.xlsx';
+const result=relinkSequencingLayout(input,name);
+assert.equal(result.linksUpdated,1);
+const before=unzipSync(input),after=unzipSync(result.bytes);
+const relationship='xl/externalLinks/_rels/externalLink1.xml.rels';
+assert(strFromU8(after[relationship]).includes(`Target="${name}"`));
+for(const key of Object.keys(before))if(![relationship,'xl/workbook.xml'].includes(key))assert.deepEqual(after[key],before[key],`Unexpected change: ${key}`);
+assert(strFromU8(after['xl/workbook.xml']).includes('fullCalcOnLoad="1"'));
+console.log('Sequencing layout: relative order-form link updated; formulas, styles and all other ZIP parts unchanged.');

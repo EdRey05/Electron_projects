@@ -15,7 +15,7 @@
  * "JOB-001.txt"       -> "JOB-001"
  */
 export function referenceBaseName(filename) {
-  const noExt = filename.endsWith(".txt") ? filename.slice(0, -4) : filename;
+  const noExt = filename.toLowerCase().endsWith(".txt") ? filename.slice(0, -4) : filename;
   const noPlus = noExt.split("+")[0];
   const noDot = noPlus.split(".")[0];
   return noDot;
@@ -29,7 +29,7 @@ export function mapReferenceFiles(referenceFilenames, organizedJobIds) {
   const jobIdSet = new Set(organizedJobIds);
   const fileMap = {};
   for (const fn of referenceFilenames) {
-    if (!fn.endsWith(".txt")) continue;
+    if (!fn.toLowerCase().endsWith(".txt")) continue;
     const base = referenceBaseName(fn);
     if (jobIdSet.has(base)) {
       if (!fileMap[base]) fileMap[base] = [];

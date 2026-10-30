@@ -1,33 +1,12 @@
-/**
- * Gene Synthesis Hub — Electron main process.
- *
- * Responsibilities:
- *   1. Resolve the bundled `python-app/` directory (portable Electron build
- *      unpacks `extraResources` to `process.resourcesPath`; in dev, we fall
- *      back to the source `python-app/` next to the project root).
- *   2. Scan Windows drives for the configured labels ("B8. Gene Synthesis",
- *      "B6. DNA Sequencing", "Public"). The legacy .bat files did this with
- *      `vol <drive>:`; here we do it in Node and expose the result via IPC.
- *   3. Read the [Paths] section of `default_directories.ini` and the
- *      `app_information.txt` (one section per subapp).
- *   4. Spawn subapps:
- *        - tkinter_import: `python.exe <entry>.py --config=... --<kw>=...`
- *          (loaded by the subapp via importlib so it lands as a child window)
- *        - streamlit: `python.exe -m streamlit run <entry> -- --config=...`
- *      Both run in the subapp folder, with the resolved drive mappings passed
- *      through as `--Label=Drive` args — exactly the contract the existing
- *      Python code already understands.
- *
- * The renderer never touches the filesystem directly. Every file/directory
- * operation goes through `ipcMain.handle` so the main process owns path
- * resolution and never trusts renderer-supplied strings.
- */
+/** Native Gene Synthesis Hub: local paths/catalog, file IPC and managed
+ * headless processing. All supported subapp interfaces render in this window.
+ * No Tk windows, detached app launchers or Streamlit server are started. */
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const fsp = require("fs/promises");
-const { spawn } = require("child_process");
 const os = require("os");
+const {verifiedCopy,verifiedMove}=require("./file-operations.cjs");
 
 // ---------------------------------------------------------------------------
 // Filesystem layout helpers
@@ -68,43 +47,7 @@ function dirConfigPath() {
 // Drive scanning (replaces the `vol <drive>:` loop from the legacy .bat)
 // ---------------------------------------------------------------------------
 
-const DRIVE_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
-
-// Label keywords that mark drives we care about. Matched against the volume
-// label returned by `vol X:` on Windows.
-const WANTED_LABELS = new Set([
-  "B8. Gene Synthesis",
-  "B6. DNA Sequencing",
-  "Public",
-]);
-
-function readVolumeLabel(letter) {
-  return new Promise((resolve) => {
-    const proc = spawn("cmd.exe", ["/c", `vol ${letter}:`], { windowsHide: true });
-    let out = "";
-    proc.stdout.on("data", (b) => (out += b.toString("utf8")));
-    proc.on("error", () => resolve(null));
-    proc.on("close", () => {
-      // `vol X:` output (en-US):
-      //   Volume in drive X is Label Name
-      //   Volume Serial Number is XXXX:XXXX
-      const m = out.match(/Volume in drive [A-Z] is\s*(.+?)\r?\n/);
-      if (!m) return resolve(null);
-      const label = m[1].trim();
-      resolve({ letter: `${letter}:`, label });
-    });
-  });
-}
-
-async function scanDrives() {
-  const results = await Promise.all(DRIVE_LETTERS.map(readVolumeLabel));
-  const found = {};
-  for (const r of results) {
-    if (!r) continue;
-    if (WANTED_LABELS.has(r.label)) found[r.label] = r.letter;
-  }
-  return found;
-}
+const {scanDrives}=require('./drives.cjs');
 
 // ---------------------------------------------------------------------------
 // INI parsing (lightweight, no external deps)
@@ -117,27 +60,7 @@ async function scanDrives() {
 // We implement the minimum to read + write default_directories.ini and
 // app_information.txt without pulling in a 200 KB npm package.
 
-function parseIni(text) {
-  const result = { sections: {}, _top: [] };
-  let section = "_top";
-  for (const rawLine of text.split(/\r?\n/)) {
-    const line = rawLine.replace(/[;#].*$/, "").trim(); // strip inline ; # comments
-    if (!line) continue;
-    const secMatch = line.match(/^\[(.+)\]$/);
-    if (secMatch) {
-      section = secMatch[1].trim();
-      if (!result.sections[section]) result.sections[section] = {};
-      continue;
-    }
-    const eq = line.indexOf("=");
-    if (eq < 0) continue;
-    const key = line.slice(0, eq).trim();
-    const value = unquote(line.slice(eq + 1).trim());
-    if (section === "_top") result._top.push({ key, value });
-    else result.sections[section][key] = value;
-  }
-  return result;
-}
+const {parseIni,resolvePath}=require('./config.cjs');
 
 function unquote(v) {
   if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) return v.slice(1, -1);
@@ -164,19 +87,6 @@ async function readIniFile(filePath) {
 // ---------------------------------------------------------------------------
 // Path resolution: turns the "Label, \"Sub\\Path\"" entries into real paths.
 // ---------------------------------------------------------------------------
-
-function resolvePath(rawValue, driveMappings) {
-  if (!rawValue) return "";
-  if (rawValue.includes(",")) {
-    const idx = rawValue.indexOf(",");
-    const label = rawValue.slice(0, idx).trim();
-    let subpath = rawValue.slice(idx + 1).trim();
-    subpath = subpath.replace(/^["']|["']$/g, "");
-    const drive = driveMappings[label];
-    if (drive) return path.normalize(path.join(drive, subpath));
-  }
-  return path.normalize(rawValue);
-}
 
 // Inverse of resolvePath: turn an absolute path back into "Label, \"sub\"" if
 // the path lives under one of the known drives.
@@ -240,7 +150,7 @@ function createWindow() {
     minWidth: 1000,
     minHeight: 700,
     title: "Gene Synthesis Hub",
-    backgroundColor: "#0B1426",
+    backgroundColor: "#CBDADF",
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
@@ -337,7 +247,7 @@ ipcMain.handle("hub:browsePath", async (_evt, { current, isFile }) => {
     defaultPath: initialDir,
     properties: isFile ? ["openFile"] : ["openDirectory"],
   };
-  const r = await dialog.showDialog(opts);
+  const r = await dialog.showOpenDialog(opts);
   if (r.canceled || !r.filePaths.length) return null;
   return r.filePaths[0];
 });
@@ -348,87 +258,9 @@ ipcMain.handle("hub:revealPath", async (_evt, p) => {
   return true;
 });
 
-ipcMain.handle("hub:launchApp", async (_evt, { appDef, paths, driveMappings }) => {
-  // appDef mirrors a single [Section] from app_information.txt.
-  const category = (appDef.category || "").toLowerCase();
-  const subPath = path.join(pythonAppRoot(), "Code", appDef.path || "");
-  const entry = appDef.entry;
-  if (!entry || !fs.existsSync(subPath)) {
-    return { ok: false, error: `Subapp folder not found: ${subPath}` };
-  }
-
-  // Pre-flight: verify the app's required directories resolve BEFORE we
-  // spawn anything, so the operator gets a clear message instead of a
-  // silently-unconfigured app window. The launcher does its own resolution
-  // (it is the component that actually injects the paths) — this block
-  // only reports problems early.
-  const missingDirs = [];
-  for (const pair of (appDef.pass_dir_as_kwarg || "").split(";")) {
-    if (!pair.trim()) continue;
-    const [dirKey] = pair.split(":").map((s) => s.trim());
-    const raw = paths?.[dirKey]?.raw;
-    const resolved = resolvePath(raw, driveMappings || {});
-    if (!resolved || !fs.existsSync(resolved)) {
-      missingDirs.push(`${dirKey} (${resolved || "no drive mapped"})`);
-    }
-  }
-  if (missingDirs.length) {
-    return {
-      ok: false,
-      error: `Required director${missingDirs.length === 1 ? "y" : "ies"} not found: ${missingDirs.join(", ")}`,
-    };
-  }
-
-  // Drive mapping args — these are what the legacy .bat used to pass via
-  // `B8. Gene Synthesis=E:\`. The launcher reads them to resolve the
-  // `Label, "sub\\path"` entries in default_directories.ini.
-  const driveArgs = [];
-  for (const [label, drive] of Object.entries(driveMappings || {})) {
-    driveArgs.push(`${label}=${drive}`);
-  }
-
-  const py = venvPythonExe();
-  if (!fs.existsSync(py)) {
-    return { ok: false, error: `Bundled Python venv not found at ${py}.\nRun "npm run stage-python" first.` };
-  }
-
-  // Route every Python subapp through the bundled hub_launcher.py.
-  //
-  // The BBI hub launches `tkinter_import` apps IN-PROCESS (importlib +
-  // constructor kwargs injection) and `streamlit` apps as a subprocess. The
-  // Electron shell cannot import Python into its own process, so the
-  // launcher replicates that contract: it reads app_information.txt +
-  // default_directories.ini, resolves the pass_*_as_kwarg paths, then
-  // either importlib-loads the subapp (injecting the kwargs into the
-  // constructor) or spawns streamlit with the kwargs on its command line.
-  //
-  // Spawning the subapp directly with `--kwarg=<path>` (the old behaviour)
-  // silently dropped the paths: only sequencing_reference_files_app.py
-  // parses `--<kwarg>=` args, and every other app takes its paths through
-  // the constructor.
-  const launcher = path.join(pythonAppRoot(), "hub_launcher.py");
-  if (!fs.existsSync(launcher)) {
-    return { ok: false, error: `Hub launcher not found at ${launcher}.` };
-  }
-
-  const cmd = [py, launcher, `--app=${appDef.name}`, `--config=${dirConfigPath()}`, ...driveArgs];
-
-  // Detached: the subapp lives in its own window, the hub stays alive.
-  // We don't .unref() because we want the child to outlive a fast hub close,
-  // but we also don't await stdout — launch is fire-and-forget.
-  try {
-    const child = spawn(cmd[0], cmd.slice(1), {
-      cwd: pythonAppRoot(),
-      detached: true,
-      stdio: "ignore",
-      windowsHide: false,
-    });
-    child.unref();
-    return { ok: true, pid: child.pid, command: cmd.join(" ") };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
-});
+// Every supported catalog entry is native. Do not revive detached GUI/server
+// processes when a future catalog entry has not been adapted yet.
+ipcMain.handle("hub:launchApp", async () => ({ok:false,error:"This catalog entry has no native Electron route. Refresh the supported catalog."}));
 
 // Open the bundled python-app folder in Explorer — useful while debugging
 // which subapp version / template got shipped.
@@ -539,15 +371,9 @@ ipcMain.handle("hub:writeBinaryFile", async (_evt, { filePath, bytes }) => {
 // Copy a file (used by subapps that need to lay down a template alongside
 // their generated output, e.g. Sequencing Order Form copying the layout
 // template). Returns { ok, error? }.
-ipcMain.handle("hub:copyFile", async (_evt, { source, dest }) => {
-  if (!source || !dest) return { ok: false, error: "source and dest both required" };
-  try {
-    await fsp.mkdir(path.dirname(dest), { recursive: true });
-    await fsp.copyFile(source, dest);
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
+ipcMain.handle("hub:copyFile", async (_evt, {source,dest}) => {
+  if(!source||!dest)return {ok:false,error:"source and dest required"};
+  try{return {ok:true,...await verifiedCopy(source,dest)};}catch(error){return {ok:false,error:error.message};}
 });
 
 // List files + subdirectories in a directory. Optional `filter`:
@@ -596,21 +422,9 @@ ipcMain.handle("hub:listDirectory", async (_evt, { dirPath, filter, extension } 
 
 // Move a file. Cross-volume moves fall back to copy+delete.
 // Returns { ok, error? }.
-ipcMain.handle("hub:moveFile", async (_evt, { source, dest }) => {
-  if (!source || !dest) return { ok: false, error: "source and dest both required" };
-  try {
-    await fsp.mkdir(path.dirname(dest), { recursive: true });
-    try {
-      await fsp.rename(source, dest);
-    } catch (renameErr) {
-      // Cross-device link or other rename failure: fall back to copy+unlink.
-      await fsp.copyFile(source, dest);
-      await fsp.unlink(source);
-    }
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: err.message };
-  }
+ipcMain.handle("hub:moveFile", async (_evt, {source,dest}) => {
+  if(!source||!dest)return {ok:false,error:"source and dest required"};
+  try{return {ok:true,...await verifiedMove(source,dest)};}catch(error){return {ok:false,error:error.message};}
 });
 
 // Delete a single file. Returns { ok, error? }.
@@ -674,6 +488,8 @@ ipcMain.handle("hub:getLayout", async () => {
 // ---------------------------------------------------------------------------
 // App lifecycle
 // ---------------------------------------------------------------------------
+
+require('./python-jobs.cjs').registerPythonJobs({app,ipcMain,pythonAppRoot,pythonExe});
 
 app.whenReady().then(() => {
   createWindow();

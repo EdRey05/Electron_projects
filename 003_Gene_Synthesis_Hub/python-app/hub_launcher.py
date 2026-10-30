@@ -190,7 +190,7 @@ def launch_tkinter(app, kwargs, root):
     """Importlib-load the subapp and mount it as a child window."""
     entry = app.get("entry", "")
     class_name = app.get("class_name")
-    app_path = os.path.join(SCRIPT_DIR, "Code", app.get("path", ""))
+    app_path = os.path.join(SCRIPT_DIR, app.get("path", ""))
     module_path = os.path.join(app_path, entry)
 
     if not os.path.exists(module_path) or not class_name:
@@ -220,7 +220,7 @@ def launch_tkinter(app, kwargs, root):
 def launch_streamlit(app, kwargs, dir_config_path, drives):
     """Run a streamlit subapp with its resolved kwargs on the command line."""
     entry = app.get("entry", "")
-    app_path = os.path.join(SCRIPT_DIR, "Code", app.get("path", ""))
+    app_path = os.path.join(SCRIPT_DIR, app.get("path", ""))
     cmd = [sys.executable, "-m", "streamlit", "run", entry, "--server.headless", "false"]
     cmd.append("--")
     cmd.append(f"--config={dir_config_path}")

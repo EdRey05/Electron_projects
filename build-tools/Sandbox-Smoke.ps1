@@ -138,16 +138,16 @@ try {
         $python = Join-Path $pythonApp 'runtime\python.exe'
         if (!(Test-Path -LiteralPath $python)) { throw 'Bundled full Python interpreter is missing.' }
         $imports = 'import sys,numpy,tkinter; print(sys.prefix); print(numpy.__version__); t=tkinter.Tk(); t.update(); t.destroy()'
-        if ($recipe.app -eq '003_Gene_Synthesis_Hub') { $imports += '; import pandas,streamlit,customtkinter,Bio,docx,PIL,pytesseract,win32com.client' }
+        if ($recipe.app -eq '003_Gene_Synthesis_Hub') { $imports = 'import sys,numpy,pandas,customtkinter,Bio,docx,PIL,pytesseract,win32com.client,importlib.util; print(sys.prefix); assert importlib.util.find_spec(''streamlit'') is None' }
         if ($recipe.app -eq '004_Peak_Tracer') { $imports += '; import scipy,Bio' }
         if ($recipe.app -eq '005_KM_Plotter') { $imports += '; import pandas,openpyxl' }
         & $python -I -c $imports 2>&1 | Out-File C:\TestExport\python-runtime-test.log
         if ($LASTEXITCODE -ne 0) { throw 'Relocated packaged Python imports or Tk initialization failed.' }
-        $result.checks += 'packaged-python-imports-and-tk-passed'
+        if ($recipe.app -eq '003_Gene_Synthesis_Hub') {$result.checks += 'packaged-headless-python-imports-passed'} else {$result.checks += 'packaged-python-imports-and-tk-passed'}
         if ($recipe.app -eq '003_Gene_Synthesis_Hub') {
             $layout = Evaluate 'window.api.getLayout()'
             $layout | ConvertTo-Json -Depth 8 | Set-Content C:\TestExport\hub-layout.json -Encoding UTF8
-            foreach ($required in @('hub_launcher.py','app_information.txt','default_directories.ini','app_theme_midnight.json','Code','Templates','Databases')) {
+            foreach ($required in @('worker.py','processors','app_information.txt','default_directories.ini','Code','Templates','Databases')) {
                 if (!(Test-Path -LiteralPath (Join-Path $pythonApp $required))) { throw "Hub resource missing: $required" }
             }
             if ($layout.venvPythonExe -ne $python) { throw 'Hub still points at a nonrelocatable venv.' }
@@ -157,14 +157,40 @@ try {
             $saved = Evaluate '(async()=>{const before=await window.api.loadConfig({});const key="Primer_Log";const original=before.paths[key].raw;const value="C:\\SmokeFixtures\\synthetic-primer-log.xlsx";const write=await window.api.saveConfig({[key]:value},{});const after=await window.api.loadConfig({});const restore=await window.api.saveConfig({[key]:original},{});return {write,restore,persisted:after.paths[key].raw===value};})()'
             if (!$saved.write.ok -or !$saved.restore.ok -or !$saved.persisted) {throw 'Hub directory config save/read regression failed.'}
             $result.checks += 'hub-directory-config-save-read-and-restore'
-            'import streamlit as st; st.write("Portable runtime fixture")' | Set-Content C:\SmokeFixtures\streamlit_app.py -Encoding UTF8
-            $server = Start-Process -FilePath $python -ArgumentList '-m streamlit run C:\SmokeFixtures\streamlit_app.py --server.headless=true --server.port=8501 --browser.gatherUsageStats=false' -WindowStyle Hidden -PassThru
-            try {
-                $health = $null
-                for ($attempt=0;$attempt -lt 20 -and !$health;$attempt++) { Start-Sleep -Seconds 2; try { $health=Invoke-RestMethod http://127.0.0.1:8501/_stcore/health -TimeoutSec 3 } catch {} }
-                if ($health -ne 'ok') { throw 'Bundled Streamlit health endpoint failed.' }
-            } finally { Stop-Process -Id $server.Id -ErrorAction SilentlyContinue }
-            $result.checks += 'hub-launcher-and-resources-present','streamlit-local-server-started-and-stopped'
+            $catalog = Evaluate '(async()=>{const c=await window.api.loadConfig({});return c.apps.map(a=>({name:a.name,category:a.category}));})()'
+            if ($catalog.Count -ne 11 -or @($catalog | Where-Object category -ne 'react_route').Count) { throw 'Expected eleven native Hub tools.' }
+            @'
+from pathlib import Path
+from openpyxl import Workbook
+from docx import Document
+import zipfile
+r=Path('C:/SmokeFixtures')
+book=Workbook();sheet=book.active;sheet.append(['12345678','BBI-PORTABLE','GeneOne','WORK-001',1200,'pUC57','EcoRI','P1234567','5ug','202610A001']);book.save(r/'shipping.xlsx')
+book=Workbook();sheet=book.active;sheet.title='input addon';sheet.append(['Work No.','Insert Sequence','Final Vector Sequence']);sheet.append(['MAP-WRAP','GGAAA','AACGTGGA']);book.save(r/'maps.xlsx')
+(r/'maps').mkdir(exist_ok=True)
+(r/'qc-input').mkdir(exist_ok=True);(r/'qc-output').mkdir(exist_ok=True)
+doc=Document();table=doc.add_table(rows=1,cols=2);table.cell(0,0).text='BBI ID';table.cell(0,1).text='BBI-PORTABLE';doc.save(r/'report.docx')
+with zipfile.ZipFile(r/'qc-input/BBI-PORTABLE QC.zip','w') as z:z.write(r/'report.docx','BBI-PORTABLE QC/BBI-PORTABLE Gene Synthesis Report.docx')
+(r/'rename.txt').write_text('BBI-PORTABLE\tBBI-RENAMED\n',encoding='utf-8')
+'@ | Set-Content C:\SmokeFixtures\hub_fixtures.py -Encoding UTF8
+            & $python -I -X utf8 C:\SmokeFixtures\hub_fixtures.py 2>&1 | Out-File C:\TestExport\hub-fixtures.log
+            if ($LASTEXITCODE -ne 0) {throw 'Could not create Hub fixtures with bundled Python.'}
+            $labels = Evaluate 'window.api.runPythonJob("smoke-labels","labels",{files:["C:/SmokeFixtures/shipping.xlsx"]})'
+            if (!$labels.ok -or $labels.data.records.Count -ne 1 -or $labels.data.records[0].'Gene Name' -ne 'GeneOne') { throw 'Packaged label worker failed.' }
+            $maps = Evaluate 'window.api.runPythonJob("smoke-maps","qc-design-bio",{primerLog:"C:/SmokeFixtures/maps.xlsx",outputFolder:"C:/SmokeFixtures/maps",workNos:["MAP-WRAP"]})'
+            if (!$maps.ok -or !(Test-Path C:\SmokeFixtures\maps\MAP-WRAP.gb)) { throw 'Packaged GenBank worker failed.' }
+            if ((Get-Content C:\SmokeFixtures\maps\MAP-WRAP.gb -Raw) -notmatch 'join\(6\.\.8,1\.\.2\)') {throw 'Packaged circular insert annotation failed.'}
+            $prep = Evaluate 'window.api.runPythonJob("smoke-prep","qc-file-prep",{workflow:"internal",inputFolder:"C:/SmokeFixtures/qc-input",outputFolder:"C:/SmokeFixtures/qc-output",replacementFile:"C:/SmokeFixtures/rename.txt"})'
+            if (!$prep.ok -or $prep.data.files[0].name -ne 'BBI-RENAMED QC.zip') {throw 'Packaged QC document/ZIP processing failed.'}
+            @{labels=$labels;maps=$maps;qcPrep=$prep} | ConvertTo-Json -Depth 15 | Set-Content C:\TestExport\hub-worker-results.json -Encoding UTF8
+            $native = Evaluate '(async()=>{const names=[...document.querySelectorAll(".gsh-tool-card h3")].map(e=>e.innerText);if(names.length!==11)throw Error("Wrong catalog");document.querySelector("[aria-label=\"Open QC Digestion Design\"]").click();return names;})()'
+            Start-Sleep -Seconds 1
+            $nativeText = Evaluate 'document.body.innerText'
+            if ($nativeText -notmatch 'Create GenBank maps') {throw 'Packaged native QC interface did not open.'}
+            $result.checks += 'eleven-native-tools','headless-label-parser','headless-circular-genbank','headless-qc-docx-zip-renaming','native-qc-route','no-streamlit-runtime'
+            $workers = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*worker.py*' })
+            if ($workers.Count) {throw 'A completed Hub worker was left running.'}
+            $result.checks += 'completed-workers-exited'
             $ocr = Join-Path $pythonApp 'tools\tesseract\tesseract.exe'
             & $ocr --version 2>&1 | Out-File C:\TestExport\tesseract-runtime-test.log
             if ($LASTEXITCODE -ne 0) { throw 'Bundled Tesseract did not run in the clean guest.' }

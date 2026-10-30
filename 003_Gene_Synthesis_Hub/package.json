@@ -1,8 +1,8 @@
 {
   "name": "gene-synthesis-hub",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "private": true,
-  "description": "Electron desktop shell for the Gene Synthesis Hub. Modern UI around the existing Tkinter + Streamlit subapps; bundles a portable Python runtime and the subapp source so the whole thing ships in one folder with no install step.",
+  "description": "Portable Gene Synthesis Hub with eleven native Electron tools and bundled headless scientific, document and OCR processing.",
   "main": "electron/main.js",
   "scripts": {
     "dev:vite": "vite",
@@ -15,10 +15,10 @@
     "package:portable": "npm run build && electron-builder --config electron-builder.json --win portable --x64 --publish never",
     "stage-python": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-tools/Stage-LocalPython.ps1",
     "stage-subapps": "node scripts/stage-subapps.js",
-    "verify": "npm run build && node scripts/verify-sg-check-edit.mjs && node scripts/verify-order-form-parity.mjs && node scripts/verify-sheet-range.mjs && node scripts/verify-colony-template.mjs && node scripts/verify-rounding.mjs && node scripts/verify-fullcalc.mjs && node scripts/verify-ligation-template.mjs && node scripts/verify-order-form-template.mjs && node scripts/verify-app-registry.mjs",
+    "verify": "npm run build && node scripts/verify-upstream-sync.cjs && node scripts/verify-drives.cjs && node scripts/verify-qc-file-prep.cjs && node scripts/verify-qc-design.cjs && node scripts/verify-batch-report.cjs && node scripts/verify-python-worker.cjs && node scripts/verify-integra.mjs && node scripts/verify-organizer.mjs && node scripts/verify-file-operations.cjs && node scripts/verify-config.cjs && node scripts/verify-sequencing-links.mjs && node scripts/verify-layout-chain.mjs && node scripts/verify-template-values.mjs && node scripts/verify-reference-files.mjs && node scripts/verify-primer-finder.mjs && node scripts/verify-sg-check-edit.mjs && node scripts/verify-order-form-parity.mjs && node scripts/verify-sheet-range.mjs && node scripts/verify-colony-template.mjs && node scripts/verify-rounding.mjs && node scripts/verify-fullcalc.mjs && node scripts/verify-ligation-template.mjs && node scripts/verify-order-form-template.mjs && node scripts/verify-app-registry.mjs",
     "smoke": "electron scripts/smoke-ui.js",
     "screenshot": "electron scripts/screenshot-ui.js",
-    "verify:quick": "node scripts/verify-sg-check-edit.mjs && node scripts/verify-order-form-parity.mjs && node scripts/verify-sheet-range.mjs && node scripts/verify-colony-template.mjs && node scripts/verify-rounding.mjs && node scripts/verify-fullcalc.mjs && node scripts/verify-ligation-template.mjs && node scripts/verify-order-form-template.mjs && node scripts/verify-app-registry.mjs",
+    "verify:quick": "node scripts/verify-upstream-sync.cjs && node scripts/verify-drives.cjs && node scripts/verify-qc-file-prep.cjs && node scripts/verify-qc-design.cjs && node scripts/verify-batch-report.cjs && node scripts/verify-python-worker.cjs && node scripts/verify-integra.mjs && node scripts/verify-organizer.mjs && node scripts/verify-file-operations.cjs && node scripts/verify-config.cjs && node scripts/verify-sequencing-links.mjs && node scripts/verify-layout-chain.mjs && node scripts/verify-template-values.mjs && node scripts/verify-reference-files.mjs && node scripts/verify-primer-finder.mjs && node scripts/verify-sg-check-edit.mjs && node scripts/verify-order-form-parity.mjs && node scripts/verify-sheet-range.mjs && node scripts/verify-colony-template.mjs && node scripts/verify-rounding.mjs && node scripts/verify-fullcalc.mjs && node scripts/verify-ligation-template.mjs && node scripts/verify-order-form-template.mjs && node scripts/verify-app-registry.mjs",
     "package:folder": "npm run build && electron-builder --config electron-builder.json --win dir --x64 --publish never",
     "validate": "node ../build-tools/validate.cjs && npm run verify:quick",
     "test:packaged": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File ../build-tools/Test-Packaged.ps1 -App 003_Gene_Synthesis_Hub"

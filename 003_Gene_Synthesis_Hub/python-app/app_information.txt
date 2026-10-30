@@ -23,7 +23,7 @@ version = 1.5
 date_released = 2026-10-13
 status = success
 message = Generates Colony PCR layout from Ligation Layouts and the Primer Log.
-requires = 
+requires =
 pass_dir_as_kwarg = Primer_Log:primer_log_path
 pass_template_as_kwarg = colony_pcr_template_path:ColonyPCR_layout_v*.xlsx
 
@@ -82,9 +82,9 @@ pass_dir_as_kwarg = Reference_Sequences:reference_sequences_path; Sorted_Sequenc
 pass_template_as_kwarg = sg_check_template_path:Gene_Seq_Log_v*.xlsx
 
 [QC File Prep]
-category = tkinter_import
+category = react_route
 path = Code/QC_file_prep
-entry = QC_file_prep_app.py
+entry = QCFilePrep.jsx
 class_name = QCFilePrepApp
 icon = 📁
 version = 2.4
@@ -92,12 +92,12 @@ date_released = 2026-10-13
 status = success
 message = Fixes zip QC files received from Sg.
 requires =
-pass_dir_as_kwarg = QC_Output_Folder:output_folder; QC_Gel_Ladder:gel_ladder_path; Job_Log:job_log_path
+pass_dir_as_kwarg = QC_Output_Folder:output_folder; QC_Gel_Ladder:gel_ladder_path; Job_Log:job_log_path; QC_Gel_Images:gel_images_path; Shipment_and_QC_Log:shipment_qc_log_path; Sorted_Sequencing_Files:sorted_sequencing_files_path
 
 [BATCH QC Report]
-category = tkinter_import
+category = react_route
 path = Code/BATCH_QC_report
-entry = batch_qc_report_app.py
+entry = BatchQCReport.jsx
 class_name = BatchQCReportApp
 icon = 📊
 version = 1.1
@@ -107,9 +107,9 @@ message = Generates QC report from BATCH QC zip files: BBI ID, Plasmid No., sequ
 requires =
 
 [Integra Worklist]
-category = streamlit
+category = react_route
 path = Code/Integra_worklist
-entry = integra_worklist_app.py
+entry = IntegraWorklist.jsx
 icon = 🔬
 version = 4.3
 date_released = 2026-10-10
@@ -118,9 +118,9 @@ message = Create worklists for Integra ASSIST liquid handler.
 requires =
 
 [QC Digestion Design]
-category = tkinter_import
+category = react_route
 path = Code/QC_digestion_design
-entry = QC_digestion_design_app.py
+entry = QCDesign.jsx
 class_name = QCDesignApp
 icon = ✂
 version = 1.4
@@ -131,25 +131,13 @@ requires =
 pass_dir_as_kwarg = Primer_Log:primer_log_path
 
 [Label Generator]
-category = tkinter_import
+category = react_route
 path = Code/Label_generator
-entry = label_generator_app.py
+entry = LabelGenerator.jsx
 class_name = LabelGeneratorApp
 icon = 🏷️
 version = 1.1
 date_released = 2026-10-13
 status = success
 message = Parses Sg shipping lists into Shipping_labels-format rows for the label printer. Copy data puts them on the clipboard.
-requires = 
-
-[QC Vector Map Prep]
-category = react_route
-path = subapps/QCVectorMap
-entry = QCVectorMap.jsx
-icon = 🧪
-version = 2.0
-date_released = 2026-08-23
-status = success
-message = Generates GenBank (.gb) files annotated with the insert sequence (BioPython workflow). React port. For SnapGene automation, see [QC Digestion Design] below.
 requires =
-pass_dir_as_kwarg = Primer_Log:primer_log_path

@@ -17,6 +17,7 @@
  */
 
 import * as XLSX from "xlsx";
+import {patchWorkbookValues} from "../../ui/templateValues.js";
 import { getVectorDbFallbackLength } from "./extractor.js";
 
 const INSERT_LABEL_PREFIX = "Insert ";
@@ -141,7 +142,7 @@ function colToIndex(letters) {
 }
 
 function indexToCol(index) {
-  let n = index;
+  let n = index - 1; // This helper receives one-based Excel column numbers.
   let out = "";
   do {
     out = String.fromCharCode(65 + (n % 26)) + out;
@@ -303,7 +304,8 @@ export function round2(value) {
   return neg ? -out : out;
 }
 
-export function serializeWorkbook(wb) {
+export function serializeWorkbook(wb, templateBytes) {
+  if(templateBytes)return patchWorkbookValues(templateBytes,wb);
   return XLSX.write(wb, { bookType: "xlsx", type: "array" });
 }
 

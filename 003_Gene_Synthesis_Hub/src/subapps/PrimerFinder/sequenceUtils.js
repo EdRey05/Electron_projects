@@ -31,6 +31,7 @@ export function cleanSequence(raw) {
  * Returns 1-based position on hit, or -1.
  */
 export function findBinding(primer, target, targetRc) {
+  if (!primer || !target) return null;
   const pos = target.indexOf(primer);
   if (pos >= 0) return { orientation: "Forward (Exact Match)", position: pos + 1 };
   const posRc = targetRc.indexOf(primer);

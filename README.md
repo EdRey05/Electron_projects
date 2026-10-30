@@ -112,7 +112,11 @@ process three synthetic 160-base chromatograms and inspect the resulting batch l
 
 **Summary**
 
-**A local entry point for gene-synthesis laboratory workflows.** The catalog groups preparation, cloning, sequencing, QC/reporting, and utility tools. Some tools are implemented in React; others launch bundled Tkinter or Streamlit applications.
+**Gene Synthesis Hub v2.1.0 brings eleven gene-synthesis tools into one portable Windows application.** Prepare ligation and colony-PCR layouts, search primers, export sequencing references and order forms, organize reads, prepare QC reports and delivery ZIPs, create vector maps, and export labels or Integra worklists. The catalog follows the original hub names and order in two clear columns, with larger text and a muted blue-green theme.
+
+Every tool now has native Electron controls. Scientific, document and OCR tasks use bundled headless processing where needed; the app starts no Tk windows or Streamlit server. Seven QC File Prep workflows cover report edits, renaming, quantities, resuspension data, BATCH deliverables and packages built from scratch. Native confirmations collect vector/OD and alignment choices, while original ZIPs remain unchanged.
+
+Extract the complete folder ZIP and run the application without installing Node, npm, Python or Tesseract. Configure local files or lab paths through **Directories**, review results and logs, and preserve the portable data folder between updates. GenBank and DOCX processing work independently; optional legacy DOC and SnapGene automation require those installed applications. Lab-network access and physical instrument operation remain separate acceptance checks.
 
 </div>
 <div class="right-column-65" markdown="1">
@@ -137,14 +141,14 @@ process three synthetic 160-base chromatograms and inspect the resulting batch l
 3. Supply that tool's inputs and review its output folder before running.
 4. Inspect the generated files and processing log. Directory settings persist in `data/default_directories.ini`.
 
-Available workflows include primer lookup, vector-map preparation, ligation/colony-PCR layouts, sequencing reference files and order forms, sequencing-file organization, QC preparation/digestion, and batch reports. Their input requirements differ; the app-level instructions describe them in more detail.
+The eleven tools use the reference hub names and order. QC File Prep offers seven workflows in its selector; the app-level instructions describe each input and output.
 
 </div>
 <div class="right-column-50" markdown="1">
 
 **In the demo**
 
-open **Sequencing Reference Files**, load a synthetic Primer Log workbook containing the `input addon` sheet, and export six insert/final-vector sequence files from three rows. This demonstrates one real workflow; it does not certify every Hub tool or company-data integration.
+The existing recording shows the earlier interface exporting six reference sequence files from a synthetic Primer Log. The current redesign is shown in the app screenshot; a replacement recording will follow user acceptance. Local automated checks exercise the eleven tools and all seven QC File Prep processors; they do not certify lab-network, Word, SnapGene or physical instrument operation.
 
 [Sample data and example outputs](demo-data/synthetic-data-and-outputs.zip)
 

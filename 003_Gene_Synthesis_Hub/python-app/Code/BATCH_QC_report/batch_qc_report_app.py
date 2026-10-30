@@ -32,12 +32,20 @@ import customtkinter as ctk
 
 
 def require(pkg, import_as=None):
-    """Dependencies are installed at build time; runtime stays offline."""
+    """Import a package; if missing, try a one-time pip install (standalone runs)."""
     import importlib
+
     try:
         return importlib.import_module(import_as or pkg)
-    except ImportError as exc:
-        raise ImportError(f"Bundled dependency '{pkg}' is missing. Rebuild the application.") from exc
+    except ImportError:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "install", pkg, "-q"])
+        except Exception:
+            raise ImportError(
+                f"Missing dependency '{pkg}'. Install it into the hub's Python "
+                f"environment (see requirements.txt) and relaunch the app."
+            )
+        return importlib.import_module(import_as or pkg)
 
 
 require("python-docx", "docx")
@@ -228,7 +236,6 @@ def find_tesseract() -> "str | None":
         return _TESSERACT_RESOLVED
 
     candidates = [
-        str(Path(__file__).resolve().parents[2] / "tools" / "tesseract" / "tesseract.exe"),
         shutil.which("tesseract"),
         os.path.join(os.environ.get("ProgramFiles", ""), "Tesseract-OCR", "tesseract.exe"),
         os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Tesseract-OCR", "tesseract.exe"),

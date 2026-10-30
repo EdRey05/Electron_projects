@@ -1,57 +1,65 @@
 #!/usr/bin/env node
-/**
- * Stage the Python subapp source into `python-app/`.
- *
- * Normally you commit the subapp source under python-app/ directly. This
- * script is a convenience for cases where you want to refresh from the
- * upstream BBI_projects tree — e.g. when a subapp gets updated and you
- * want to pull the new version into the Electron app.
- *
- * Source root is resolved relative to the Electron_projects folder, so
- * the layout must match:
- *   .../Github_EdRey05/
- *     Electron_projects/003_Gene_Synthesis_Hub/
- *     BBI_projects/App_hub/Gene_Synthesis_hub/
- *
- * Usage:
- *   node scripts/stage-subapps.js
- */
-
-const fs = require("fs");
-const path = require("path");
-
-const HUB_ROOT = path.resolve(__dirname, "..", "..", "..");
-const SRC = path.join(HUB_ROOT, "BBI_projects", "App_hub", "Gene_Synthesis_hub");
-const DST = path.resolve(__dirname, "..", "python-app");
-
-const COPY_DIRS = ["Code", "Templates", "Databases"];
-const COPY_FILES = ["default_directories.ini", "app_information.txt"];
-
-function copyDir(src, dst) {
-  if (!fs.existsSync(src)) throw new Error(`Source not found: ${src}`);
-  fs.rmSync(dst, { recursive: true, force: true });
-  fs.mkdirSync(dst, { recursive: true });
-  fs.cpSync(src, dst, { recursive: true });
-  console.log(`✓ ${path.basename(src)}/`);
+// Default is a dry run. Native UIs, processing adapters and runtime are outside
+// the copy boundary; --apply performs the reviewed upstream refresh.
+const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto');
+const {normalize}=require('./react-registry.cjs');
+const root=path.resolve(__dirname,'..'),args=process.argv.slice(2);
+const option=key=>{const i=args.indexOf(key);return i<0?null:args[i+1];};
+const destination=path.resolve(option('--destination')||path.join(root,'python-app'));
+const source=path.resolve(option('--source')||path.join(root,'../../BBI_projects/App_hub/Gene_Synthesis_hub'));
+if(source.toLowerCase()===destination.toLowerCase()||source.toLowerCase().startsWith(destination.toLowerCase()+path.sep)||destination.toLowerCase().startsWith(source.toLowerCase()+path.sep))throw new Error('Source and destination trees must be separate.');
+const manifestFile=path.join(destination,'upstream-manifest.json');
+const digest=file=>{let data=fs.readFileSync(file);if(/\.(py|txt|ini|json)$/.test(file))data=Buffer.from(data.toString('utf8').replace(/\r\n/g,'\n'));return crypto.createHash('sha256').update(data).digest('hex');};
+function inventory(folder,prefix=''){
+ const out={};if(!fs.existsSync(folder))return out;
+ for(const item of fs.readdirSync(folder,{withFileTypes:true})){
+  if(['__pycache__','.streamlit'].includes(item.name)||item.name.endsWith('.pyc'))continue;
+  const full=path.join(folder,item.name),key=prefix+item.name;
+  if(item.isSymbolicLink())throw new Error('Source symlink is not supported: '+key);
+  if(item.isDirectory())Object.assign(out,inventory(full,key+'/'));else out[key]=digest(full);
+ }
+ return out;
 }
-
-function copyFile(src, dst) {
-  if (!fs.existsSync(src)) throw new Error(`Source not found: ${src}`);
-  fs.copyFileSync(src, dst);
-  console.log(`✓ ${path.basename(src)}`);
+function snapshot(){const files={};for(const folder of ['Code','Templates','Databases'])Object.assign(files,inventory(path.join(destination,folder),folder+'/'));return {schema:1,hashPolicy:'SHA256; normalize CRLF to LF for source/config text',files};}
+if(args.includes('--snapshot')){
+ fs.writeFileSync(manifestFile,JSON.stringify(snapshot(),null,2)+'\n');console.log('Staged source snapshot recorded. Review and commit it.');process.exit(0);
 }
-
-if (!fs.existsSync(SRC)) {
-  console.error(`❌ Source hub not found at ${SRC}`);
-  console.error("   Update HUB_ROOT in this script if your repo layout differs.");
-  process.exit(1);
+if(!fs.existsSync(path.join(source,'app_information.txt')))throw new Error('Reference Gene Synthesis Hub catalog not found: '+source);
+const catalog=fs.readFileSync(path.join(source,'app_information.txt'),'utf8'),sections=[];
+for(const part of catalog.split(/(?=^\[)/m)){
+ const title=part.match(/^\[([^\]]+)\]/),folder=part.match(/^path\s*=\s*(.+)$/m);
+ if(title&&folder)sections.push({name:title[1],folder:folder[1].trim().replace(/\\/g,'/')});
 }
-
-console.log(`Staging subapps from:\n  ${SRC}\ninto:\n  ${DST}\n`);
-for (const d of COPY_DIRS) copyDir(path.join(SRC, d), path.join(DST, d));
-for (const f of COPY_FILES) copyFile(path.join(SRC, f), path.join(DST, f));
-// Upstream keeps Python filenames; this Electron shell routes these tools to React.
-const { normalize } = require('./react-registry.cjs');
-const registryPath = path.join(DST, 'app_information.txt');
-fs.writeFileSync(registryPath, normalize(fs.readFileSync(registryPath, 'utf8')), 'utf8');
-console.log("\n✅ Done.");
+if(sections.length!==11||!sections.some(s=>s.name==='QC File Prep')||!sections.some(s=>s.name==='Label Generator'))throw new Error('Expected the 11-tool Gene Synthesis Hub; refusing another hub.');
+const selected=option('--app'),all=args.includes('--all');
+if(!selected&&!all)throw new Error('Choose --app "Primer Finder" or --all. Add --shared for templates/databases; --apply after reviewing the plan.');
+const tools=all?sections:sections.filter(s=>s.name===selected);
+if(!tools.length)throw new Error('Unknown canonical app name: '+selected);
+const folders=[...new Set(tools.map(t=>t.folder))];
+if(args.includes('--shared'))folders.push('Templates','Databases');
+for(const folder of folders){
+ if(!/^(Code\/[A-Za-z0-9_ -]+|Templates|Databases)$/.test(folder))throw new Error('Unexpected source folder: '+folder);
+ if(!fs.statSync(path.join(source,folder)).isDirectory())throw new Error('Source folder missing: '+folder);
+}
+const previous=fs.existsSync(manifestFile)?JSON.parse(fs.readFileSync(manifestFile,'utf8')):{files:{}};
+const changes=[],local=[];
+for(const folder of folders){
+ const before=inventory(path.join(destination,folder),folder+'/'),after=inventory(path.join(source,folder),folder+'/');
+ for(const key of new Set([...Object.keys(before),...Object.keys(after)])){
+  if(before[key]!==after[key])changes.push({file:key,change:!before[key]?'add':!after[key]?'remove':'update'});
+  if(before[key]!==previous.files[key])local.push(key);
+ }
+}
+console.log(JSON.stringify({mode:args.includes('--apply')?'apply':'preview',tools:tools.map(t=>t.name),folders,changes,localChanges:local},null,2));
+if(!args.includes('--apply'))process.exit(0);
+if(local.length&&!args.includes('--allow-local-changes'))throw new Error('Staged sources changed since snapshot. Review them; explicit --allow-local-changes is required to replace them.');
+for(const folder of folders){
+ const target=path.resolve(destination,folder);
+ if(!target.startsWith(destination+path.sep))throw new Error('Target escaped python-app.');
+ fs.rmSync(target,{recursive:true,force:true});
+ fs.cpSync(path.join(source,folder),target,{recursive:true,filter:file=>!file.includes('__pycache__')&&!file.split(path.sep).includes('.streamlit')&&!file.endsWith('.pyc')});
+}
+fs.writeFileSync(path.join(destination,'app_information.txt'),normalize(catalog),'utf8');
+if(args.includes('--defaults'))fs.copyFileSync(path.join(source,'default_directories.ini'),path.join(destination,'default_directories.ini'));
+fs.writeFileSync(manifestFile,JSON.stringify(snapshot(),null,2)+'\n');
+console.log('Sources refreshed. Review native port parity, run validation and packaged ZIP checks; commit after reviewing the diff.');

@@ -8,7 +8,7 @@ import {
 import * as XLSX from "xlsx";
 import {
   extractSequences,
-  planOutputs,
+  planWorkbookOutputs,
   resolveColumnIndices,
 } from "./extractor.js";
 import {
@@ -57,16 +57,26 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
   const [previewColumns, setPreviewColumns] = useState(null);
 
   const fileInputRef = useRef(null);
+  const loadGeneration = useRef(0);
   const logEndRef = useRef(null);
 
   // Pre-fill from the hub's passed paths.
   useEffect(() => {
+    let disposed=false;
     if (initialPaths?.primer_log_path) {
-      setPrimerFileName(initialPaths.primer_log_path);
+      const filePath=initialPaths.primer_log_path;
+      const generation=++loadGeneration.current;
+      setPrimerFileName(filePath);
+      window.api.readBinaryFile({filePath}).then(result=>{
+        if(disposed || generation!==loadGeneration.current)return;
+        if(!result.ok){setPrimerFileError(result.error||"Choose a local Primer Log.");return;}
+        handleFile(new File([result.bytes],filePath.split(/[\\/]/).pop()));
+      }).catch(error=>{if(!disposed)setPrimerFileError(error.message);});
     }
     if (initialPaths?.reference_files_path) {
       setOutputDir(initialPaths.reference_files_path);
     }
+    return()=>{disposed=true;};
   }, [initialPaths]);
 
   // Auto-scroll the log.
@@ -88,6 +98,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
   // ------------------------------------------------------------
   const handleFile = async (file) => {
     if (!file) return;
+    const generation=++loadGeneration.current;
     setPrimerFile(file);
     setPrimerFileName(file.name);
     setPrimerFileValid(false);
@@ -96,6 +107,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: "array" });
+      if(generation!==loadGeneration.current)return;
       if (!wb.SheetNames.includes("input addon")) {
         setPrimerFileError("Sheet 'input addon' not found in workbook.");
         return;
@@ -116,6 +128,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
       setPreviewColumns({ headers, indices: idx });
       setPrimerFileValid(true);
     } catch (err) {
+      if(generation!==loadGeneration.current)return;
       setPrimerFileError(`Not a valid Excel file: ${err.message}`);
     }
   };
@@ -156,11 +169,12 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
       appendLog(`Output folder: ${outputDir}`);
       appendLog("");
 
-      const total = extracted.rows.length;
+      const planned = planWorkbookOutputs(extracted.rows); // Validate every name/collision before any write.
+      const total = planned.length;
       let filesWritten = 0;
+      let failures = 0;
       for (let i = 0; i < total; i++) {
-        const row = extracted.rows[i];
-        const outputs = planOutputs(row);
+        const outputs = [planned[i]];
         for (const o of outputs) {
           const filePath = `${outputDir}/${o.name}`.replace(/\\/g, "/");
           const result = await window.api.writeTextFile({
@@ -168,6 +182,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
             text: o.contents,
           });
           if (!result?.ok) {
+            failures++;
             appendLog(`  ✗ ${o.name}: ${result?.error || "write failed"}`);
           } else {
             appendLog(`  ✓ Created: ${o.name}`);
@@ -179,14 +194,14 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
         await new Promise((r) => setTimeout(r, 0));
       }
 
-      setResults({ filesWritten, rowsProcessed: total });
+      setResults({ filesWritten, rowsProcessed: extracted.rows.length });
       setProgress(1);
-      const summary = `--- Processing Finished ---\nRows processed: ${total}\nFiles created: ${filesWritten}`;
+      const summary = `--- Processing Finished ---\nRows processed: ${extracted.rows.length}\nFiles created: ${filesWritten}`;
       appendLog("");
       appendLog(summary);
       setStatus({
-        text: `Done. ${filesWritten} file${filesWritten === 1 ? "" : "s"} written.`,
-        color: filesWritten > 0 ? "good" : "warn",
+        text: failures ? `${filesWritten} written · ${failures} failed. See log.` : `Done. ${filesWritten} file${filesWritten === 1 ? "" : "s"} written.`,
+        color: failures ? "bad" : filesWritten > 0 ? "good" : "warn",
       });
     } catch (err) {
       setStatus({ text: `Error: ${err.message}`, color: "bad" });
@@ -237,6 +252,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
             subtitle="Must contain the 'input addon' sheet"
           >
             <FilePickerRow
+              disabled={running}
               inputRef={fileInputRef}
               value={primerFileName}
               onPick={handleFile}
@@ -246,7 +262,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
               hint="Validated (input addon sheet found)"
             />
             {previewColumns && (
-              <div
+              <details><summary style={{fontSize:14,cursor:"pointer"}}>Workbook details</summary><div
                 className="mt-3 text-[11px] rounded px-3 py-2 space-y-0.5"
                 style={{
                   fontFamily: FONT_MONO,
@@ -273,7 +289,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
                   {previewColumns.indices.finalVectorSequence + 1} (
                   {previewColumns.headers[previewColumns.indices.finalVectorSequence] || "?"})
                 </div>
-              </div>
+              </div></details>
             )}
           </Panel>
 
@@ -286,6 +302,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
             <div className="flex items-center gap-2">
               <input
                 type="text"
+                disabled={running}
                 value={outputDir}
                 onChange={(e) => setOutputDir(e.target.value)}
                 placeholder="Click 'Select…' to choose the output folder"
@@ -299,7 +316,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
                   userSelect: "text",
                 }}
               />
-              <Button variant="primary" onClick={chooseOutputDir}>
+              <Button variant="primary" disabled={running} onClick={chooseOutputDir}>
                 Select…
               </Button>
             </div>

@@ -1,183 +1,65 @@
-# Gene Synthesis Hub
+# Gene Synthesis Hub v2.1.0
 
-> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 003_Gene_Synthesis_Hub`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
+**Eleven gene-synthesis tools in one portable Windows application.** Prepare ligation and colony-PCR plates, find primers, export sequencing references and order forms, organize sequencing files, prepare QC deliverables, create vector maps and generate labels or liquid-handler worklists. The catalog follows the original Gene Synthesis Hub names and order, with two columns, larger text and a muted blue-green theme.
 
-Modern Electron desktop shell for the **Gene Synthesis Hub** previously distributed as
-three `.bat` files plus a Python CustomTkinter GUI. Same workflows, same config files,
-same subapps — just a real UI, a real save dialog, and a portable `.exe` folder that
-needs no Python install on the target machine.
+All tool interfaces run inside Electron. Scientific, document and OCR processing uses a bundled headless Python worker where appropriate. The app starts no Streamlit server and opens no Tk windows. Extract the complete folder ZIP and double-click **Gene Synthesis Hub.exe**; users do not install Node, npm, Python or Tesseract.
 
-## What this replaces
+![Gene Synthesis Hub](../Images_GIFs_Videos/003_Gene_Synthesis_Hub.png)
 
-The legacy layout under `BBI_projects/App_hub/` had three separate `.bat` launchers:
+## Start here
 
-| Old `.bat`            | Old hub                    | What it did                                   |
-| --------------------- | -------------------------- | --------------------------------------------- |
-| `Run_Gene_Synthesis_hub.bat`   | `Gene_Synthesis_hub/gene_synthesis_hub.py`   | Tkinter CustomTkinter hub, 8 Tkinter + 2 Streamlit subapps |
-| `Run_Other_tools_hub.bat`      | `Other_tools_hub/other_tools_hub.py`          | (covered by this hub if desired later)        |
-| `Run_Obsolete_tools_hub.bat`   | `Obsolete_tools_hub/obsolete_tools_hub.py`    | (covered by this hub if desired later)        |
+1. Extract the whole ZIP to a writable folder. Keep its `resources/` directory beside the EXE.
+2. Open **Directories** to select local workbooks/folders or configure lab locations. Windows drive labels are discovered automatically; absolute paths also work.
+3. Open a tool, review its inputs and choose an output folder. Missing lab paths do not prevent opening a tool and choosing local files.
+4. Review the output and log before using results in the lab. Preserve `data/` when updating; it contains your directory settings. Processing logs live in `logs/`.
 
-This Electron app is the **Gene Synthesis hub** replacement. It does the same things
-the old Tkinter hub did:
+## Tools
 
-- Scans Windows drives for the configured labels (`B8. Gene Synthesis`, `B6. DNA Sequencing`, `Public`).
-- Reads `default_directories.ini` to resolve every `[Paths]` entry to an absolute path.
-- Shows missing directories in a **Needs attention** tab, present ones in a **Found** tab.
-- Lets you edit any path inline, browse to a new one, or "Reveal in Explorer".
-- Reverses resolves back to the portable `Label, "sub\path"` form on save.
-- Lists every subapp from `app_information.txt` with version, date, status, and
-  missing-requirements warnings.
-- Launches each subapp with the resolved `--config`, drive mappings, and
-  `pass_dir_as_kwarg` / `pass_template_as_kwarg` / `pass_db_as_kwarg` paths.
+| Tool | Inputs and actions | Output |
+| --- | --- | --- |
+| **Ligation Layout** | Job Log, fragment summary, Primer Log and bundled ligation template | Filled ligation workbook; template formatting/formulas retained |
+| **Colony PCR Layout** | Ligation layout(s), Primer Log and bundled plate template; review clone counts | Colony-PCR workbook with plate positions |
+| **Primer Finder** | Primer Log and pasted target DNA | Forward/reverse primer matches and CSV export; all primer rows are searched |
+| **Sequencing Reference Files** | Primer Log `input addon` sheet | Insert/final-vector TXT references; conflicting duplicate filenames are rejected before writing |
+| **Sequencing Order Form** | Sequencing validation workbook, Primer Log and bundled form/layout templates | Filled order form plus companion layout linked to the new form |
+| **Sequencing File Organizer** | Raw reads, reference files, sorted folder and optional SG Check template | Organized AB1/FASTA files, distributed references and SG Check workbook; copies/moves are hash-verified |
+| **QC File Prep** | Choose one of seven workflows below | Prepared DOCX/ZIP deliverables in a separate run folder |
+| **BATCH QC Report** | Folder of BATCH ZIPs | QC report XLSX with identifiers, sequence lengths, OD readings and source images; review OCR warnings |
+| **Integra Worklist** | Paste/edit bulk rows or choose single-sample wells; pooling, sorting and validation options | Worklist and sequencing-validation CSVs |
+| **QC Digestion Design** | Primer Log, Work Nos and output folder | Circular GenBank maps with insert annotations, including origin-spanning inserts; optional installed-SnapGene automation |
+| **Label Generator** | One or more Sg shipping-list XLS/XLSX files | Selected, deduplicated label rows copied to clipboard or saved as CSV |
 
-Plus a few niceties the old Tkinter UI didn't have:
+Names, identifiers and workbook columns follow the reference hub. The former extra “QC Vector Map Prep” card is incorporated into **QC Digestion Design**, rather than appearing as a twelfth tool.
 
-- Dark theme that matches the midnight.json palette.
-- App search.
-- Per-app "Show wiring" panel that exposes every kwarg the hub will pass.
-- Status footer showing the exact python.exe path the hub is using.
-- One-click "Open bundled python-app folder" for debugging.
+## QC File Prep workflows
 
-## User flow
+Choose a workflow from the dropdown. Source ZIPs remain unchanged; processing uses private temporary copies and publishes into a new run folder.
 
-1. Launch `Gene Synthesis Hub.exe` (or `npm run dev` during development).
-2. The hub scans A–Z for drives with the configured labels. Mapped drives appear
-   in the top strip.
-3. The left panel shows every `[Paths]` entry. Red = path missing, green = present.
-   Click any path to edit, or `...` to browse.
-4. Hit **Update directories** to save. The hub writes back to `python-app/default_directories.ini`
-   using the original `Label, "sub\path"` form when possible.
-5. The right panel lists every subapp. Apps whose `requires` keys are still missing
-   show a red warning and the Launch button stays disabled.
-6. Click **Launch**. The hub spawns `python-app/runtime/python.exe` with
-   the right CLI args, in the subapp folder. The subapp opens in its own window.
+| Workflow | What it does |
+| --- | --- |
+| **In-House New Names** | Adjusts vendor reports, inserts matching gel images or removes the digestion block, and optionally renames from the Shipment and QC Log |
+| **In-House Old Names** | Applies the original WorkNo.PlasmidNo naming/report workflow |
+| **Internal Renaming** | Uses a tab-separated replacement map for filenames, folders and report identifiers; optionally removes the digestion table |
+| **WGK Correction** | Replaces plasmid quantity using one value or per-ID values from a tab-separated file |
+| **Resuspension Prep** | Extracts identifiers, quantity and OD ratios into a DOCX table |
+| **BATCH Post-Processing** | Preflights reports, asks for vector FASTA and four OD measurements, prepares customer sequence files and insert flanks, and re-zips the delivery |
+| **In-House QC New (from scratch)** | Builds delivery ZIPs from Job Log rows, sorted references/reads, bundled report/PDF templates and user-provided PDF/SQD alignments |
 
-## Project layout
+Expand **Reference files and options** to configure Job Log, shipment log, gel image folder/ladder, sorted sequencing and image dimensions. BATCH vector and scratch alignment choices use native dialogs. **Stop** ends the owned processing worker.
 
-```
-003_Gene_Synthesis_Hub/
-├── electron/
-│   ├── main.js              # Drive scan, INI parse, subprocess launch (IPC handlers)
-│   └── preload.js           # contextBridge — exposes window.api
-├── src/
-│   ├── App.jsx              # The whole hub UI (React + Tailwind)
-│   ├── main.jsx             # ReactDOM mount
-│   └── styles.css           # Tailwind directives + Google Fonts
-├── scripts/
-│   ├── stage-python.js      # Compatibility entry point for the shared Sandbox runtime stager
-│   └── stage-subapps.js     # Refreshes python-app/ from BBI_projects/
-├── python-app/              # Subapp source + templates + databases
-│   ├── Code/                # 10 subapps (Tkinter + Streamlit)
-│   ├── Templates/           # Excel templates (Colony PCR, Ligation, etc.)
-│   ├── Databases/           # Vector_database.xlsx
-│   ├── default_directories.ini
-│   ├── app_information.txt
-│   ├── requirements.txt
-│   ├── runtime/             # Portable CPython (gitignored, staged)
-│   └── runtime-venv/        # venv with all hub deps (gitignored, staged)
-├── index.html
-├── package.json             # electron-builder config in `build` key
-├── vite.config.js
-├── tailwind.config.js
-├── postcss.config.js
-├── .gitignore
-├── BUILD.md                 # How to rebuild the portable .exe
-└── README.md
-```
+## Capability limits
 
-## What ships in the portable `.exe`
+- DOCX reports, GenBank generation and bundled OCR work without Office or SnapGene. Legacy binary **DOC** conversion is optional and requires installed Microsoft Word. It is off by default.
+- SnapGene mode automates an installed SnapGene application with keyboard/mouse controls. Keep it in front; validate the sequence against your installed version. Stop leaves SnapGene open.
+- Native DOCX header handling preserves drawing geometry and normalizes text fonts. Review vendor header alignment; it does not reproduce Word COM's shape reordering/position adjustment.
+- Network paths require access to the actual shares. The app cannot recreate missing logs, templates specific to your lab, gel images, instrument software or permissions.
+- Worklists and labels are data exports. Physical instrument/printer operation, real lab-network runs and positive Word/SnapGene automation require target-machine acceptance.
+- A completed run with review warnings may contain partial results. Inspect missing gels, skipped records and OCR readings before use. Spreadsheet formulas are retained, not evaluated by Excel inside the app.
 
-`electron-builder` produces `release/win-unpacked/`, a self-contained folder:
+## Development and reference updates
 
-- `Gene Synthesis Hub.exe` — Electron launcher
-- `resources/app.asar` — Vite-bundled React UI + Electron main + preload
-- `resources/python-app/` — full copy of the staged Python app:
-  - `runtime/` (~80 MB) — portable CPython 3.11
-  - `runtime-venv/` (~400–600 MB with pandas, numpy, openpyxl, biopython, customtkinter, streamlit, …)
-  - `Code/`, `Templates/`, `Databases/`, `default_directories.ini`, `app_information.txt`
+The reference is `BBI_projects/App_hub/Gene_Synthesis_hub` only. Original Python processing is mirrored under `python-app/Code`; native interfaces live under `src/subapps`, and headless adapters under `python-app/processors`. Adapters keep UI, staging, runtime policy and dialogs separate from upstream processing.
 
-Total folder size after a fresh build is ~600–700 MB. The portable `.exe` launcher
-(~115 MB) is a separate convenience artifact but the folder is what you actually ship.
+See [MAINTENANCE.md](MAINTENANCE.md) for a reviewed per-tool refresh and parity checks. Native JavaScript ports still require comparison when upstream processing changes; copying Python source cannot update a JavaScript implementation automatically.
 
-## Relationship to the upstream BBI_projects hub
-
-This Electron app **does not modify** anything under `BBI_projects/`. The original
-Python hub is untouched. To pull in upstream subapp changes:
-
-```bash
-node scripts/stage-subapps.js   # refreshes python-app/ from BBI_projects/
-```
-
-To pull in upstream dependency changes:
-
-1. Edit `python-app/requirements.txt`.
-2. Deliberately regenerate the complete Python lock in an isolated development environment, then rebuild using build-tools/Build-Apps.ps1. Release builds never update locks.
-
-## Why Electron, not "X"
-
-Ed asked us to choose a framework that:
-- Is not Tkinter.
-- Is not Streamlit.
-- Produces a portable `.exe` that runs on any Windows PC with no install.
-- Replicates the existing hub workflows.
-
-Electron was the obvious fit because of the **Sequence Binding Finder** precedent —
-same `vite + react + electron-builder` stack, same portable `win-unpacked/` folder
-distribution model. The alternative paths considered:
-
-| Stack                              | Why not                                                                 |
-| ---------------------------------- | ----------------------------------------------------------------------- |
-| Tauri (Rust + WebView)             | Smaller binaries but custom Rust backend for the hub's main process IPC; more setup work for subapp spawning |
-| PyInstaller / cx_Freeze (Python)   | Skips the Electron layer entirely; produces a single .exe but CustomTkinter + Streamlit packaging is fragile and the resulting UI quality is worse |
-| Node-only (no Electron)            | No native window chrome; needs a browser wrapper, which is just worse Electron |
-
-## Subapp porting roadmap
-
-This repo only ships the **hub shell**. All 10 subapps still run as Python
-subprocesses, exactly as before. The roadmap is to port each subapp to React
-one at a time and remove its Python entry from `app_information.txt`. See
-`BUILD.md` for the per-subapp migration checklist.
-
-### Ported subapps
-
-| Subapp | Status | Replaces |
-|---|---|---|
-| **Primer Finder** | ✅ Ported v2.0 [Aug 23, 2026] | `python-app/Code/Primer_finder/primer_finder_app.py` |
-| **QC Vector Map Prep** | ✅ Ported v2.0 [Aug 23, 2026] (BioPython workflow only) | `python-app/Code/QC_digestion_design/workflows/vector_map_prep_biopython.py` |
-| **Sequencing Reference Files** | ✅ Ported v2.0 [Aug 23, 2026] | `python-app/Code/Sequencing_reference_files/Sequencing_reference_files_app.py` |
-| **Sequencing Order Form** | ✅ Ported v5.0 [Aug 23, 2026] | `python-app/Code/Sequencing_order_form/sequencing_order_form_app.py` |
-| **Sequencing File Organizer** | ✅ Ported v5.0 [Aug 23, 2026] | `python-app/Code/Sequencing_file_organizer/sequencing_file_organizer_app.py` |
-| **Colony PCR Layout** | ✅ Ported v5.0 [Aug 23, 2026] | `python-app/Code/ColonyPCR_layout/ColonyPCR_layout_app.py` |
-| **Ligation Layout** | ✅ Ported v5.0 [Aug 23, 2026] | `python-app/Code/Ligation_layout/ligation_layout_app.py` |
-
-### Blocked (launched as Python subprocess from the .exe)
-
-| Subapp | Reason | Run via |
-|---|---|---|
-| **QC Digestion Design (SnapGene)** | Native GUI automation (`pyautogui` + `win32gui`) | Subprocess |
-| **QC File Prep (5 sub-workflows)** | Legacy `.doc` COM automation (`win32com`) | Subprocess |
-| **Integra Worklist** | Streamlit forbidden | Subprocess |
-| **Backup Vector Logger** | Streamlit forbidden | Subprocess |
-
-## Building the portable .exe
-
-Use the shared Sandbox command above. It stages a complete locked Python interpreter and Tesseract, runs validation, and exports both portable formats. Legacy .doc conversion requires Microsoft Word; .docx and bundled OCR do not.
-
-### Why the SnapGene QC Digestion workflow stays Python
-
-The `[QC Digestion Design]` Python app exposes two workflows via dropdown:
-**Vector Map Prep (BioPython)** (now ported as `[QC Vector Map Prep]`) and
-**Vector Map Prep (SnapGene)** (remains Python). The SnapGene workflow drives
-`pyautogui` to control the proprietary SnapGene desktop app via keyboard/mouse
-automation, with `win32gui.GetForegroundWindow()` for focus detection and
-`pyautogui.FailSafe` as the abort mechanism. There is no JavaScript equivalent
-for OS-level input event injection — that's a native runtime concern, not a
-browser one. So `[QC Digestion Design]` (the SnapGene-only legacy entry)
-continues to spawn Python.
-
-If you don't use SnapGene automation, you can ignore the `[QC Digestion Design]`
-card entirely and use the React `[QC Vector Map Prep]` subapp.
-
-## Build
-
-See [`BUILD.md`](./BUILD.md) for the full reproducible build pipeline.
+Build and offline artifact checks follow [BUILD.md](BUILD.md) and the [shared build manual](../build-tools/README.md). Versions remain pinned. Development uses an isolated Sandbox; no new host toolchain is required.

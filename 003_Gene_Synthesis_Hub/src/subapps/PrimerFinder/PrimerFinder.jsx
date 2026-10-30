@@ -41,7 +41,7 @@ import {
  *   - Pick a Primer Log .xlsx.
  *   - Click "Find Binding Primers" → scans S/T/U/V sheets, resolving the
  *     Name + Sequence columns per sheet (row 34 header, name-first with
- *     an A:B fallback), rows 35-100 of each sheet, finds forward +
+ *     an A:B fallback), row 35 onward, finds forward +
  *     reverse-complement matches.
  *   - Results table with sheet, primer name, orientation, position, sequence.
  *   - Export results to .csv via Electron save dialog.
@@ -71,20 +71,27 @@ export default function PrimerFinder({ onBack, initialPaths }) {
   const [results, setResults] = useState([]);
 
   const fileInputRef = useRef(null);
+  const loadGeneration = useRef(0);
 
   // Clean the sequence live so the user sees valid chars highlighted.
   useEffect(() => {
     setCleanedSeq(cleanSequence(targetSeq));
   }, [targetSeq]);
 
-  // When the hub pre-fills a primer log path, attempt to fetch it via the
-  // Electron preload's `readHubFile` API (or skip — we still need a File
-  // object from the OS file picker). For now: just remember the path so
-  // the UI can show it; the user can confirm by clicking "Select file".
+  // A configured path must load the workbook, not only paint its filename.
   useEffect(() => {
-    if (initialPaths?.primer_log_path) {
-      setPrimerFileName(initialPaths.primer_log_path);
+    let disposed=false;
+    const filePath=initialPaths?.primer_log_path;
+    if(filePath && window.api?.readBinaryFile) {
+      const generation=++loadGeneration.current;
+      setPrimerFileName(filePath);
+      window.api.readBinaryFile({filePath}).then(result=>{
+        if(disposed || generation!==loadGeneration.current)return;
+        if(!result.ok) {setPrimerFileError(result.error||"Choose a local Primer Log.");return;}
+        handleFile(new File([result.bytes],filePath.split(/[\\/]/).pop()));
+      }).catch(error=>{if(!disposed)setPrimerFileError(error.message);});
     }
+    return()=>{disposed=true;};
   }, [initialPaths]);
 
   const cleanedLen = cleanedSeq.length;
@@ -98,17 +105,22 @@ export default function PrimerFinder({ onBack, initialPaths }) {
   // ------------------------------------------------------------
   const handleFile = async (file) => {
     if (!file) return;
+    const generation=++loadGeneration.current;
     setPrimerFile(file);
     setPrimerFileName(file.name);
     setPrimerFileValid(false);
     setPrimerFileError("");
     setResolutionLines([]);
+    setResults([]);
+    setProgress(0);
     // Try to load it as Excel to validate.
     try {
       const { logs } = await loadPrimerCandidatesFromFile(file);
+      if(generation!==loadGeneration.current)return;
       setPrimerFileValid(true);
       setResolutionLines(logs || []);
     } catch (err) {
+      if(generation!==loadGeneration.current)return;
       setPrimerFileValid(false);
       setPrimerFileError(err?.message || "Failed to read Excel file");
     }
@@ -194,7 +206,7 @@ export default function PrimerFinder({ onBack, initialPaths }) {
         [r.sheet, r.name, r.orientation, r.position, r.sequence]
           .map((v) => {
             const s = String(v ?? "");
-            return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+            return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
           })
           .join(",")
       )
@@ -207,7 +219,7 @@ export default function PrimerFinder({ onBack, initialPaths }) {
         "primer_finder_results.csv",
         new TextEncoder().encode(csv).buffer
       );
-      if (ok) return;
+      return; // Cancel is final; never fall through into a second download.
     }
     // Fallback: browser download.
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
@@ -299,7 +311,8 @@ export default function PrimerFinder({ onBack, initialPaths }) {
           >
             <TextArea
               value={targetSeq}
-              onChange={(e) => setTargetSeq(e.target.value)}
+              disabled={running}
+              onChange={(e) => {setTargetSeq(e.target.value);setResults([]);setProgress(0);}}
               rows={5}
               mono
               spellCheck={false}
@@ -328,11 +341,11 @@ export default function PrimerFinder({ onBack, initialPaths }) {
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
-              <Button variant="primary" onClick={() => fileInputRef.current?.click()}>
+              <Button variant="primary" disabled={running} onClick={() => fileInputRef.current?.click()}>
                 Select…
               </Button>
             </div>
-            {primerFile && (
+            {(primerFile || primerFileError) && (
               <div className="mt-2">
                 {primerFileValid ? (
                   <Pill tone="good" icon={<CheckCircle2 size={11} />}>
@@ -349,12 +362,12 @@ export default function PrimerFinder({ onBack, initialPaths }) {
 
           {/* Column-resolution log — which path fired for each order sheet. */}
           {resolutionLines.length > 0 && (
-            <LogPanel
+            <details><summary style={{color:C.inkMuted,fontSize:14,cursor:"pointer"}}>Workbook details</summary><LogPanel
               logs={resolutionLines}
               title="Column resolution"
               empty=""
               maxHeight={160}
-            />
+            /></details>
           )}
 
           {/* Action */}

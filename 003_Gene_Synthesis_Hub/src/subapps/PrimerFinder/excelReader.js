@@ -10,7 +10,7 @@
  *     A plate-order sheet prepends a "Wells" column, which shifts the
  *     pair one column right, so the letters are NOT fixed. Columns A:B
  *     are used only when EITHER column is unresolved (older formatting).
- *   - The data block is Excel rows 35-104, and each primer is cleaned:
+ *   - The data block is Excel row 35 onward, as in the current reference:
  *     uppercase, only A/T/C/G/N, length 10-100.
  *
  * The resolution path that fired is reported per sheet so the app can log
@@ -32,9 +32,8 @@ const FALLBACK_SEQ_IDX = 1;
 
 /** Excel row 34 (0-indexed 33) holds the formatted order form's header. */
 const HEADER_ROW = 33;
-/** Excel row 35 (0-indexed 34) is the first data row; 70 rows are read. */
+/** Excel row 35 (0-indexed 34) is the first data row. */
 const DATA_START_ROW = 34;
-const DATA_ROW_COUNT = 70;
 
 export function loadPrimerCandidates(filePath) {
   // In Electron, the renderer can read user-selected files directly via the
@@ -100,14 +99,14 @@ export function resolveSheetColumns(sheet, sheetName) {
 }
 
 /**
- * Read the data block of one sheet (Excel rows 35-104) using the resolved
+ * Read the data block of one sheet (Excel row 35 onward) using the resolved
  * column indices. Returns the primer candidates found on that sheet.
  */
 function readSheetCandidates(sheet, sheetName, nameIdx, seqIdx) {
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
   const maxCol = Math.max(range.e.c, 1);
   const startRow = Math.max(DATA_START_ROW, range.s.r);
-  const endRow = Math.min(startRow + DATA_ROW_COUNT, range.e.r + 1);
+  const endRow = range.e.r + 1;
   if (endRow <= startRow) return [];
 
   const dataRange = {

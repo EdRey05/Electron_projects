@@ -109,5 +109,21 @@ export function planOutputs(row) {
   if (row.finalVector) {
     out.push({ name: `${row.jobId}+${row.vector}.txt`, contents: row.finalVector });
   }
+  for (const file of out) {
+    if (/[<>:"/\\|?*\x00-\x1f]/.test(file.name) || /[. ]$/.test(file.name) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(file.name)) {
+      throw new Error(`Invalid output filename: ${file.name}. Correct the Work No. or Vector in the workbook.`);
+    }
+  }
   return out;
+}
+
+export function planWorkbookOutputs(rows) {
+  const files=new Map();
+  for(const row of rows)for(const file of planOutputs(row)) {
+    const key=file.name.toLowerCase();
+    const previous=files.get(key);
+    if(previous && previous.contents!==file.contents)throw new Error(`Conflicting sequences for ${file.name}; no files were written.`);
+    files.set(key,file);
+  }
+  return [...files.values()];
 }

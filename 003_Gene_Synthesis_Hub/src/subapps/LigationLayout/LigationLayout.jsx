@@ -187,7 +187,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
       appendLog(`ERROR: ${err.message}`);
       setStatus({ text: `Error: ${err.message}`, color: "bad" });
       setRunning(false);
-    }
+    } finally {setRunning(false);}
   };
 
   const onConfirmManual = async () => {
@@ -214,7 +214,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
       appendLog(`ERROR: ${err.message}`);
       setStatus({ text: `Error: ${err.message}`, color: "bad" });
       setRunning(false);
-    }
+    } finally {setRunning(false);}
   };
 
   const onCancelManual = () => {
@@ -293,11 +293,12 @@ export default function LigationLayout({ onBack, initialPaths }) {
     // `fullCalcOnLoad="1"` makes Excel/LibreOffice recompute them on
     // open — the Python (openpyxl) keeps them working by preserving the
     // original calcPr.
-    const bytes = applyFullCalcOnLoad(serializeWorkbook(wb));
+    const bytes = applyFullCalcOnLoad(serializeWorkbook(wb,tplBuf));
     const filename = generateOutputFilename(new Date());
     appendLog(`\nSuggested filename: ${filename}`);
     appendLog("Prompting for save location...");
     const saved = await window.api.saveResultsXlsx?.(filename, bytes);
+    if(saved && typeof saved==="object" && saved.error)throw new Error(saved.error);
     if (saved) {
       appendLog(`File successfully saved to: ${saved}`);
       appendLog("\n--- Processing Finished ---");
@@ -334,28 +335,28 @@ export default function LigationLayout({ onBack, initialPaths }) {
                 label="Job Log"
                 inputRef={jobLogInputRef}
                 value={jobLogPath}
-                onPick={(f) => setJobLogPath(f.path)}
+                onPick={(f) => setJobLogPath(window.api.getPathForFile(f))}
                 icon={<FileSpreadsheet size={14} style={{ color: C.teal }} />}
               />
               <FilePicker
                 label="Fragments File"
                 inputRef={fragmentsInputRef}
                 value={fragmentsPath}
-                onPick={(f) => setFragmentsPath(f.path)}
+                onPick={(f) => setFragmentsPath(window.api.getPathForFile(f))}
                 icon={<FileSpreadsheet size={14} style={{ color: C.teal }} />}
               />
               <FilePicker
                 label="Ligation Layout Template"
                 inputRef={templateInputRef}
                 value={templatePath}
-                onPick={(f) => setTemplatePath(f.path)}
+                onPick={(f) => setTemplatePath(window.api.getPathForFile(f))}
                 icon={<FileSpreadsheet size={14} style={{ color: C.teal }} />}
               />
               <FilePicker
                 label="Vector Database (.xlsx)"
                 inputRef={vectorDbInputRef}
                 value={vectorDbPath}
-                onPick={(f) => setVectorDbPath(f.path)}
+                onPick={(f) => setVectorDbPath(window.api.getPathForFile(f))}
                 icon={<Database size={14} style={{ color: C.teal }} />}
               />
             </div>

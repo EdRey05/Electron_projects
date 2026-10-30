@@ -1,7 +1,7 @@
 {
   "appId": "com.edrey05.genesynthesishub",
   "productName": "Gene Synthesis Hub",
-  "copyright": "Copyright © 2026 EdRey05",
+  "copyright": "Copyright \u00a9 2026 EdRey05",
   "files": [
     "dist/**/*",
     "electron/**/*",
@@ -25,7 +25,9 @@
       "from": "python-app/Code",
       "to": "python-app/Code",
       "filter": [
-        "**/*"
+        "**/*",
+        "!**/__pycache__/**",
+        "!**/*.pyc"
       ]
     },
     {
@@ -65,6 +67,17 @@
     {
       "from": "../build-tools/runtime.cjs",
       "to": "build-common/runtime.cjs"
+    },
+    {
+      "from": "python-app/worker.py",
+      "to": "python-app/worker.py"
+    },
+    {
+      "from": "python-app/processors",
+      "to": "python-app/processors",
+      "filter": [
+        "**/*.py"
+      ]
     }
   ],
   "mac": {

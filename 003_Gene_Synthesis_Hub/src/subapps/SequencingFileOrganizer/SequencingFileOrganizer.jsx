@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FolderOpen,
   Files,
@@ -61,6 +61,8 @@ import {
  *     (`organizedWorkNos`), not against whatever happens to be on disk.
  */
 export default function SequencingFileOrganizer({ onBack, initialPaths }) {
+  const [sessionDest,setSessionDest]=useState("");
+  const effectivePaths=useMemo(()=>({...initialPaths,sorted_sequencing_files_path:sessionDest||initialPaths?.sorted_sequencing_files_path}),[initialPaths,sessionDest]);
   const [tab, setTab] = useState(1); // 1, 2, or 3
 
   // Session state shared by the three tabs. Mirrors the Python's
@@ -69,7 +71,8 @@ export default function SequencingFileOrganizer({ onBack, initialPaths }) {
   const [organizedWorkNos, setOrganizedWorkNos] = useState([]);
   const [createdFolderNames, setCreatedFolderNames] = useState([]);
 
-  const handleOrganized = useCallback((workNos, folderNames) => {
+  const handleOrganized = useCallback((workNos, folderNames, destination) => {
+    setSessionDest(destination);
     setOrganizedWorkNos(workNos);
     setCreatedFolderNames(folderNames);
   }, []);
@@ -98,17 +101,17 @@ export default function SequencingFileOrganizer({ onBack, initialPaths }) {
       <main className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto">
           {tab === 1 && (
-            <OrganizeTab initialPaths={initialPaths} onOrganized={handleOrganized} />
+            <OrganizeTab initialPaths={effectivePaths} onOrganized={handleOrganized} />
           )}
           {tab === 2 && (
             <DistributeTab
-              initialPaths={initialPaths}
+              initialPaths={effectivePaths}
               organizedWorkNos={organizedWorkNos}
             />
           )}
           {tab === 3 && (
             <SgCheckTab
-              initialPaths={initialPaths}
+              initialPaths={effectivePaths}
               createdFolderNames={createdFolderNames}
             />
           )}
@@ -212,10 +215,11 @@ function OrganizeTab({ initialPaths, onOrganized }) {
       // ── Delete .seq files (Python :1008-1019) — AFTER the modal ──────
       appendLog("\nDeleting .seq files from source...");
       let deletedCount = 0;
-      for (const name of filenames.filter((n) => n.endsWith(".seq"))) {
+      let failures=0;
+      for (const name of filenames.filter((n) => n.toLowerCase().endsWith(".seq"))) {
         const del = await window.api.deleteFile({ filePath: joinPath(sourceDir, name) });
         if (del.ok) deletedCount++;
-        else appendLog(`  Error deleting ${name}: ${del.error}`);
+        else {failures++;appendLog(`  Error deleting ${name}: ${del.error}`);}
       }
       appendLog(`  Deleted ${deletedCount} .seq files`);
       setSeqDeleted(deletedCount);
@@ -258,6 +262,7 @@ function OrganizeTab({ initialPaths, onOrganized }) {
         if (!knownFolders.has(file.folderName)) {
           const mkResult = await window.api.createDirectory({ dirPath: destFolder });
           if (!mkResult.ok) {
+            failures++;
             appendLog(`  Error creating folder ${file.folderName}: ${mkResult.error}`);
             continue;
           }
@@ -274,7 +279,7 @@ function OrganizeTab({ initialPaths, onOrganized }) {
           workNos.add(file.jobId);
           foldersWithFiles.add(file.folderName);
         } else {
-          appendLog(`  Error moving ${file.filename}: ${mvResult.error}`);
+          failures++;appendLog(`  Error moving ${file.filename}: ${mvResult.error}`);
         }
       }
 
@@ -284,8 +289,8 @@ function OrganizeTab({ initialPaths, onOrganized }) {
       appendLog(`\nOrganized ${organizedCount} files.`);
       appendLog(`Found ${organizedWorkNoList.length} unique Work No.`);
       appendLog("\n--- Organization Complete ---");
-      onOrganized?.(organizedWorkNoList, createdFolderList);
-      setStatus({ text: `Organized ${organizedCount} files.`, color: "good" });
+      onOrganized?.(organizedWorkNoList, createdFolderList,destDir);
+      setStatus({ text: `Organized ${organizedCount} files.`+(failures?` ${failures} failed; see log.`:""), color: failures?"bad":"good" });
     } catch (err) {
       appendLog(`\nERROR: ${err.message}`);
       setStatus({ text: `Error: ${err.message}`, color: "bad" });
@@ -405,10 +410,12 @@ function DistributeTab({ initialPaths, organizedWorkNos }) {
       const refFilesResult = await window.api.listDirectory({
         dirPath: refDir, filter: "files", extension: ".txt",
       });
+      if(!refFilesResult.ok)throw new Error(refFilesResult.error||"Cannot read reference folder.");
       const refFilenames = refFilesResult.ok ? refFilesResult.entries.map((e) => e.name) : [];
       const { fileMap, missingRefs } = findMissingReferences(refFilenames, jobIds);
 
       const destFoldersResult = await window.api.listDirectory({ dirPath: destDir, filter: "dirs" });
+      if(!destFoldersResult.ok)throw new Error(destFoldersResult.error||"Cannot read destination folder.");
       const existingFolderNames = destFoldersResult.ok
         ? destFoldersResult.entries.map((e) => e.name)
         : [];
@@ -445,7 +452,7 @@ function DistributeTab({ initialPaths, organizedWorkNos }) {
       }
       appendLog(`\nDistributing reference files...`);
 
-      let distributedCount = 0;
+      let distributedCount = 0,failures=0;
       for (const folderEntry of destFoldersResult.entries) {
         const folderName = folderEntry.name;
         const folderBase = folderName.split(".")[0];
@@ -464,14 +471,14 @@ function DistributeTab({ initialPaths, organizedWorkNos }) {
             appendLog(`  Copied ${refFilename} to ${folderName}`);
             distributedCount++;
           } else {
-            appendLog(`  Error copying ${refFilename}: ${r.error}`);
+            failures++;appendLog(`  Error copying ${refFilename}: ${r.error}`);
           }
         }
       }
 
       appendLog(`\nDistributed ${distributedCount} reference files.`);
       appendLog("\n--- Distribution Complete ---");
-      setStatus({ text: `Distributed ${distributedCount} files.`, color: "good" });
+      setStatus({ text: `Distributed ${distributedCount} files.`+(failures?` ${failures} failed; see log.`:""), color: failures?"bad":"good" });
     } catch (err) {
       appendLog(`\nERROR: ${err.message}`);
       setStatus({ text: `Error: ${err.message}`, color: "bad" });

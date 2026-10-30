@@ -4,11 +4,11 @@
  * Design language mirrors the Sequence Binding Finder (002) and Peak Tracer
  * (004) Electron apps so all four apps in the repo read as one family:
  *
- *   - paper background, white surfaces, hairline borders
+ *   - muted blue-green surfaces, clear borders
  *   - navy (#1F3A5F) as the structural / primary-action colour
  *   - teal (#0E7C7B) as the accent / positive colour
  *   - amber + coral for warnings and failures
- *   - Space Grotesk for display, IBM Plex Sans for body, IBM Plex Mono for
+ *   - Windows system fonts for offline display/body, Consolas for
  *     paths, IDs and log output
  *
  * Everything is plain React + inline styles driven by the palette below, so
@@ -18,14 +18,14 @@ import React, { useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight, X, CheckCircle2, AlertCircle } from "lucide-react";
 
 export const C = {
-  paper: "#F5F7F6",
-  surface: "#FFFFFF",
-  subtle: "#EEF3F1",
-  subtle2: "#FAFBFA",
-  border: "#D8DFDC",
-  ink: "#12211D",
-  inkMuted: "#5B706A",
-  inkFaint: "#8FA39D",
+  paper: "#CBDADF",
+  surface: "#E5ECEE",
+  subtle: "#D4E1E4",
+  subtle2: "#D9E5E8",
+  border: "#8BA4AD",
+  ink: "#172F39",
+  inkMuted: "#405B65",
+  inkFaint: "#506C76",
   navy: "#1F3A5F",
   navyHover: "#2A4E7C",
   navySoft: "#E7EDF5",
@@ -49,9 +49,9 @@ export const TONE = {
   neutral: { fg: C.inkMuted, bg: C.subtle, border: C.border },
 };
 
-export const FONT_BODY = "'IBM Plex Sans', system-ui, sans-serif";
-export const FONT_DISPLAY = "'Space Grotesk', 'IBM Plex Sans', system-ui, sans-serif";
-export const FONT_MONO = "'IBM Plex Mono', Menlo, Consolas, monospace";
+export const FONT_BODY = "'Segoe UI', system-ui, sans-serif";
+export const FONT_DISPLAY = "'Segoe UI', system-ui, sans-serif";
+export const FONT_MONO = "Consolas, ui-monospace, monospace";
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -67,9 +67,9 @@ export function Button({
   ...rest
 }) {
   const sizes = {
-    sm: { padding: "0.3rem 0.6rem", fontSize: 12, gap: 6, radius: 6 },
-    md: { padding: "0.45rem 0.85rem", fontSize: 13, gap: 7, radius: 6 },
-    lg: { padding: "0.62rem 1.1rem", fontSize: 14, gap: 8, radius: 7 },
+    sm: { padding: "0.3rem 0.6rem", fontSize: 14, gap: 6, radius: 6 },
+    md: { padding: "0.45rem 0.85rem", fontSize: 16, gap: 7, radius: 6 },
+    lg: { padding: "0.62rem 1.1rem", fontSize: 17, gap: 8, radius: 7 },
   };
   const variants = {
     primary: { bg: C.navy, fg: "#fff", border: "1px solid " + C.navy, hover: C.navyHover },
@@ -119,7 +119,7 @@ export function Panel({ title, subtitle, icon, actions, children, style, bodySty
               {title && (
                 <h2
                   className="font-semibold leading-tight truncate"
-                  style={{ fontFamily: FONT_DISPLAY, fontSize: 14, color: C.ink }}
+                  style={{ fontFamily: FONT_DISPLAY, fontSize: 17, color: C.ink }}
                 >
                   {title}
                 </h2>
@@ -134,7 +134,7 @@ export function Panel({ title, subtitle, icon, actions, children, style, bodySty
           {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
         </header>
       )}
-      <div style={bodyStyle}>{children}</div>
+      <div style={{padding:16,...bodyStyle}}>{children}</div>
     </section>
   );
 }
@@ -183,7 +183,7 @@ export function TextInput({ value, onChange, readOnly, placeholder, mono, invali
         borderRadius: 6,
         color: value ? C.ink : C.inkFaint,
         fontFamily: mono ? FONT_MONO : FONT_BODY,
-        fontSize: mono ? 12 : 13,
+        fontSize: mono ? 14 : 16,
         userSelect: "text",
       }}
     />
@@ -205,7 +205,7 @@ export function TextArea({ value, onChange, rows = 6, placeholder, mono, ...rest
         borderRadius: 6,
         color: C.ink,
         fontFamily: mono ? FONT_MONO : FONT_BODY,
-        fontSize: mono ? 12 : 13,
+        fontSize: mono ? 14 : 16,
         userSelect: "text",
       }}
     />
@@ -394,7 +394,7 @@ export function EmptyState({ icon, title, hint, action }) {
 export function DataTable({ columns, rows, empty = "No rows", maxHeight }) {
   return (
     <div className="gsh-scroll overflow-auto" style={{ maxHeight }}>
-      <table className="w-full border-collapse" style={{ fontSize: 12 }}>
+      <table className="w-full border-collapse" style={{ fontSize: 14 }}>
         <thead>
           <tr>
             {columns.map((c) => (

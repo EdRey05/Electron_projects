@@ -47,11 +47,11 @@ Python requirements.txt declares direct dependencies; requirements.lock.txt fixe
 
 ## Portable data and updates
 
-Packaged apps store Electron data in `data/` and logs in `logs/` beside the outer portable EXE, or beside the app EXE in an extracted folder. Resource files remain read-only. Hub copies its directory defaults into data only on first use, then passes that persistent configuration to its Python launcher. Python is resolved exclusively from the bundled runtime; packaged apps never fall back to system Python or install packages on launch.
+Packaged apps store Electron data in `data/` and logs in `logs/` beside the outer portable EXE, or beside the app EXE in an extracted folder. Resource files remain read-only. Hub copies its directory defaults into data only on first use, then passes the resolved paths to native tools and managed headless workers. Python is resolved exclusively from the bundled runtime; packaged apps never fall back to system Python or install packages on launch.
 
 Extract to a writable folder. Preserve `data/` when replacing application files. To change the versioned folder name, move the complete folder or copy its data directory into the new version. Do not extract a new release over data from an unrelated app. Old FileSync AppData is not automatically imported: if needed, close FileSync and copy its existing user-data contents into the new portable data directory before first use. Keep a backup when migrating.
 
-Hub's legacy .doc conversion still requires Microsoft Word. Use .docx for the standalone workflow. Network-drive workflows still need their user-provided data locations. OCR includes Tesseract and English trained data. These are application capability limits, not build-machine dependencies.
+Hub's optional legacy .doc conversion still requires Microsoft Word; SnapGene automation requires installed SnapGene. Hub tools render natively and do not start Tk windows or Streamlit servers. Use .docx for the standalone workflow. Network-drive workflows still need their user-provided data locations. OCR includes Tesseract and English trained data. These are application capability limits, not build-machine dependencies.
 
 ## Test the actual artifacts
 
@@ -63,7 +63,7 @@ Tests run offline in a fresh guest without build tools. The command prints the t
 
 For unattended validation of every artifact in a completed batch, use `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Test-Apps.ps1 -BuildOutput <run-directory>\output`. It runs fresh guests sequentially, stops its owned guest after each result, and writes TEST_RESULTS.json under the test root. Override `-TestRoot` to keep evidence with a particular release.
 
-Checks include FileSync database/copy, Binding XLSX/alignment, Hub Python/Tk/Streamlit/OCR, Peak Python/CLI plus build-time synthetic AB1 contract tests, and KM fixture analysis/Excel export. Production datasets and every Hub workflow still require user acceptance. The build report must distinguish build success from runtime and acceptance coverage.
+Checks include FileSync database/copy, Binding XLSX/alignment, Hub native catalog/headless label, GenBank, DOCX/ZIP and OCR processing, Peak Python/CLI plus build-time synthetic AB1 contract tests, and KM fixture analysis/Excel export. Production datasets and every Hub workflow still require user acceptance. The build report must distinguish build success from runtime and acceptance coverage.
 
 ## Add another app
 

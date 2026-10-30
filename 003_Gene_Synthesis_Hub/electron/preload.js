@@ -6,6 +6,10 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
+  runPythonJob: (requestId,action,input)=>ipcRenderer.invoke('hub:runPythonJob',{requestId,action,input}),
+  cancelPythonJob: requestId=>ipcRenderer.invoke('hub:cancelPythonJob',requestId),
+  answerPythonJob: (requestId,promptId,choice,data)=>ipcRenderer.invoke('hub:answerPythonJob',{requestId,promptId,choice,data}),
+  onPythonProgress: handler=>{const listener=(_event,data)=>handler(data);ipcRenderer.on('hub:pythonProgress',listener);return()=>ipcRenderer.removeListener('hub:pythonProgress',listener);},
   // Drive discovery (used at startup and on manual refresh).
   scanDrives: () => ipcRenderer.invoke("hub:scanDrives"),
 

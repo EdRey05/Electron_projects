@@ -5,6 +5,7 @@ import {
   Download,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import {relinkSequencingLayout} from "../../ui/sequencingLinks.js";
 import {
   getPrimerInfo,
   getSequenceSampleId,
@@ -45,9 +46,8 @@ import {
  *
  * Differences from the Tkinter original:
  *   - No threading; async/await with setTimeout(0) yields between phases.
- *   - The Excel COM link-update flow is replaced by a plain file copy + a
- *     warning that the user must re-link manually in Excel. win32com has
- *     no JS equivalent.
+ *   - The layout external-link relationship is updated directly in its XLSX
+ *     package, so generating a linked pair does not require Excel COM.
  */
 export default function SequencingOrderForm({ onBack, initialPaths }) {
   const [primerFile, setPrimerFile] = useState(null);
@@ -73,6 +73,7 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
   const [logs, setLogs] = useState([]);
   const [outputFile, setOutputFile] = useState(null);
   const logEndRef = useRef(null);
+  const loadIds=useRef({primer:0,form:0,seq:0});
 
   // The layout template path (Sequencing_layout_v*.xlsx) — the Python
   // receives it as `seq_layout_path` and copies it next to the order form.
@@ -91,15 +92,22 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
   // ABSOLUTE path of the newest match (e.g.
   // .../python-app/Templates/Sequencing_order_form_v5.xlsx).
   useEffect(() => {
-    if (initialPaths?.primer_log_path) setPrimerFileName(initialPaths.primer_log_path);
-    if (initialPaths?.empty_form_path) {
-      setEmptyFormFileName(initialPaths.empty_form_path);
-      setEmptyFormFilePath(initialPaths.empty_form_path);
-    }
-    if (initialPaths?.seq_layout_path) {
-      setLayoutPath(initialPaths.seq_layout_path);
-    }
-  }, [initialPaths]);
+    let disposed=false;
+    const load=async(key,filePath,handler,setName,setError)=>{
+      if(!filePath)return;
+      const id=++loadIds.current[key];setName(filePath);
+      try {
+        const read=await window.api.readBinaryFile({filePath});
+        if(disposed||id!==loadIds.current[key])return;
+        if(!read.ok){setError(read.error||"Choose a local file.");return;}
+        await handler(new File([read.bytes],filePath.split(/[\\/]/).pop()),filePath);
+      } catch(error){if(!disposed)setError(error.message);}
+    };
+    load('primer',initialPaths?.primer_log_path,handlePrimerFile,setPrimerFileName,setPrimerFileError);
+    load('form',initialPaths?.empty_form_path,handleEmptyFormFile,setEmptyFormFileName,setEmptyFormError);
+    if(initialPaths?.seq_layout_path)setLayoutPath(initialPaths.seq_layout_path);
+    return()=>{disposed=true;};
+  },[initialPaths]);
 
   // Auto-scroll log.
   useEffect(() => {
@@ -116,12 +124,11 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
   // File pickers + validation
   // ------------------------------------------------------------
   const validateExcelFile = async (file, expectedSheet) => {
-    const buf = await file.arrayBuffer();
-    const wb = XLSX.read(buf, { type: "array" });
-    if (expectedSheet && !wb.SheetNames.includes(expectedSheet)) {
-      return { ok: false, error: `Sheet '${expectedSheet}' not found.` };
-    }
-    return { ok: true };
+    try {
+      const buf=await file.arrayBuffer(),wb=XLSX.read(buf,{type:"array"});
+      if(expectedSheet&&!wb.SheetNames.includes(expectedSheet))return {ok:false,error:`Sheet '${expectedSheet}' not found.`};
+      return {ok:true};
+    }catch(error){return {ok:false,error:`Could not read workbook: ${error.message}`};}
   };
 
   /**
@@ -145,38 +152,44 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
     }
   };
 
-  const handlePrimerFile = async (file) => {
+  const handlePrimerFile = async (file, sourcePath="") => {
     if (!file) return;
+    const id=++loadIds.current.primer;setOutputFile(null);
     setPrimerFile(file);
     setPrimerFileName(file.name);
-    setPrimerFilePath(absolutePathOf(file));
+    setPrimerFilePath(sourcePath||absolutePathOf(file));
     setPrimerFileValid(false);
     setPrimerFileError("");
     const r = await validateExcelFile(file, "input addon");
+    if(id!==loadIds.current.primer)return;
     if (r.ok) setPrimerFileValid(true);
     else setPrimerFileError(r.error);
   };
 
-  const handleEmptyFormFile = async (file) => {
+  const handleEmptyFormFile = async (file, sourcePath="") => {
     if (!file) return;
+    const id=++loadIds.current.form;setOutputFile(null);
     setEmptyFormFile(file);
     setEmptyFormFileName(file.name);
-    setEmptyFormFilePath(absolutePathOf(file));
+    setEmptyFormFilePath(sourcePath||absolutePathOf(file));
     setEmptyFormValid(false);
     setEmptyFormError("");
     const r = await validateExcelFile(file, null);
+    if(id!==loadIds.current.form)return;
     if (r.ok) setEmptyFormValid(true);
     else setEmptyFormError(r.error);
   };
 
-  const handleSeqValFile = async (file) => {
+  const handleSeqValFile = async (file, sourcePath="") => {
     if (!file) return;
+    const id=++loadIds.current.seq;setOutputFile(null);
     setSeqValFile(file);
     setSeqValFileName(file.name);
-    setSeqValFilePath(absolutePathOf(file));
+    setSeqValFilePath(sourcePath||absolutePathOf(file));
     setSeqValValid(false);
     setSeqValError("");
     const r = await validateExcelFile(file, "Sequencing Pending");
+    if(id!==loadIds.current.seq)return;
     if (r.ok) setSeqValValid(true);
     else setSeqValError(r.error);
   };
@@ -330,19 +343,12 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
       if (layoutPath) {
         appendLog(`Copying layout file: ${layoutPath}`);
         const destPath = `${outputDir}${sepOut}Sequencing_layout_${dateId}.xlsx`;
-        const copyResult = await window.api.copyFile({
-          source: layoutPath,
-          dest: destPath,
-        });
-        if (copyResult?.ok) {
-          appendLog(`Layout file copied to: ${destPath}`);
-          appendLog(
-            "NOTE: Excel external link update (formerly via win32com) cannot run from JS. " +
-            "Open the copied layout in Excel and re-link it manually to the new order form."
-          );
-        } else {
-          appendLog(`WARNING: Layout file copy failed: ${copyResult?.error}`);
-        }
+        const template=await window.api.readBinaryFile({filePath:layoutPath});
+        if(!template.ok)throw new Error(template.error||"Layout template could not be read.");
+        const linked=relinkSequencingLayout(template.bytes,`Sequencing_order_form_${dateId}.xlsx`);
+        const written=await window.api.writeBinaryFile({filePath:destPath,bytes:linked.bytes});
+        if(!written.ok)throw new Error(written.error||"Layout could not be saved.");
+        appendLog(`Layout saved with ${linked.linksUpdated} link(s) to the new order form.`);
       } else {
         appendLog("NOTE: no Sequencing layout template was configured — nothing to copy.");
       }
@@ -386,6 +392,7 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
             subtitle="Sheet 'input addon'"
           >
             <FilePickerRow
+              disabled={running}
               inputRef={primerInputRef}
               value={primerFileName}
               onPick={handlePrimerFile}
@@ -401,6 +408,7 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
             subtitle="Template source"
           >
             <FilePickerRow
+              disabled={running}
               inputRef={emptyFormInputRef}
               value={emptyFormFileName}
               onPick={handleEmptyFormFile}
@@ -420,6 +428,7 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
             subtitle="Sheet 'Sequencing Pending'"
           >
             <FilePickerRow
+              disabled={running}
               inputRef={seqValInputRef}
               value={seqValFileName}
               onPick={handleSeqValFile}
