@@ -40,7 +40,7 @@ function createWindow() {
     height: 900,
     title: "Peak Tracer",
     autoHideMenuBar: true,
-    backgroundColor: "#F5F7F6",
+    backgroundColor: "#D6D5D2",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

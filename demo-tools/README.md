@@ -1,5 +1,7 @@
 # Reproducible app recordings
 
+Peak Tracer v2.0.2 uses `Record-PeakTracerDemo.ps1 -Artifact <folder.zip> -Output <new-directory> -Samples <plate-folder>`. Its current demo uses only Sample 5, plate 2 (68 paired AB1/SEQ files), with **Preprocessing + PT** and default parameters. The offline guest captures the actual batch, verifies outputs and unchanged input hashes, then scrolls the results. Inspect `output/recording-result.json` and the MP4 before running `Publish-PeakTracerDemo.ps1 -RecordingOutput <run/output>` to update the MP4, GIF and poster. Keep raw samples and generated outputs outside the public repository. Task 0001's `recording_guides/PeakTracer` holds the single step-by-step guide and matching scripts. The legacy batch below is retained for older apps; do not use its synthetic Peak scene to replace this recording.
+
 FileSync v1.0.0 now has a dedicated offline recipe: [FileSync-recording.md](FileSync-recording.md). Use `Record-FileSyncDemo.ps1` for its current recording; the older batch below retains historical app-version assumptions. Do not use the old FileSync workflow to replace the v1.0.0 demo.
 
 Record-Demos.ps1 starts a Windows Sandbox using the already validated portable folder ZIPs. It does not install developer tools on the host. The guest extracts the apps, downloads a checksum-pinned FFmpeg encoder, generates synthetic inputs, and records actual application windows while a CDP-driven test harness operates the UI.

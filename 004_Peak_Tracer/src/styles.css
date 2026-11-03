@@ -16,7 +16,7 @@ html, body, #root {
   width: 100%;
   height: 4px;
   border-radius: 2px;
-  background: #DCE5E1;
+  background: #A7A5A0;
   outline: none;
 }
 .pt-range::-webkit-slider-thumb {
@@ -24,19 +24,19 @@ html, body, #root {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #1F3A5F;
+  background: #B3461C;
   cursor: pointer;
-  border: 2px solid #F5F7F6;
-  box-shadow: 0 0 0 1px #1F3A5F;
+  border: 2px solid #D6D5D2;
+  box-shadow: 0 0 0 1px #B3461C;
 }
 .pt-range::-moz-range-thumb {
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  background: #1F3A5F;
+  background: #B3461C;
   cursor: pointer;
-  border: 2px solid #F5F7F6;
-  box-shadow: 0 0 0 1px #1F3A5F;
+  border: 2px solid #D6D5D2;
+  box-shadow: 0 0 0 1px #B3461C;
 }
 
 .pt-scroll::-webkit-scrollbar {
@@ -47,9 +47,23 @@ html, body, #root {
   background: transparent;
 }
 .pt-scroll::-webkit-scrollbar-thumb {
-  background: #C8D2CD;
+  background: #AAA7A1;
   border-radius: 4px;
 }
 .pt-scroll::-webkit-scrollbar-thumb:hover {
-  background: #8FA39D;
+  background: #535258;
+}
+
+/* Copper accents on mineral surfaces; preserve the existing control geometry. */
+input::placeholder, textarea::placeholder {
+  color: #68656A;
+  opacity: 1;
+}
+button:disabled {
+  background-color: #BBB8B2 !important;
+  color: #514E4A !important;
+  opacity: 1 !important;
+}
+input:focus-visible, button:focus-visible, textarea:focus-visible {
+  outline-color: #B3461C;
 }

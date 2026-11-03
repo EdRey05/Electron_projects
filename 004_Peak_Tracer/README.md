@@ -1,11 +1,18 @@
-# Peak Tracer v2.0.1
+# Peak Tracer v2.0.2
 
 > Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 004_Peak_Tracer`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
 
-Sanger chromatogram processing for post-Seq7 AB1 files, with an Electron interface
-and a Python CLI. The current pipeline resolves measured overlapping peaks,
-preserves raw acquisition data and inherited KB confidence, and writes coherent
-AB1, sequence and provenance outputs.
+**Process Sanger AB1 chromatograms in local batches, with per-read results and quality information.** Select input and output folders, choose preprocessing plus trace processing or processing alone, and follow each read in the run log. The app resolves overlapping measured peaks, preserves raw acquisition evidence and inherited caller quality scores, and writes processed AB1 files, sequence exports and provenance records.
+
+Review base counts, mean and minimum quality, ambiguous calls and reported extensions in one table. Advanced settings expose peak resolution, smoothing and naming controls. Original input files remain unchanged, and the portable Windows folder includes the runtimes needed to work offline. Signal processing does not establish improved sequencing accuracy; quality scores retain the original caller's confidence, and experimental features require validation on representative reads.
+
+Preprocessing checks output names, uses supported companion headers and removes well-ID suffixes. Advanced controls adjust resolution strength, iterations, peak width and smoothing. Sequence exports use the computed clear range by default, and processed AB1 files are reread to verify that calls, positions and quality values match the computed results.
+
+## Demo
+
+The [recording](../Images_GIFs_Videos/004_Peak_Tracer.mp4) processes 68 paired AB1/SEQ reads from Sample 5, plate 2, using **Preprocessing + PT** and the default parameters. It shows folder selection, the complete processing interval and scrolling through the resulting QC table. The copper-and-graphite theme separates the app from the white catalog page while keeping text and controls readable.
+
+Inputs remain unchanged and results go into a separate folder. The real sample files are kept locally and are not included in the repository. This workflow demonstration does not establish better basecalling accuracy. A reproducible offline recorder is available at [Record-PeakTracerDemo.ps1](../demo-tools/Record-PeakTracerDemo.ps1).
 
 See the [v1.9 plan](docs/v1.9/PLAN.md) and [v1.9 results](docs/v1.9/RESULTS.md) for adaptive peak rounding, two-plate comparisons, tuning records and known regressions. The [v1.8 validation](docs/v1.8/VALIDATION.md) remains available as the baseline. This is a trace
 resolution milestone; longer high-quality basecalling comparable to PeakTrace

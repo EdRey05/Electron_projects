@@ -60,7 +60,11 @@ analyze an 80-row synthetic cohort, map Alive/Dead values, render a survival cur
 
 **Summary**
 
-**Process Sanger AB1 traces with explicit outputs and QC information.** The pipeline retains raw acquisition evidence and inherited quality information; experimental signal-processing features have their own documented limits.
+**Process Sanger AB1 chromatograms in local batches, with per-read results and quality information.** Select input and output folders, choose preprocessing plus trace processing or processing alone, and follow each read in the run log. The app resolves overlapping measured peaks, preserves raw acquisition evidence and inherited caller quality scores, and writes processed AB1 files, sequence exports and provenance records.
+
+Review base counts, mean and minimum quality, ambiguous calls and reported extensions in one table. Advanced settings expose peak resolution, smoothing and naming controls. Original input files remain unchanged, and the portable Windows folder includes the runtimes needed to work offline. Signal processing does not establish improved sequencing accuracy; quality scores retain the original caller's confidence, and experimental features require validation on representative reads.
+
+Preprocessing checks output names, uses supported companion headers and removes well-ID suffixes. Advanced controls adjust resolution strength, iterations, peak width and smoothing. Sequence exports use the computed clear range by default, and processed AB1 files are reread to verify that calls, positions and quality values match the computed results.
 
 </div>
 <div class="right-column-65" markdown="1">
@@ -91,9 +95,7 @@ analyze an 80-row synthetic cohort, map Alive/Dead values, render a survival cur
 
 **In the demo**
 
-process three synthetic 160-base chromatograms and inspect the resulting batch log/QC. Synthetic AB1 tests check file contracts and processing behavior; they are not evidence of accuracy on real sequencing runs. Read the app's scientific notes before using experimental features.
-
-[Sample data and example outputs](demo-data/synthetic-data-and-outputs.zip)
+Process 68 paired reads from Sample 5, plate 2. Choose the input and a separate output folder, keep **Preprocessing + PT** and the default parameters, run the complete batch, then scroll through per-read QC results. The original sample files remain unchanged. This demonstrates the local workflow, not a benchmark of sequencing accuracy; the real sample files are not distributed with the public recording.
 
 </div>
 </div>

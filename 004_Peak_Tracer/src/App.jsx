@@ -12,17 +12,17 @@ import {
   Settings as SettingsIcon,
 } from "lucide-react";
 
-// ---------- design tokens (mirror SequenceBindingFinder for hub consistency) ----------
-const paper = "#F5F7F6";
-const ink = "#1F2A33";
-const border = "#DCE5E1";
-const panelDark = "#1F3A5F";        // primary accent
+// ---------- design tokens: copper and graphite ----------
+const paper = "#D6D5D2";
+const ink = "#29292D";
+const border = "#A7A5A0";
+const panelDark = "#B3461C";        // primary accent
 const panelDarkInk = "#FFFFFF";
-const teal = "#3FB6A8";             // success / "trace looks good"
-const amber = "#E0A52A";            // warning / mixed-base
-const coral = "#E26B5A";            // error / process failed
-const muted = "#8FA39D";            // secondary text
-const inputBg = "#FFFFFF";
+const teal = "#14745E";             // success / "trace looks good"
+const amber = "#94600D";            // warning / mixed-base
+const coral = "#B83B38";            // error / process failed
+const muted = "#535258";            // secondary text
+const inputBg = "#F7F6F3";
 
 // ---------- default settings ----------
 const DEFAULT_SETTINGS = {
@@ -268,7 +268,7 @@ export default function PeakTracer() {
                     value={inputDir}
                     placeholder="Pick the plate folder\u2026"
                     className="flex-1 px-3 py-2 text-sm rounded border font-mono"
-                    style={{ borderColor: border, color: inputDir ? ink : muted, background: "#FAFBFA" }}
+                    style={{ borderColor: border, color: inputDir ? ink : muted, background: "#EBEAE6" }}
                   />
                   <button
                     type="button"
@@ -280,7 +280,7 @@ export default function PeakTracer() {
                   </button>
                 </div>
                 {inputFiles.length > 0 && (
-                  <div className="px-4 py-2 text-xs border-t" style={{ borderColor: border, background: "#FAFBFA" }}>
+                  <div className="px-4 py-2 text-xs border-t" style={{ borderColor: border, background: "#EBEAE6" }}>
                     <div className="flex items-center gap-2">
                       <span className="font-semibold text-sm" style={{ color: ink }}>
                         {inputFiles.length} file{inputFiles.length === 1 ? "" : "s"}
@@ -305,7 +305,7 @@ export default function PeakTracer() {
                     value={outputDir}
                     placeholder="Auto-set to parent of input\u2026"
                     className="flex-1 px-3 py-2 text-sm rounded border font-mono"
-                    style={{ borderColor: border, color: outputDir ? ink : muted, background: "#FAFBFA" }}
+                    style={{ borderColor: border, color: outputDir ? ink : muted, background: "#EBEAE6" }}
                   />
                   <button
                     type="button"
@@ -319,7 +319,7 @@ export default function PeakTracer() {
                     <button
                       type="button"
                       className="px-2 py-2 rounded text-sm flex items-center gap-1 shrink-0"
-                      style={{ borderColor: border, color: muted, background: "#FAFBFA" }}
+                      style={{ borderColor: border, color: muted, background: "#EBEAE6" }}
                       title="Open in Explorer"
                       onClick={() => window.api.openFolder(outputDir)}
                     >
@@ -443,7 +443,7 @@ export default function PeakTracer() {
                     style={{
                       gridTemplateColumns: "1fr 64px 64px 60px 60px 80px",
                       color: ink,
-                      background: "#EEF3F1",
+                      background: "#F5E0D3",
                       borderBottom: `1px solid ${border}`,
                     }}
                   >
@@ -530,13 +530,13 @@ export default function PeakTracer() {
                   {logs.length > 0 && (
                     <div
                       className="font-mono text-[10px] max-h-32 overflow-y-auto"
-                      style={{ background: "#1F2A33", color: "#D8E2EE", borderTop: `1px solid ${border}` }}
+                      style={{ background: "#29292D", color: "#F1ECE7", borderTop: `1px solid ${border}` }}
                     >
                       {logs.slice(-50).map((l, i) => (
                         <div
                           key={i}
                           className="px-3 py-0.5 truncate"
-                          style={{ color: l.level === "error" ? "#FFB4AB" : "#D8E2EE" }}
+                          style={{ color: l.level === "error" ? "#FFB4AB" : "#F1ECE7" }}
                           title={l.message}
                         >
                           {l.message}
@@ -705,7 +705,7 @@ function AdvModal({ adv, onChange, onClose }) {
                           onChange(f.key, Number.isNaN(num) ? 0 : num);
                         }}
                         className="px-2 py-1 rounded border font-mono text-sm w-24 text-right"
-                        style={{ borderColor: border, color: ink, background: "#FAFBFA" }}
+                        style={{ borderColor: border, color: ink, background: "#EBEAE6" }}
                       />
                     )}
                   </label>
@@ -717,7 +717,7 @@ function AdvModal({ adv, onChange, onClose }) {
 
         <div
           className="flex justify-end gap-2 px-5 py-3 border-t"
-          style={{ borderColor: border, background: "#FAFBFA" }}
+          style={{ borderColor: border, background: "#EBEAE6" }}
         >
           <button
             type="button"
@@ -742,7 +742,7 @@ function ModeCard({ selected, onClick, title, steps }) {
       className="text-left p-3 rounded-lg border-2 transition-colors"
       style={{
         borderColor: selected ? panelDark : border,
-        background: selected ? "#F0F4F8" : inputBg,
+        background: selected ? "#F5E0D3" : inputBg,
       }}
     >
       <div className="flex items-center justify-between mb-1.5">
