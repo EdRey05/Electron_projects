@@ -12,27 +12,27 @@
  */
 
 export const PALETTE = [
-  "#38BDF8", // sky
-  "#F472B6", // pink
-  "#A3E635", // lime
-  "#FBBF24", // amber
-  "#C084FC", // purple
-  "#2DD4BF", // teal
-  "#FB7185", // rose
-  "#4ADE80", // green
-  "#60A5FA", // blue
-  "#FDBA74", // orange
+  "#6548A3", // sky
+  "#B45C26", // pink
+  "#54802E", // lime
+  "#8B5C0A", // amber
+  "#7B50A6", // purple
+  "#247E76", // teal
+  "#A53232", // rose
+  "#227047", // green
+  "#326BA2", // blue
+  "#A26D12", // orange
 ];
 
 export const COLORS = {
-  bg: "#0F1115",
-  panel: "#161A21",
-  panelAlt: "#1B2029",
-  border: "#2A313C",
-  text: "#E6EAF0",
-  textDim: "#8B95A5",
-  grid: "#242A34",
-  axis: "#39414E",
+  bg: "#DDDDE5",
+  panel: "#FAF9FC",
+  panelAlt: "#F0EFF5",
+  border: "#BCB8CB",
+  text: "#292535",
+  textDim: "#625C73",
+  grid: "#BCB8CB",
+  axis: "#625C73",
   band: "currentColor",
 };
 
@@ -138,7 +138,7 @@ export function bandPath(points, xScale, yScale) {
 export function curvePoints(curve, detail = 1) {
   const n = curve.timeline.length;
   if (!n) return [];
-  const keep = Math.max(2, Math.floor(n * detail));
+  const keep = Math.min(n, Math.max(1, Math.floor(n * detail)));
   const out = [];
   for (let i = 0; i < keep; i++) {
     out.push({

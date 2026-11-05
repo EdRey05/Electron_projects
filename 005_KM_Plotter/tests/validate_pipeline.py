@@ -23,7 +23,7 @@ APP = os.path.dirname(HERE)
 CORE = os.path.join(APP, "python-app", "km_core.py")
 sys.path.insert(0, os.path.join(APP, "python-app"))
 
-BASE = r"C:\Users\Administrator\Desktop\Github_EdRey05\Streamlit_projects\Test_units\Project 003"
+BASE = os.environ.get("KM_REFERENCE_DATA", os.path.abspath(os.path.join(HERE, "..", "..", "..", "Streamlit_projects", "Test_units", "Project 003")))
 
 FAILURES = []
 
@@ -233,7 +233,7 @@ def main():
         ws = wb[wb.sheetnames[0]]
         check("sheet has event table", ws.cell(row=6, column=2).value is not None)
     except ImportError:
-        print("  (openpyxl not installed here — skipping workbook read-back)")
+        print("  (openpyxl not installed here â€” skipping workbook read-back)")
 
     # ---- 8. error handling ----------------------------------------------
     print("\n=== scenario 8: error handling ===")

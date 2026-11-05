@@ -1,295 +1,57 @@
-/**
- * The Kaplan-Meier plot, drawn as SVG.
- *
- * Draws the survival step function, the confidence band, censored-observation
- * marks, the axes and (optionally) the "number at risk" table underneath —
- * the same elements the Streamlit app produced with matplotlib + lifelines.
- */
-import React, { useMemo, useRef } from "react";
-import { COLORS, PALETTE, bandPath, censorMarks, curvePoints, formatTick, makeScales, niceTicks, stepPath } from "../lib/plot.js";
+import React from "react";
+import { bandPath, censorMarks, curvePoints, formatTick, niceTicks, stepPath, xDomain } from "../lib/plot";
+import { figureGeometry, riskAt } from "../lib/figure";
 
-const MARGIN = { top: 18, right: 150, bottom: 46, left: 58 };
-
-export default function KmPlot({
-  curves,
-  detail = 1,
-  showCI = true,
-  showAtRisk = true,
-  showCensors = true,
-  width = 1000,
-  height = 560,
-  legendOnSide = false,
-}) {
-  const svgRef = useRef(null);
-
-  const model = useMemo(() => {
-    if (!curves || !curves.length) return null;
-
-    const margin = { ...MARGIN, right: legendOnSide ? 170 : 30 };
-    const scales = makeScales({ width, height, margin, curves, detail });
-
-    const xTicks = niceTicks(scales.x1, 6);
-    const yTicks = [0, 0.2, 0.4, 0.6, 0.8, 1];
-
-    const series = curves.map((curve, i) => {
-      const color = PALETTE[i % PALETTE.length];
-      const points = curvePoints(curve, detail);
-      return {
-        curve,
-        color,
-        points,
-        path: stepPath(points, scales.xScale, scales.yScale),
-        band: showCI ? bandPath(points, scales.xScale, scales.yScale) : "",
-        censors: showCensors ? censorMarks(curve, detail) : [],
-      };
-    });
-
-    // At-risk table geometry (below the axes).
-    const atRisk = showAtRisk
-      ? curves.map((curve) => ({
-          label: curve.label,
-          rows: curve.atRisk || [],
-        }))
-      : [];
-
-    return { scales, xTicks, yTicks, series, atRisk, margin };
-  }, [curves, detail, showCI, showAtRisk, showCensors, width, height, legendOnSide]);
-
-  if (!model) return null;
-  const { scales, xTicks, yTicks, series, atRisk, margin } = model;
-
-  const legendRight = legendOnSide;
-  const plotBottom = margin.top + scales.innerH;
-  const atRiskRowH = 17;
-  const atRiskHeaderH = 22;
-  // The at-risk table sits *below* the x-axis, so the axis title has to move
-  // down to make room for it — otherwise the two overlap.
-  const axisTitleY = plotBottom + (atRisk.length ? 38 : 38);
-  const atRiskTop = plotBottom + (atRisk.length ? 48 : 0);
-  const atRiskHeight = atRisk.length ? atRiskHeaderH + atRisk.length * atRiskRowH + 8 : 0;
-  const totalHeight = height + atRiskHeight;
-
-  return (
-    <svg
-      ref={svgRef}
-      id="km-plot-svg"
-      xmlns="http://www.w3.org/2000/svg"
-      width="100%"
-      height={totalHeight}
-      viewBox={`0 0 ${width} ${totalHeight}`}
-      preserveAspectRatio="xMidYMid meet"
-      style={{ display: "block", background: COLORS.panel }}
-    >
-      <defs>
-        <clipPath id="km-plot-clip">
-          <rect x={margin.left} y={margin.top} width={scales.innerW} height={scales.innerH} />
-        </clipPath>
-      </defs>
-
-      {/* plot background */}
-      <rect x={margin.left} y={margin.top} width={scales.innerW} height={scales.innerH} fill="#12151B" />
-
-      {/* horizontal grid + y axis */}
-      {yTicks.map((t) => (
-        <g key={`y${t}`}>
-          <line
-            x1={margin.left}
-            x2={margin.left + scales.innerW}
-            y1={scales.yScale(t)}
-            y2={scales.yScale(t)}
-            stroke={COLORS.grid}
-            strokeWidth="1"
-          />
-          <text
-            x={margin.left - 10}
-            y={scales.yScale(t) + 4}
-            textAnchor="end"
-            fill={COLORS.textDim}
-            fontSize="11"
-            fontFamily="IBM Plex Mono, monospace"
-          >
-            {t.toFixed(1)}
-          </text>
-        </g>
-      ))}
-
-      {/* vertical grid + x axis */}
-      {xTicks.map((t) => (
-        <g key={`x${t}`}>
-          <line
-            x1={scales.xScale(t)}
-            x2={scales.xScale(t)}
-            y1={margin.top}
-            y2={plotBottom}
-            stroke={COLORS.grid}
-            strokeWidth="1"
-          />
-          <text
-            x={scales.xScale(t)}
-            y={plotBottom + 18}
-            textAnchor="middle"
-            fill={COLORS.textDim}
-            fontSize="11"
-            fontFamily="IBM Plex Mono, monospace"
-          >
-            {formatTick(t)}
-          </text>
-        </g>
-      ))}
-
-      {/* axis frame */}
-      <rect
-        x={margin.left}
-        y={margin.top}
-        width={scales.innerW}
-        height={scales.innerH}
-        fill="none"
-        stroke={COLORS.axis}
-        strokeWidth="1"
-      />
-
-      {/* axis titles */}
-      <text
-        x={margin.left + scales.innerW / 2}
-        y={axisTitleY}
-        textAnchor="middle"
-        fill={COLORS.textDim}
-        fontSize="12"
-      >
-        Time (Months)
-      </text>
-      <text
-        transform={`translate(${margin.left - 40} ${margin.top + scales.innerH / 2}) rotate(-90)`}
-        textAnchor="middle"
-        fill={COLORS.textDim}
-        fontSize="12"
-      >
-        Probability
-      </text>
-
-      {/* curves */}
-      <g clipPath="url(#km-plot-clip)">
-        {series.map((s) =>
-          s.band ? (
-            <path key={`band-${s.curve.label}`} d={s.band} fill={s.color} opacity="0.13" stroke="none" />
-          ) : null
-        )}
-        {series.map((s) => (
-          <path
-            key={`line-${s.curve.label}`}
-            d={s.path}
-            fill="none"
-            stroke={s.color}
-            strokeWidth="2"
-            strokeLinejoin="round"
-          />
-        ))}
-        {/* censored observation marks */}
-        {series.map((s) =>
-          s.censors.map((c, i) => {
-            // survival value at the censor time
-            let sv = 1;
-            for (const p of s.points) {
-              if (p.t <= c.t + 1e-9) sv = p.s;
-            }
-            return (
-              <g key={`c-${s.curve.label}-${i}`}>
-                <line
-                  x1={scales.xScale(c.t)}
-                  x2={scales.xScale(c.t)}
-                  y1={scales.yScale(sv) - 5}
-                  y2={scales.yScale(sv) + 5}
-                  stroke={s.color}
-                  strokeWidth="1.4"
-                />
-                <line
-                  x1={scales.xScale(c.t) - 5}
-                  x2={scales.xScale(c.t) + 5}
-                  y1={scales.yScale(sv)}
-                  y2={scales.yScale(sv)}
-                  stroke={s.color}
-                  strokeWidth="1.4"
-                />
-              </g>
-            );
-          })
-        )}
-      </g>
-
-      {/* legend */}
-      {series.map((s, i) => {
-        const lx = legendRight ? margin.left + scales.innerW + 18 : 0;
-        const ly = legendRight ? margin.top + 6 + i * 18 : 0;
-        if (!legendRight) return null;
-        return (
-          <g key={`leg-${s.curve.label}`}>
-            <rect x={lx} y={ly} width="12" height="3" rx="1.5" fill={s.color} />
-            <text
-              x={lx + 18}
-              y={ly + 5}
-              fill={COLORS.text}
-              fontSize="11"
-              fontFamily="IBM Plex Sans, sans-serif"
-            >
-              {s.curve.label.length > 22 ? s.curve.label.slice(0, 21) + "…" : s.curve.label}
-            </text>
-          </g>
-        );
-      })}
-
-      {/* at-risk table */}
-      {atRisk.length > 0 && (
-        <g>
-          <line
-            x1={margin.left}
-            x2={margin.left + scales.innerW}
-            y1={atRiskTop - 10}
-            y2={atRiskTop - 10}
-            stroke={COLORS.axis}
-            strokeWidth="1"
-          />
-          {xTicks.map((t) => (
-            <text
-              key={`ar-x${t}`}
-              x={scales.xScale(t)}
-              y={atRiskTop + 6}
-              textAnchor="middle"
-              fill={COLORS.textDim}
-              fontSize="10.5"
-              fontFamily="IBM Plex Mono, monospace"
-            >
-              {formatTick(t)}
-            </text>
-          ))}
-          {atRisk.map((row, ri) => (
-            <g key={`ar-${row.label}`}>
-              <text
-                x={margin.left - 10}
-                y={atRiskTop + atRiskHeaderH + ri * atRiskRowH + 4}
-                textAnchor="end"
-                fill={PALETTE[curves.findIndex((c) => c.label === row.label) % PALETTE.length]}
-                fontSize="10.5"
-                fontFamily="IBM Plex Sans, sans-serif"
-              >
-                {row.label.length > 16 ? row.label.slice(0, 15) + "…" : row.label}
-              </text>
-              {row.rows.map((r, ci) => (
-                <text
-                  key={`ar-${row.label}-${ci}`}
-                  x={scales.xScale(r.t)}
-                  y={atRiskTop + atRiskHeaderH + ri * atRiskRowH + 4}
-                  textAnchor="middle"
-                  fill={COLORS.text}
-                  fontSize="10.5"
-                  fontFamily="IBM Plex Mono, monospace"
-                >
-                  {r.atRisk}
-                </text>
-              ))}
-            </g>
-          ))}
-        </g>
-      )}
-    </svg>
-  );
+// Matplotlib's familiar scientific cycle, independent from the application theme.
+const palette = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd", "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf"];
+export default function KmPlot({ curves, detail = 1, showCI = true, showAtRisk = false, showCensors = true, legendOnSide = true, showMedians = true, timeColumn = "OS_MONTHS" }) {
+  if (!curves?.length) return null;
+  const g = figureGeometry({ curves, showAtRisk, side: legendOnSide, showMedians });
+  const rawMax = xDomain(curves, detail)[1];
+  const ticks = niceTicks(rawMax, 6);
+  const max = ticks[ticks.length - 1] || 1;
+  const plotWidth = g.width - g.left - g.right, plotHeight = g.plotBottom - g.plotTop;
+  const x = time => g.left + time / max * plotWidth;
+  const y = probability => g.plotBottom - probability * plotHeight;
+  const series = curves.map((curve, i) => ({ curve, points: curvePoints(curve, detail), color: palette[i % palette.length] }));
+  return <svg id="km-plot-svg" role="img" aria-label="Kaplan-Meier survival figure" xmlns="http://www.w3.org/2000/svg" width="100%" height={g.totalHeight} viewBox={`0 0 ${g.width} ${g.totalHeight}`} style={{ display: "block", height: "auto", background: "#FFFFFF" }} fontFamily="Arial, Helvetica, sans-serif" fill="#202020">
+    <rect width={g.width} height={g.totalHeight} fill="#FFFFFF"/>
+    <text x={g.width / 2} y="28" textAnchor="middle" fontSize="20" fontWeight="500">Kaplan–Meier Estimates</text>
+    <defs><clipPath id="km-plot-clip"><rect x={g.left} y={g.plotTop} width={plotWidth} height={plotHeight}/></clipPath></defs>
+    <rect x={g.left} y={g.plotTop} width={plotWidth} height={plotHeight} fill="#F0F0F0"/>
+    {[0, .2, .4, .6, .8, 1].map(t => <g key={t}><line x1={g.left} x2={g.left + plotWidth} y1={y(t)} y2={y(t)} stroke="#000000" strokeDasharray="4 4" opacity=".25" strokeWidth=".6"/><text x={g.left - 12} y={y(t) + 4} textAnchor="end" fontSize="12">{t.toFixed(1)}</text></g>)}
+    {ticks.map(t => <g key={t}><line x1={x(t)} x2={x(t)} y1={g.plotTop} y2={g.plotBottom} stroke="#000000" strokeDasharray="4 4" opacity=".25" strokeWidth=".6"/><text x={x(t)} y={g.plotBottom + 23} textAnchor="middle" fontSize="12" data-figure="x-tick">{formatTick(t)}</text></g>)}
+    <rect x={g.left} y={g.plotTop} width={plotWidth} height={plotHeight} fill="none" stroke="#555555" strokeWidth="1"/>
+    <text data-figure="x-title" x={g.left + plotWidth / 2} y={g.axisTitleY} textAnchor="middle" fontSize="15">{timeColumn.endsWith("_MONTHS") ? "Time (Months)" : timeColumn}</text>
+    <text transform={`translate(${g.left - 55} ${g.plotTop + plotHeight / 2}) rotate(-90)`} textAnchor="middle" fontSize="15">Probability</text>
+    <g clipPath="url(#km-plot-clip)">
+      {series.map(s => <g key={s.curve.label}>
+        {showCI && <path d={bandPath(s.points, x, y)} fill={s.color} opacity=".16"/>}
+        <path d={stepPath(s.points, x, y)} fill="none" stroke={s.color} strokeWidth="2" strokeLinejoin="round"/>
+        {showCensors && censorMarks(s.curve, detail).map((c, i) => {
+          let survival = 1; for (const p of s.points) if (p.t <= c.t + 1e-9) survival = p.s;
+          return <path key={i} d={`M${x(c.t) - 3},${y(survival)}h6 M${x(c.t)},${y(survival) - 3}v6`} stroke={s.color} strokeWidth="1" fill="none"/>;
+        })}
+      </g>)}
+    </g>
+    <g data-figure="legend">{series.map((s, i) => {
+      const lx = legendOnSide ? g.left + plotWidth + 20 : g.left + (i % 2) * plotWidth / 2;
+      const entry = g.legendEntries[i];
+      const ly = legendOnSide ? g.plotTop + entry.y : entry.y;
+      const median = Number.isFinite(s.curve.median) ? `${Number(s.curve.median.toFixed(2))}${timeColumn.endsWith("_MONTHS") ? " months" : ""}` : "Not reached";
+      return <g key={i}><line x1={lx} x2={lx + 20} y1={ly - 4} y2={ly - 4} stroke={s.color} strokeWidth="2"/><text x={lx + 26} y={ly} fontSize="11"><title>{s.curve.label}</title>{entry.lines.map((line, j) => <tspan x={lx + 26} dy={j ? 13 : 0} key={j}>{line}</tspan>)}</text>{showMedians && <text data-figure="legend-median" x={lx + 26} y={ly + (entry.lines.length - 1) * 13 + 17} fontSize="11" fill="#555555">Median: {median}</text>}</g>;
+    })}</g>
+    {showAtRisk && <g data-figure="risk-table">
+      <text x={g.left} y={g.riskTitleY} fontSize="14" fontWeight="600">Number at risk</text>
+      <text x={g.width - g.right} y={g.riskTitleY} textAnchor="end" fontSize="11" fill="#666666">End-of-period counts</text>
+      {ticks.map(t => <text key={t} x={x(t)} y={g.riskTickY} textAnchor="middle" fontSize="12" data-figure="risk-tick">{formatTick(t)}</text>)}
+      {series.map((s, i) => <g key={i}>
+        <text x="10" y={g.riskRows[i].labelY} fill={s.color} fontSize="12" fontWeight="600">{g.riskRows[i].lines.map((line, j) => <tspan x="10" dy={j ? 14 : 0} key={j}>{line}</tspan>)}</text>
+        {[['atRisk', 'At risk'], ['censored', 'Censored'], ['events', 'Events']].map(([key, label], ri) => <g key={key}>
+          <text x={g.left - 40} y={g.riskRows[i].dataY + ri * 20} textAnchor="end" fontSize="11" data-risk-label={key}>{label}</text>
+          {ticks.map(t => <text key={t} x={x(t)} y={g.riskRows[i].dataY + ri * 20} textAnchor="middle" fontSize="12" data-risk-time={t} data-risk-kind={key}>{riskAt(s.curve, t)[key]}</text>)}
+        </g>)}
+      </g>)}
+    </g>}
+  </svg>;
 }

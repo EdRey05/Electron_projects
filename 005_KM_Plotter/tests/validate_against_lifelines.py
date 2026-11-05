@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(HERE), "python-app"))
 
 from kmplot.kmlib import fit_km  # noqa: E402
 
-BASE = r"C:\Users\Administrator\Desktop\Github_EdRey05\Streamlit_projects\Test_units\Project 003"
+BASE = os.environ.get("KM_REFERENCE_DATA", os.path.abspath(os.path.join(HERE, "..", "..", "..", "Streamlit_projects", "Test_units", "Project 003")))
 
 FAILURES = []
 

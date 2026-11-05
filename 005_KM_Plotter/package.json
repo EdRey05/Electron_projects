@@ -1,6 +1,6 @@
 {
   "name": "km-plotter",
-  "version": "1.0.1",
+  "version": "2.0.0",
   "private": true,
   "description": "Desktop Kaplan-Meier plot generator. Reads clinical (and optional RNA) tab-separated files and produces Kaplan-Meier curves with confidence bands, at-risk tables and an Excel export.",
   "main": "electron/main.js",

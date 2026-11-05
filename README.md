@@ -8,7 +8,11 @@
 
 **Summary**
 
-**Create local Kaplan–Meier survival plots from clinical tables.** Choose the time/status fields, explicitly map event values, optionally define subgroups, and export plots and calculation results.
+**Explore time-to-event data with local Kaplan–Meier survival plots.** Load a clinical table, inspect follow-up histograms and status counts, and explicitly assign each status to an observed event, a censored observation or an exclusion. Review the whole cohort or compare groups defined by clinical categories, numeric measurements or optional RNA-expression data.
+
+Choose groups from visible distributions rather than guessing cutoffs. Clinical fields with a few distinct values offer category assignments with patient counts; continuous measurements and RNA genes offer signed ranges, editable boundaries and median or zero splits. Inspect included and excluded patients, event totals and per-curve median survival alongside the resulting figure.
+
+Display confidence bands, censor marks, a readable legend and an aligned number-at-risk table. Export the same scientific figure as a high-resolution PNG or SVG, plus an Excel workbook containing event tables, survival estimates, confidence bounds and medians. Files stay local, and the portable Windows folder includes the runtimes needed to use the app without installing developer tools.
 
 </div>
 <div class="right-column-65" markdown="1">
@@ -30,18 +34,18 @@
 
 1. Choose a clinical tab-separated file containing `PATIENT_ID`, a time-to-event column, and a status column. Optionally load an RNA-expression table.
 2. Select the time and status columns.
-3. Map status values to **0: no event/censored** and **1: observed event**.
-4. Choose a whole-cohort plot or define subgroups from clinical/expression variables.
-5. Generate the curve, inspect confidence intervals and the at-risk table, then export PNG or Excel results.
+3. Assign each status to **Censored / no event**, **Observed event** or **Ignore**, checking the patient totals.
+4. Choose the whole cohort or define subgroups using category counts and numeric/RNA distributions.
+5. Generate the curve, inspect confidence intervals and the at-risk table, then export PNG, SVG or Excel results.
 
 </div>
 <div class="right-column-50" markdown="1">
 
 **In the demo**
 
-analyze an 80-row synthetic cohort, map Alive/Dead values, render a survival curve, and export the results workbook. The example is for learning the software, not clinical decision-making.
+Explore METABRIC clinical and matched RNA-expression data. Preview survival endpoints, split age at its median, combine age with cellularity, compare five claudin-subtype groups, and select ERBB2 from the gene catalog for three signed expression ranges. Open the exported PNG and Excel worksheets, then adjust the figure options interactively. These are exploratory, unadjusted comparisons.
 
-[Sample data and example outputs](demo-data/synthetic-data-and-outputs.zip)
+[Synthetic practice data and example outputs](demo-data/synthetic-data-and-outputs.zip)
 
 </div>
 </div>

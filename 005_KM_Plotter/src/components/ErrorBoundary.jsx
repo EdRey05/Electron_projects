@@ -27,25 +27,25 @@ export default class ErrorBoundary extends React.Component {
     if (!error) return this.props.children;
 
     return (
-      <div className="m-4 rounded-xl border border-[#4E2129] bg-[#331418] p-4">
+      <div className="m-4 rounded-xl border border-[#D1A19A] bg-[#F9E9E6] p-4">
         <div className="flex items-start gap-3">
-          <div className="mt-0.5 rounded-lg bg-[#4E2129] p-2 text-[#FB7185]">
+          <div className="mt-0.5 rounded-lg bg-[#D1A19A] p-2 text-[#A53232]">
             <AlertTriangle size={16} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[#F5A3AE]">This panel failed to render</p>
-            <p className="mt-1 text-xs leading-relaxed text-[#F5A3AE]/80">
+            <p className="text-sm font-semibold text-[#8F2F2F]">This panel failed to render</p>
+            <p className="mt-1 text-xs leading-relaxed text-[#8F2F2F]/80">
               {String(error && error.message ? error.message : error)}
             </p>
             {info && info.componentStack && (
-              <details className="mt-2 text-[11px] text-[#F5A3AE]/60">
+              <details className="mt-2 text-[11px] text-[#8F2F2F]/60">
                 <summary className="cursor-pointer">Technical details</summary>
                 <pre className="mt-1 whitespace-pre-wrap break-all">{info.componentStack}</pre>
               </details>
             )}
             <button
               onClick={() => this.setState({ error: null, info: null })}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#4E2129] bg-[#3B1B20] px-3 py-1.5 text-xs text-[#F5A3AE] hover:bg-[#4E2129]"
+              className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#D1A19A] bg-[#F9E9E6] px-3 py-1.5 text-xs text-[#8F2F2F] hover:bg-[#D1A19A]"
             >
               <RotateCcw size={13} />
               Try again

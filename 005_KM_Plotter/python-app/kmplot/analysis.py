@@ -11,8 +11,8 @@ This mirrors the semantics of the original Streamlit app
   (``[lo, hi)``). Groups of the same variable are mutually exclusive.
 * Curves are the **cartesian product** of the groups of every variable, so
   2 variables × 3 groups = up to 9 curves.
-* Range subgroups are half-open ``[lo, hi)``; the last group of a variable
-  takes everything that is left, so no patient is silently lost.
+* Range subgroups are half-open ``[lo, hi)`` unless ``includeHi`` is true.
+  Missing and out-of-range measurements are excluded and counted explicitly.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 import numpy as np
 import pandas as pd
 
-from .dataio import PATIENT_ID, is_numeric, numeric_view
+from .dataio import PATIENT_ID, is_numeric, numeric_view, discover_options
 from .kmlib import KMFit, fit_km
 
 
@@ -49,10 +49,10 @@ def encode_events(
         raise AnalysisError(f"Column not found in the dataset: {event_column}")
 
     df = clinical.copy()
-    col = df[event_column].astype(str)
+    col = df[event_column].map(_value_key)
 
-    no_event = {str(v) for v in no_event_values}
-    event = {str(v) for v in event_values}
+    no_event = {_value_key(v) for v in no_event_values}
+    event = {_value_key(v) for v in event_values}
     overlap = no_event & event
     if overlap:
         raise AnalysisError(
@@ -76,7 +76,7 @@ def to_numeric_time(df: pd.DataFrame, time_column: str) -> pd.DataFrame:
     if not is_numeric(out[time_column]):
         out[time_column] = numeric_view(out[time_column])
     out[time_column] = pd.to_numeric(out[time_column], errors="coerce")
-    return out.loc[out[time_column].notna()].copy()
+    return out.loc[out[time_column].notna() & np.isfinite(out[time_column]) & (out[time_column] >= 0)].copy()
 
 
 # --------------------------------------------------------------------------
@@ -88,6 +88,8 @@ def _value_key(value: Any) -> str:
     """Stable string key for a raw dataset value (used for tag matching)."""
     if isinstance(value, float) and np.isnan(value):
         return "__NA__"
+    if isinstance(value, (int, float, np.integer, np.floating)) and np.isfinite(value) and float(value).is_integer():
+        return str(int(value))
     return str(value)
 
 
@@ -117,17 +119,21 @@ def resolve_subgroup_values(
         names: List[str] = []
         mapping: Dict[str, str] = {}
         for i, g in enumerate(groups):
-            vals = [str(v) for v in g.get("values", [])]
+            vals = [_value_key(v) for v in g.get("values", [])]
             if not vals:
-                continue
+                raise AnalysisError("Every category group needs at least one selected value.")
             name = g.get("name") or ("+".join(vals))
+            if name in names:
+                raise AnalysisError("Group labels must be unique within each variable.")
             names.append(name)
             for v in vals:
+                if v in mapping:
+                    raise AnalysisError(f"The value '{v}' is assigned to more than one group.")
                 mapping[v] = name
         if not names:
             raise AnalysisError("At least one subgroup needs at least one value selected.")
 
-        col = df[column].astype(str)
+        col = df[column].map(_value_key)
         labels = col.map(mapping)
         return labels, names
 
@@ -135,21 +141,29 @@ def resolve_subgroup_values(
         nums = numeric_view(df[column])
         labels = pd.Series([None] * len(df), index=df.index, dtype=object)
         names = []
+        intervals = []
         for i, g in enumerate(groups):
             lo = g.get("lo")
             hi = g.get("hi")
             if lo is None or hi is None:
-                continue
+                raise AnalysisError("Every range group needs both boundaries.")
             lo, hi = float(lo), float(hi)
-            if hi <= lo:
+            include_hi = bool(g.get("includeHi", False))
+            if not np.isfinite([lo, hi]).all() or hi < lo or (hi == lo and not include_hi):
                 raise AnalysisError(
                     f"Subgroup {i + 1} has an empty range ({lo} to {hi}). "
                     "The upper bound must be greater than the lower bound."
                 )
             name = g.get("name") or f"{_fmt_num(lo)} to {_fmt_num(hi)}"
+            if name in names:
+                raise AnalysisError("Group labels must be unique within each variable.")
+            for previous_lo, previous_hi, previous_closed in intervals:
+                if max(lo, previous_lo) < min(hi, previous_hi) or (hi == previous_lo and include_hi) or (previous_hi == lo and previous_closed):
+                    raise AnalysisError("Subgroup ranges overlap; choose disjoint boundaries.")
+            intervals.append((lo, hi, include_hi))
             names.append(name)
             # Half-open [lo, hi)
-            labels = labels.mask((nums >= lo) & (nums < hi), name)
+            labels = labels.mask((nums >= lo) & ((nums <= hi) if include_hi else (nums < hi)) & np.isfinite(nums), name)
         return labels, names
 
     raise AnalysisError(f"Unknown subgroup mode: {mode}")
@@ -173,6 +187,7 @@ def build_subgroup_columns(
     work = df.copy()
     var_names: List[str] = []
     all_group_names: List[str] = []
+    seen = set()
 
     for spec in variables:
         source = spec.get("source", "clinical")
@@ -181,6 +196,15 @@ def build_subgroup_columns(
         groups = spec.get("groups", [])
         if not column:
             raise AnalysisError("Every variable needs a column selected.")
+        key = (source, column)
+        if key in seen:
+            raise AnalysisError("Select each subgroup variable only once.")
+        seen.add(key)
+        if not groups or len(groups) > 5:
+            raise AnalysisError("Each variable needs between one and five complete groups.")
+        if source not in ("clinical", "RNA"):
+            raise AnalysisError("Unknown subgroup dataset.")
+        value_column = column
 
         if source == "RNA":
             if rna is None:
@@ -188,16 +212,21 @@ def build_subgroup_columns(
             if column not in rna.columns:
                 raise AnalysisError(f"RNA column not found: {column}")
             # Join the RNA values onto the clinical rows by patient id.
-            rna_sub = rna[[PATIENT_ID, column]].copy()
-            rna_sub[column] = numeric_view(rna_sub[column])
-            work = work.merge(rna_sub, on=PATIENT_ID, how="left")
+            value_column = f"__KM_RNA_VALUE_{len(var_names)}__"
+            rna_sub = rna[[PATIENT_ID, column]].copy().rename(columns={column: value_column})
+            rna_sub[value_column] = numeric_view(rna_sub[value_column])
+            work = work.merge(rna_sub, on=PATIENT_ID, how="inner", validate="one_to_one")
             # Rows with no RNA measurement cannot be classified.
-            work = work.loc[work[column].notna()].copy()
+            work = work.loc[work[value_column].notna()].copy()
+            if work.empty:
+                raise AnalysisError("No matching patients with valid RNA measurements; check patient IDs and gene values.")
         else:
+            if column not in discover_options(df)["subgroupOptions"]:
+                raise AnalysisError("Patient IDs and survival endpoint columns cannot be subgroup variables.")
             if column not in work.columns:
                 raise AnalysisError(f"Column not found in the dataset: {column}")
 
-        labels, group_names = resolve_subgroup_values(work, column, mode, groups)
+        labels, group_names = resolve_subgroup_values(work, value_column, mode, groups)
         label_col = f"__KM_GROUP_{len(var_names) + 1}__"
         work[label_col] = labels
         work = work.loc[work[label_col].notna()].copy()
@@ -274,6 +303,10 @@ def run_analysis(
         )
 
     variables = list(variables or [])
+    if any(v.get("source", "clinical") == "clinical" and v.get("column") in (time_column, event_column) for v in variables):
+        raise AnalysisError("Selected survival endpoint columns cannot be subgroup variables.")
+    if len(variables) > 5:
+        raise AnalysisError("Use at most five subgroup variables.")
     label_columns: List[str] = []
     var_names: List[str] = []
     group_names: List[str] = []
@@ -328,6 +361,9 @@ def run_analysis(
         "variables": var_names,
         "groupNames": group_names,
         "nPatients": int(n_after_event),
+        "nInputPatients": int(len(clinical)),
+        "nExcludedBeforeSubgroups": int(len(clinical) - n_after_event),
+        "nExcludedBySubgroups": int(n_after_event - len(work)),
         "nPatientsAfterSubgrouping": int(len(work)),
         "nCurves": len(fits),
         "alpha": alpha,

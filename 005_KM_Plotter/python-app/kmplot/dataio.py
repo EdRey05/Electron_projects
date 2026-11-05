@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import math
 import os
+import csv
+from functools import lru_cache
 from typing import Any, Dict, List, Optional
 
 import numpy as np
@@ -37,10 +39,10 @@ PATIENT_ID = "PATIENT_ID"
 def _read_table(path: str, comment: Optional[str] = "#") -> pd.DataFrame:
     """Read a tab-separated table, tolerating a data-dictionary header block."""
     sep = "\t"
-    df = pd.read_csv(path, sep=sep, comment=comment, encoding="utf-8", engine="python")
+    df = pd.read_csv(path, sep=sep, comment=comment, encoding="utf-8-sig", engine="c", dtype={PATIENT_ID: "string"})
     df.columns = [str(c).strip() for c in df.columns]
     # Drop fully-empty columns produced by ragged rows.
-    df = df.dropna(axis=1, how="all")
+    df = df.loc[:, [c for c in df.columns if not c.startswith("Unnamed:")]]
     return df
 
 
@@ -48,19 +50,40 @@ def load_clinical(path: str) -> pd.DataFrame:
     """Load the clinical dataset (required)."""
     if not os.path.isfile(path):
         raise FileNotFoundError(f"Clinical file not found: {path}")
-    df = _read_table(path)
-    if df.empty:
-        raise ValueError("The clinical file appears to be empty.")
+    return _clinical_cached(*file_key(path)).copy()
+
+
+def file_key(path):
+    path = os.path.abspath(path)
+    stat = os.stat(path)
+    return path, stat.st_mtime_ns, stat.st_size
+
+
+def validate_ids(df):
     if PATIENT_ID not in df.columns:
-        # Tolerate a missing PATIENT_ID by synthesising one.
-        df.insert(0, PATIENT_ID, [f"P_{i:05d}" for i in range(1, len(df) + 1)])
+        raise ValueError("A PATIENT_ID column is required; patient identifiers cannot be invented.")
+    if df[PATIENT_ID].isna().any():
+        raise ValueError("PATIENT_ID contains missing values.")
+    df[PATIENT_ID] = df[PATIENT_ID].astype(str).str.strip()
+    if df[PATIENT_ID].eq("").any() or df[PATIENT_ID].duplicated().any():
+        raise ValueError("PATIENT_ID must contain unique, nonempty identifiers.")
     return df
 
 
-def load_rna(path: str) -> pd.DataFrame:
+@lru_cache(maxsize=2)
+def _clinical_cached(path, modified, size):
+    df = _read_table(path)
+    if df.empty:
+        raise ValueError("The clinical file appears to be empty.")
+    return validate_ids(df)
+
+
+def load_rna(path: str, genes=None) -> pd.DataFrame:
     """Load the optional RNA dataset and normalise it to patients-as-rows."""
     if not os.path.isfile(path):
         raise FileNotFoundError(f"RNA file not found: {path}")
+    if genes:
+        return _selected_rna_cached(*file_key(path), tuple(sorted(set(genes)))).copy()
     df = _read_table(path, comment=None)
 
     if "Entrez_Gene_Id" in df.columns:
@@ -90,9 +113,62 @@ def load_rna(path: str) -> pd.DataFrame:
         )
 
     df.columns = [str(c).strip() for c in df.columns]
-    if PATIENT_ID not in df.columns:
-        df.insert(0, PATIENT_ID, [f"P_{i:05d}" for i in range(1, len(df) + 1)])
-    return df
+    return validate_ids(df)
+
+
+@lru_cache(maxsize=2)
+def _rna_metadata_cached(path, modified, size):
+    with open(path, encoding="utf-8-sig", newline="") as handle:
+        raw_header = next(csv.reader(handle, delimiter="\t"))
+    if len(set(c.strip() for c in raw_header)) != len(raw_header):
+        raise ValueError("RNA column headers must be unique; duplicate patient or gene columns are ambiguous.")
+    columns = list(pd.read_csv(path, sep="\t", nrows=0, encoding="utf-8-sig").columns)
+    if "Hugo_Symbol" in columns:
+        symbols = pd.read_csv(path, sep="\t", usecols=["Hugo_Symbol"], dtype=str, encoding="utf-8-sig")["Hugo_Symbol"]
+        missing = int(symbols.isna().sum())
+        present = symbols.dropna()
+        ambiguous = sorted(set(present[present.duplicated(keep=False)]))
+        ids = [str(c).strip() for c in columns if c not in ("Hugo_Symbol", "Entrez_Gene_Id")]
+        if len(set(ids)) != len(ids):
+            raise ValueError("RNA patient identifiers must be unique.")
+        return {"genes": sorted(set(present.tolist())), "patientIds": ids, "layout": "genes-as-rows",
+                "ambiguousGenes": ambiguous, "duplicateEntries": int(present.duplicated().sum()), "missingSymbols": missing}
+    if PATIENT_ID in columns:
+        ids = pd.read_csv(path, sep="\t", usecols=[PATIENT_ID], dtype=str, encoding="utf-8-sig")
+        validate_ids(ids)
+        return {"genes": sorted(c for c in columns if c != PATIENT_ID), "patientIds": ids[PATIENT_ID].tolist(), "layout": "patients-as-rows", "ambiguousGenes": [], "duplicateEntries": 0, "missingSymbols": 0}
+    raise ValueError("RNA needs a Hugo_Symbol or PATIENT_ID column; its orientation must be explicit.")
+
+
+def rna_metadata(path):
+    return _rna_metadata_cached(*file_key(path))
+
+
+@lru_cache(maxsize=8)
+def _selected_rna_cached(path, modified, size, genes):
+    meta = rna_metadata(path)
+    missing = set(genes) - set(meta["genes"])
+    if missing:
+        raise ValueError("RNA genes not found: " + ", ".join(sorted(missing)))
+    ambiguous = set(genes) & set(meta["ambiguousGenes"])
+    if ambiguous:
+        raise ValueError("Ambiguous RNA gene symbols have multiple rows: " + ", ".join(sorted(ambiguous)) + ". Resolve the duplicate rows or select another gene.")
+    if meta["layout"] == "patients-as-rows":
+        return validate_ids(pd.read_csv(path, sep="\t", usecols=[PATIENT_ID, *genes], encoding="utf-8-sig", dtype={PATIENT_ID: "string"}))
+    parts = []
+    found = set()
+    with pd.read_csv(path, sep="\t", chunksize=256, encoding="utf-8-sig") as reader:
+        for chunk in reader:
+            selected = chunk.loc[chunk["Hugo_Symbol"].isin(genes)]
+            if not selected.empty:
+                parts.append(selected)
+                found.update(selected["Hugo_Symbol"])
+            if found == set(genes):
+                break
+    selected = pd.concat(parts).drop(columns=["Entrez_Gene_Id"], errors="ignore").set_index("Hugo_Symbol").T
+    selected.index.name = PATIENT_ID
+    selected.columns.name = None
+    return validate_ids(selected.reset_index())
 
 
 # --------------------------------------------------------------------------
@@ -119,7 +195,10 @@ def discover_options(clinical: pd.DataFrame) -> Dict[str, List[str]]:
     for extra in EXTRA_EVENT_COLUMNS:
         if extra in cols:
             event_options.append(extra)
-    return {"timeToEventOptions": time_options, "eventObservationOptions": event_options}
+    excluded = {PATIENT_ID, *time_options, *event_options}
+    excluded.update(c for c in clinical.columns if c.endswith(("_MONTHS", "_STATUS")))
+    return {"timeToEventOptions": time_options, "eventObservationOptions": event_options,
+            "subgroupOptions": sorted(c for c in clinical.columns if c not in excluded)}
 
 
 def is_numeric(series: pd.Series) -> bool:

@@ -22,7 +22,7 @@ except ImportError:  # pragma: no cover
 
 
 TABLE_HEADERS = [
-    ("Event Table", 1, ["Removed", "Observed", "Censored", "At Risk"]),
+    ("Event Table", 1, ["Time", "Removed", "Observed", "Censored", "At Risk"]),
     ("Survival Function", 7, ["Time", "Probability"]),
     ("Confidence Intervals", 10, ["Lower Bound", "Upper Bound"]),
 ]

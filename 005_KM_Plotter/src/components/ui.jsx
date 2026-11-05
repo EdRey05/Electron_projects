@@ -10,17 +10,17 @@ import { Loader2 } from "lucide-react";
 export function Panel({ title, subtitle, right, children, className = "", bodyClass = "" }) {
   return (
     <section
-      className={`rounded-xl border border-[#2A313C] bg-[#161A21] ${className}`}
+      className={`rounded-xl border border-[#BCB8CB] bg-[#FAF9FC] ${className}`}
     >
       {(title || right) && (
-        <header className="flex items-start justify-between gap-3 border-b border-[#232A34] px-4 py-3">
+        <header className="flex items-start justify-between gap-3 border-b border-[#BCB8CB] px-4 py-3">
           <div className="min-w-0">
             {title && (
-              <h2 className="truncate text-[13px] font-semibold uppercase tracking-wider text-[#8B95A5]">
+              <h2 className="truncate text-[13px] font-semibold uppercase tracking-wider text-[#625C73]">
                 {title}
               </h2>
             )}
-            {subtitle && <p className="mt-0.5 text-xs text-[#6B7480]">{subtitle}</p>}
+            {subtitle && <p className="mt-0.5 text-xs text-[#625C73]">{subtitle}</p>}
           </div>
           {right && <div className="shrink-0">{right}</div>}
         </header>
@@ -46,13 +46,13 @@ export function Button({
 }) {
   const variants = {
     default:
-      "bg-[#232A34] text-[#E6EAF0] border border-[#333C49] hover:bg-[#2B333F] hover:border-[#414B5A]",
+      "bg-[#BCB8CB] text-[#292535] border border-[#BCB8CB] hover:bg-[#EAE3F5] hover:border-[#625C73]",
     primary:
-      "bg-[#38BDF8] text-[#0B1220] border border-[#38BDF8] hover:bg-[#7DD3FC] font-semibold",
+      "bg-[#6548A3] text-[#FFFFFF] border border-[#6548A3] hover:bg-[#513889] font-semibold",
     ghost:
-      "bg-transparent text-[#8B95A5] border border-transparent hover:bg-[#1E242D] hover:text-[#E6EAF0]",
+      "bg-transparent text-[#625C73] border border-transparent hover:bg-[#EAE3F5] hover:text-[#292535]",
     danger:
-      "bg-transparent text-[#FB7185] border border-[#4A2A31] hover:bg-[#2A1A1F]",
+      "bg-transparent text-[#A53232] border border-[#D1A19A] hover:bg-[#F9E9E6]",
   };
   const sizes = {
     sm: "px-2.5 py-1.5 text-xs gap-1.5",
@@ -79,7 +79,7 @@ export function Select({ label, value, onChange, options, disabled, placeholder,
   return (
     <label className="block">
       {label && (
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#6B7480]">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#625C73]">
           {label}
         </span>
       )}
@@ -88,7 +88,7 @@ export function Select({ label, value, onChange, options, disabled, placeholder,
           value={value ?? ""}
           disabled={disabled}
           onChange={(e) => onChange(e.target.value)}
-          className="w-full appearance-none rounded-lg border border-[#2F3743] bg-[#1B2029] px-3 py-2 pr-9 text-sm text-[#E6EAF0] outline-none transition-colors hover:border-[#3B4553] focus:border-[#38BDF8] disabled:opacity-40"
+          className="w-full appearance-none rounded-lg border border-[#BCB8CB] bg-[#F0EFF5] px-3 py-2 pr-9 text-sm text-[#292535] outline-none transition-colors hover:border-[#625C73] focus:border-[#6548A3] disabled:opacity-40"
         >
           {placeholder && <option value="">{placeholder}</option>}
           {options.map((opt) => {
@@ -102,14 +102,14 @@ export function Select({ label, value, onChange, options, disabled, placeholder,
           })}
         </select>
         <svg
-          className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#6B7480]"
+          className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#625C73]"
           viewBox="0 0 16 16"
           fill="none"
         >
           <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       </div>
-      {hint && <span className="mt-1 block text-[11px] text-[#6B7480]">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] text-[#625C73]">{hint}</span>}
     </label>
   );
 }
@@ -120,7 +120,7 @@ export function Checkbox({ label, checked, onChange, hint, disabled }) {
   return (
     <label
       className={`flex cursor-pointer items-start gap-2.5 rounded-lg px-1 py-1 ${
-        disabled ? "opacity-40" : "hover:bg-[#1B2029]"
+        disabled ? "opacity-40" : "hover:bg-[#F0EFF5]"
       }`}
     >
       <input
@@ -128,11 +128,11 @@ export function Checkbox({ label, checked, onChange, hint, disabled }) {
         checked={!!checked}
         disabled={disabled}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[#3B4553] bg-[#1B2029]"
+        className="mt-0.5 h-4 w-4 shrink-0 cursor-pointer rounded border-[#625C73] bg-[#F0EFF5]"
       />
       <span className="min-w-0">
-        <span className="block text-sm text-[#D4DAE4]">{label}</span>
-        {hint && <span className="mt-0.5 block text-[11px] text-[#6B7480]">{hint}</span>}
+        <span className="block text-sm text-[#292535]">{label}</span>
+        {hint && <span className="mt-0.5 block text-[11px] text-[#625C73]">{hint}</span>}
       </span>
     </label>
   );
@@ -145,10 +145,10 @@ export function Slider({ label, value, min, max, step = 1, onChange, format, hin
     <label className="block">
       {label && (
         <span className="mb-1.5 flex items-baseline justify-between gap-2">
-          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#6B7480]">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-[#625C73]">
             {label}
           </span>
-          <span className="font-mono-tabular text-xs text-[#38BDF8]">
+          <span className="font-mono-tabular text-xs text-[#6548A3]">
             {format ? format(value) : value}
           </span>
         </span>
@@ -162,7 +162,7 @@ export function Slider({ label, value, min, max, step = 1, onChange, format, hin
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full"
       />
-      {hint && <span className="mt-1 block text-[11px] text-[#6B7480]">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] text-[#625C73]">{hint}</span>}
     </label>
   );
 }
@@ -173,12 +173,12 @@ export function Field({ label, children, hint }) {
   return (
     <div>
       {label && (
-        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#6B7480]">
+        <span className="mb-1.5 block text-[11px] font-semibold uppercase tracking-wider text-[#625C73]">
           {label}
         </span>
       )}
       {children}
-      {hint && <span className="mt-1 block text-[11px] text-[#6B7480]">{hint}</span>}
+      {hint && <span className="mt-1 block text-[11px] text-[#625C73]">{hint}</span>}
     </div>
   );
 }
@@ -187,11 +187,11 @@ export function Field({ label, children, hint }) {
 
 export function Badge({ children, tone = "default", className = "" }) {
   const tones = {
-    default: "bg-[#232A34] text-[#8B95A5] border-[#333C49]",
-    info: "bg-[#0E2A38] text-[#38BDF8] border-[#1B4A5E]",
-    good: "bg-[#12301F] text-[#4ADE80] border-[#1D4A2E]",
-    warn: "bg-[#33280F] text-[#FBBF24] border-[#4D3C15]",
-    bad: "bg-[#331418] text-[#FB7185] border-[#4E2129]",
+    default: "bg-[#BCB8CB] text-[#625C73] border-[#BCB8CB]",
+    info: "bg-[#EAE3F5] text-[#6548A3] border-[#BCB8CB]",
+    good: "bg-[#E5F1EA] text-[#227047] border-[#A4C1AE]",
+    warn: "bg-[#FFF1CF] text-[#8B5C0A] border-[#C9AC6B]",
+    bad: "bg-[#F9E9E6] text-[#A53232] border-[#D1A19A]",
   };
   return (
     <span
@@ -208,12 +208,12 @@ export function EmptyState({ icon: Icon, title, children }) {
   return (
     <div className="flex flex-col items-center justify-center gap-2 px-6 py-10 text-center">
       {Icon && (
-        <div className="mb-1 rounded-xl border border-[#2A313C] bg-[#1B2029] p-3 text-[#4A5563]">
+        <div className="mb-1 rounded-xl border border-[#BCB8CB] bg-[#F0EFF5] p-3 text-[#625C73]">
           <Icon size={22} />
         </div>
       )}
-      <p className="text-sm font-medium text-[#8B95A5]">{title}</p>
-      {children && <div className="max-w-md text-xs leading-relaxed text-[#5F6875]">{children}</div>}
+      <p className="text-sm font-medium text-[#625C73]">{title}</p>
+      {children && <div className="max-w-md text-xs leading-relaxed text-[#625C73]">{children}</div>}
     </div>
   );
 }
@@ -222,10 +222,10 @@ export function EmptyState({ icon: Icon, title, children }) {
 
 export function Alert({ tone = "info", title, children, onClose }) {
   const tones = {
-    info: "border-[#1B4A5E] bg-[#0E2A38] text-[#9BDCF5]",
-    good: "border-[#1D4A2E] bg-[#12301F] text-[#8FE8AE]",
-    warn: "border-[#4D3C15] bg-[#33280F] text-[#F5D98A]",
-    bad: "border-[#4E2129] bg-[#331418] text-[#F5A3AE]",
+    info: "border-[#BCB8CB] bg-[#EAE3F5] text-[#6548A3]",
+    good: "border-[#A4C1AE] bg-[#E5F1EA] text-[#235B3A]",
+    warn: "border-[#C9AC6B] bg-[#FFF1CF] text-[#705112]",
+    bad: "border-[#D1A19A] bg-[#F9E9E6] text-[#8F2F2F]",
   };
   return (
     <div className={`flex items-start gap-2.5 rounded-lg border px-3 py-2.5 text-xs ${tones[tone]}`}>

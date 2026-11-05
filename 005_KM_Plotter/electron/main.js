@@ -11,8 +11,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const path = require("path");
 const fs = require("fs");
-const os = require("os");
-const { spawn } = require("child_process");
+const { createPythonWorker } = require("./python-worker");
 
 const runtime = require(app.isPackaged
   ? path.join(process.resourcesPath, 'build-common', 'runtime.cjs')
@@ -35,13 +34,14 @@ function coreScriptPath() {
 
 function createWindow() {
   const win = new BrowserWindow({
+    show: false,
     width: 1500,
     height: 950,
     minWidth: 1100,
     minHeight: 700,
     title: "KM Plotter",
     autoHideMenuBar: true,
-    backgroundColor: "#0F1115",
+    backgroundColor: "#DDDDE5",
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -49,6 +49,8 @@ function createWindow() {
       sandbox: false,
     },
   });
+
+  win.once("ready-to-show", () => { win.maximize(); win.show(); });
 
   if (isDev) {
     win.loadURL("http://localhost:5173");
@@ -89,6 +91,9 @@ ipcMain.handle("dialog:pickFile", async (_evt, { title, filters }) => {
 });
 
 ipcMain.handle("dialog:saveFile", async (_evt, { title, defaultName, filters }) => {
+  if (process.env.KM_E2E_SAVE_DIRECTORY) {
+    return path.join(process.env.KM_E2E_SAVE_DIRECTORY, path.basename(defaultName));
+  }
   // End-to-end test hook: write to this path instead of showing a dialog.
   if (process.env.KM_E2E_SAVE_PATH) {
     return process.env.KM_E2E_SAVE_PATH;
@@ -104,56 +109,13 @@ ipcMain.handle("dialog:saveFile", async (_evt, { title, defaultName, filters }) 
 
 // ---- IPC: run the Python analysis core ----
 
+let analysisWorker = null;
 ipcMain.handle("km:run", async (_evt, job) => {
-  const py = pythonExePath();
-  const script = coreScriptPath();
-
-  if (!fs.existsSync(script)) {
-    return { ok: false, error: `km_core.py not found at ${script}. Run npm run stage-python.` };
-  }
-
-  // Write the job to a temp file and hand its path to Python; this avoids
-  // shell-quoting issues with paths containing spaces or unicode.
-  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "km-"));
-  const jobPath = path.join(tmpDir, "job.json");
-  const outPath = path.join(tmpDir, "out.json");
-
-  try {
-    fs.writeFileSync(jobPath, JSON.stringify(job), "utf8");
-
-    return await new Promise((resolve) => {
-      const child = spawn(py, [script, jobPath, "--out", outPath], {
-        windowsHide: true,
-        env: { ...process.env, PYTHONIOENCODING: "utf-8" },
-      });
-      let stderr = "";
-      child.stderr.on("data", (c) => {
-        stderr += c.toString();
-      });
-      child.on("error", (err) => {
-        resolve({ ok: false, error: `Could not start Python: ${err.message}` });
-      });
-      child.on("close", () => {
-        try {
-          const raw = fs.readFileSync(outPath, "utf8");
-          resolve(JSON.parse(raw));
-        } catch (err) {
-          resolve({
-            ok: false,
-            error: stderr.trim() || `The analysis did not return a result (${err.message}).`,
-            detail: stderr,
-          });
-        }
-      });
-    });
-  } finally {
-    try {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch {
-      /* best effort */
-    }
-  }
+  if (!fs.existsSync(coreScriptPath())) return { ok: false, error: "The bundled analysis core is missing." };
+  if (!analysisWorker) analysisWorker = createPythonWorker(pythonExePath(), coreScriptPath());
+  return analysisWorker.run(job);
 });
+app.on("before-quit", () => { analysisWorker?.stop(); analysisWorker = null; });
 
 // ---- IPC: write bytes to a chosen path ----
 
@@ -181,6 +143,8 @@ ipcMain.handle("app:info", async () => ({
   platform: process.platform,
   python: pythonExePath(),
   core: coreScriptPath(),
+  workerPid: analysisWorker?.pid ?? null,
+  windowMaximized: BrowserWindow.getAllWindows()[0]?.isMaximized() ?? false,
 }));
 
 app.whenReady().then(() => {

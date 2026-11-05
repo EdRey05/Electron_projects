@@ -1,212 +1,75 @@
 # KM Plotter
 
-> Portable builds follow the [shared build manual](../build-tools/README.md). From the repository root run `powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 005_KM_Plotter`. All dependency installation runs in Windows Sandbox. End users extract the folder ZIP and double-click the EXE; Node and Python are bundled. Preserve `data/` when updating.
+**Explore time-to-event data with local Kaplan–Meier survival plots.** Load a clinical table, inspect follow-up histograms and status counts, and explicitly assign each status to an observed event, a censored observation or an exclusion. Review the whole cohort or compare groups defined by clinical categories, numeric measurements or optional RNA-expression data.
 
-Desktop Kaplan-Meier plot generator — the Windows-native version of the
-Streamlit app `003_KM_plotter` from the `Streamlit_projects` repository.
+Choose groups from visible distributions rather than guessing cutoffs. Clinical fields with a few distinct values offer category assignments with patient counts; continuous measurements and RNA genes offer signed ranges, editable boundaries and median or zero splits. Inspect included and excluded patients, event totals and per-curve median survival alongside the resulting figure.
 
-Reads a clinical dataset (and optionally an RNA expression dataset), lets you
-map patient status onto a 0/1 event code, optionally splits the cohort into
-subgroups, and produces interactive Kaplan-Meier curves with confidence bands,
-an at-risk table, and an Excel export — all offline, in a single executable.
+Display confidence bands, censor marks, a readable legend and an aligned number-at-risk table. Export the same scientific figure as a high-resolution PNG or SVG, plus an Excel workbook containing event tables, survival estimates, confidence bounds and medians. Files stay local, and the portable Windows folder includes the runtimes needed to use the app without installing developer tools.
 
 ![KM Plotter](docs/screenshot.png)
 
----
+[Watch the v2.0.0 demo](../Images_GIFs_Videos/005_KM_Plotter.mp4): explore METABRIC clinical and RNA data, compare chart-guided groups and review exported figures and worksheets.
 
-## Why Electron and not Node
+## Using the workspace
 
-`Nodejs_projects` holds web apps (Next.js) — there is no desktop packaging
-story there, and a Kaplan-Meier app has to be a *local* tool that opens
-files from the user's disk without a server.
+1. The app opens maximized. Choose a tab-separated clinical file with a unique, nonempty `PATIENT_ID` per row.
+2. Select the follow-up time and event-status fields. Review their histogram and category counts.
+3. Assign each status to **Censored / no event**, **Observed event** or **Ignore**. Totals count patients, rather than status labels. Missing/ignored statuses are excluded. Select at least one censored and one event status value.
+4. Use **Whole cohort**, or choose **By variables** and add up to five subgroup variables. Patient IDs and survival endpoint fields are excluded from clinical subgroup choices.
+5. Review each subgroup distribution. Assign categories to named groups, or choose signed numeric ranges with editable bounds and sliders. **One group per category**, **Split at median** and **Split at zero** appear when applicable. Each variable supports up to five groups. Names are prefilled from the variable and selected values/ranges; edit them freely. Automatic names follow selection changes, while custom names are preserved.
+6. Click **Generate plot** or **Update plot**. Check included/excluded patient totals and the per-curve summary. Curves represent nonempty combinations of the groups.
+7. All figure checkboxes start enabled, including the side legend, risk table and optional median line beneath each legend name. Adjust confidence level (90%, 95% or 99%), bands, censor marks, legend and displayed timeline. Analysis changes require an update before export; display-only options update immediately.
+8. Save **PNG**, **SVG** or **Excel**. Success notifications disappear without moving the workspace. Errors remain visible until dismissed or corrected.
 
-`Electron_projects` already contains the exact pattern this app needs:
-`003_Gene_Synthesis_Hub` and `004_Peak_Tracer` both ship a React/Electron
-shell around a bundled Python runtime, producing a single portable `.exe`.
-This app follows that pattern, so it inherits the repo's toolchain, its
-conventions and its build pipeline.
+## Data and grouping rules
 
-**The statistics are not re-implemented from scratch in the UI** — the
-Kaplan-Meier estimator is a faithful port of `lifelines` 0.27.8 (the version
-the Streamlit app pins) written in plain NumPy, and it is validated against
-real `lifelines` output on every change. See [Numerical validation](#numerical-validation).
+- **Clinical input:** UTF-8 tab-separated `.txt` / `.tsv` / `.tab`; optional `#` data-dictionary lines. Recognized endpoint pairs include OS, RFS, PFS, DFS and DSS (`_MONTHS` and `_STATUS`); `VITAL_STATUS` and `CAUSE_OF_DEATH` are alternative event sources.
+- **Categories:** text and clinical numeric columns with at most ten distinct finite values use category assignments. Integers remain categorical when missing values promote their stored type to decimal. A category can belong to only one group.
+- **Ranges:** continuous clinical values and all RNA genes use numeric ranges, including negative expression. Bounds normally mean `[from, to)`. **Include upper boundary** closes a range; defaults include the observed maximum in the final group. Overlaps are rejected. Missing and unselected values are excluded and counted; there is no hidden catch-all group.
+- **RNA input:** gene-as-rows with `Hugo_Symbol` (and optional `Entrez_Gene_Id`), or patient-as-rows with `PATIENT_ID`. IDs match exactly after outer whitespace is removed; leading zeroes are preserved. Joins are one-to-one.
+- **Gene search:** searches the complete catalog and displays up to 100 matching choices at a time. Refine the search as needed. Symbols with multiple rows are disabled and reported; values are never silently averaged or taken from the first duplicate.
+- **Eligibility:** missing, nonfinite and negative follow-up times are excluded. Subgroup distributions use the eligible endpoint cohort, then report matched RNA IDs and missing/invalid measurements. Endpoint charts show raw input before mapping, so every status can be assigned deliberately.
 
----
+## Figures and exports
 
-## Features
+White paper, a light gray plot field, dashed grid lines and a scientific curve palette are independent of the Iris workspace theme. Screen, SVG and PNG share the same geometry. The PNG is 3,300 pixels wide (3× the logical figure width); SVG has explicit fonts, fills and lines.
 
-| | |
-|---|---|
-| **Clinical input** | Tab-separated (`.txt` / `.tsv`), `#` comment lines may carry a data dictionary. `PATIENT_ID` required. |
-| **RNA input** | Optional. Accepts both gene-as-rows (`Hugo_Symbol`) and patient-as-rows layouts; normalised automatically. |
-| **Endpoint discovery** | Auto-detects `OS` / `RFS` / `PFS` / `DFS` / `DSS` `_MONTHS` + `_STATUS` pairs, plus `VITAL_STATUS` / `CAUSE_OF_DEATH` as alternative event sources. |
-| **Event mapping** | Point-and-click mapping of raw status values onto **0 = no event** and **1 = event**, with live patient counts per value. |
-| **Subgroups** | 1–5 variables × 1–5 groups. Text variables split by **tags**, numeric variables (and RNA expression) split by **ranges**. Curves are the cartesian product. |
-| **Plot** | Step-function KM curves, exponential-Greenwood confidence bands, censored-observation marks, at-risk table, per-curve summary. |
-| **Options** | Confidence level (90/95/99%), CI band on/off, at-risk table on/off, censor marks on/off, legend position, curve truncation (50–100%). |
-| **Export** | PNG (2× retina) or SVG of the plot; Excel workbook with one sheet per curve (event table, survival function, confidence bounds, median). |
+The risk table sits below the time-axis title and aligns with the displayed ticks. Each curve shows **At risk**, cumulative **Censored** and cumulative **Events**, using end-of-period counts: removals at that time are already subtracted. These differ from start-of-period counts. Displayed timeline percentage trims the figure, not the fitted cohort or Excel tables.
 
----
+Excel contains one sheet per curve with event tables, survival probabilities, confidence intervals and medians. Unreached medians display as **Not reached** in the interface. Export retains the generated settings; if input files change afterward, update the plot before saving Excel. File-change detection uses path, modification time and size.
 
-## Quick start
+## Portable operation and development
 
-Build with the shared Sandbox command above. The portable folder ZIP is the default recommendation. The optional single EXE extracts its bundled runtime at launch. No developer tools are required on the end-user machine.
+Extract the folder ZIP and double-click its EXE. Keep the entire folder together. Node and Python are bundled; users install neither. Preserve `data/` when updating. Analysis uses one owned Python worker over local pipes, with bounded file-aware caches. There is no HTTP analysis server; normal window closure stops the worker.
 
-## Using the app
+Follow the [shared build manual](../build-tools/README.md). Dependency installation, development compilation and packaging run in Windows Sandbox. The release builder, from the repository root:
 
-1. **Choose clinical file…** — the only required file.
-2. **Select the time-to-event column** (e.g. `OS_MONTHS`) and the **event
-   observation column** (e.g. `OS_STATUS`).
-3. **Map the event values** — click `0` next to every value that means *no
-   event* and `1` next to every value that means *event*. Rows with an
-   unmapped value are excluded from the analysis.
-4. *(Optional)* **Subgroups** → *By variable(s)*: pick the dataset, the
-   column and the groups. Text columns are split by tag (pick the values);
-   numeric columns and RNA genes are split by range.
-5. **Generate plot.**
-6. **PNG** / **Excel** to save the results.
-
-> The at-risk table and the plot's own axis are independent: the table shows
-> the number at risk at five evenly spaced time points across the observed
-> range, matching the Streamlit app's behaviour.
-
----
-
-## Numerical validation
-
-The KM estimator is a port of `lifelines` 0.27.8. Two test scripts prove it
-is numerically identical (differences at float epsilon, ~1e-16):
-
-```bash
-# Needs a Python with lifelines installed:
-pip install "lifelines==0.27.8" "pandas==2.1.4" "numpy==1.26.2" openpyxl
-
-python tests/validate_against_lifelines.py   # estimator vs. lifelines
-python tests/validate_pipeline.py             # the whole app pipeline vs. lifelines
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\build-tools\Build-Apps.ps1 -Apps 005_KM_Plotter
 ```
 
-`validate_pipeline.py` drives `km_core.py` exactly as Electron does and
-covers: no subgroups, tag subgroups, range subgroups, the cartesian product
-of two variables, real-world data with NaNs (METABRIC), non-default
-confidence levels, the Excel export, and the error paths.
+`src/Workspace.jsx` owns the flow; `Distribution.jsx` and `SubgroupEditor.jsx` provide chart-guided controls. `KmPlot.jsx` and `lib/figure.js` share figure geometry. `electron/python-worker.js` manages the bundled core. `kmplot/profiling.py` classifies distributions; `analysis.py` validates membership and fits the NumPy estimator.
 
-`npm run test:python` runs a fast smoke test against the **bundled**
-runtime — no `lifelines` needed — and asserts the known-good medians.
+## Validation
 
-### Verification of the shipped build
+The estimator follows `lifelines` 0.27.8 with exponential-Greenwood (log-log) confidence bounds. Independent reference scripts compare timelines, survival, confidence bounds, medians and event tables. Set `KM_REFERENCE_DATA` to the reference clinical directory if the sibling Streamlit repo is unavailable. Reference-only dependencies belong in a disposable environment.
 
-The table below records earlier project validation. For this portable release, use the dated [shared validation baseline](../build-tools/VALIDATION.md) and artifact-matched runtime test records.
-
-The packaged app is verified end-to-end, not just the source:
-
-| Layer | What it proves | Result |
-|---|---|---|
-| L1 | Estimator ≡ lifelines 0.27.8, float epsilon | pass |
-| L2 | Core works on the bundled runtime | pass |
-| L3 | Real Electron IPC path, dev build | 28/28 pass |
-| L3 | Real Electron IPC path, **packaged** `win-unpacked` build | 28/28 pass |
-| L4 | Rendered UI inspected with real data | pass (see `docs/screenshot.png`) |
-
-L3 runs the actual `electron/e2e.js` driver inside a real Electron instance
-(file picker → job protocol → analysis → Excel export → file write), and it
-resolves Python from `resources/`, the same path the shipped app uses.
-
----
-
-## Architecture
-
-```
-005_KM_Plotter/
-├── electron/
-│   ├── main.js          # window, file dialogs, spawns the Python core
-│   ├── preload.js       # the only renderer↔main surface (contextIsolation)
-│   └── e2e.js           # end-to-end test driver (KM_E2E_TEST=1)
-├── python-app/
-│   ├── km_core.py       # CLI: inspect | analyze | export | column
-│   ├── kmplot/
-│   │   ├── dataio.py    # loading, column discovery, profiling
-│   │   ├── kmlib.py     # the Kaplan-Meier estimator (lifelines port)
-│   │   ├── analysis.py  # event encoding, subgroups, cohort construction
-│   │   └── excel.py     # workbook export
-│   └── requirements.txt
-├── src/
-│   ├── App.jsx          # the application shell and the whole flow
-│   ├── components/
-│   │   ├── KmPlot.jsx   # the SVG plot
-│   │   ├── ui.jsx       # small UI primitives
-│   │   └── ErrorBoundary.jsx
-│   └── lib/plot.js      # pure plot geometry (shared by screen and export)
-├── scripts/
-│   ├── stage-python.js  # delegates to the shared Sandbox runtime stager
-│   └── test-python.js   # smoke test
-└── tests/               # lifelines validation scripts
+```powershell
+python tests/validate_against_lifelines.py
+python tests/validate_pipeline.py
+python tests/test_v2_contract.py
+node --test tests/figure-contract.cjs tests/worker-lifecycle.cjs
+npm run test:python
 ```
 
-### How the pieces talk
+`tests/ui-workflow.cjs` drives actual Electron renderer/IPC, native-dialog test hooks and bundled Python: signed RNA groups, exports, responsive layout, toast stability and worker shutdown. It requires prepared file-selection and isolated output paths; reusable setup and full reports live in Task 0001. Owner-data evidence remains outside the public repo. Development checks do not replace matching-artifact offline tests for a future release ZIP.
 
-The renderer never touches the filesystem. It calls `window.api.run(job)`;
-the main process writes the job to a temp file and spawns
-`python-app/km_core.py`, which returns a JSON result. This keeps the
-renderer sandboxed, avoids shell-quoting problems with paths, and makes the
-analysis trivially scriptable outside the GUI.
+## Scope and limitations
 
-```
-React renderer ──IPC──▶ Electron main ──spawn──▶ km_core.py ──▶ JSON result
-      ▲                                                    │
-      └──────────────── plot points, event table ──────────┘
-```
+- Right-censoring only; no delayed entry or left truncation.
+- Descriptive curves; no Cox model, adjusted effects or hypothesis-testing workflow.
+- Mandatory unique IDs; ambiguous joins and duplicated gene symbols need source-data correction.
+- Many group combinations produce large figures/workbooks. Prefer focused comparisons; empty combinations are omitted.
+- `lifelines` is used for independent validation, not shipped as a runtime requirement.
 
-### Why the plot is SVG
-
-Drawing the curve with the same geometry that produces the exported file
-means the PNG is exactly what was on screen. It also avoids shipping a
-charting library, and lets the at-risk table, censor marks and confidence
-bands share one coordinate system.
-
----
-
-## Data format
-
-Tab-separated, with an optional `#` data-dictionary header:
-
-```
-#Patient Identifier    ...    Overall Survival (Months)    Overall Survival Status
-#Identifier ...                ...    Number of months          0:LIVING / 1:DECEASED
-PATIENT_ID	OS_MONTHS	OS_STATUS
-P_0001	33.94	Alive
-```
-
-The same three test datasets the Streamlit app uses are in the
-`Streamlit_projects` repo under `Test_units/Project 003/`:
-
-- `clinical_synthetic.txt` — 1000 patients, exercises the 9 dtype scenarios
-- `clinical_METABRIC.txt` — 2509 breast-cancer patients, real NaNs
-- `clinical_SIDRA-LUMC.txt` — 348 colon-cancer patients, many endpoints
-
----
-
-## Notes and limitations
-
-- **Right-censoring only.** Delayed entry (left truncation) is not supported —
-  the same scope as the Streamlit app.
-- **The estimator is a port, not a wrapper.** `lifelines` is a build-time
-  dependency of the test suite only; the shipped app needs just NumPy,
-  pandas and openpyxl. If you would rather depend on `lifelines` directly,
-  `python-app/kmplot/kmlib.py` is the only file to replace.
-- **Range subgroups are half-open** (`[lo, hi)`), so the last group of a
-  variable catches everything that is left; no patient is silently dropped.
-- **The Excel export** writes one sheet per curve with the event table,
-  survival function, confidence bounds and median survival time — the same
-  layout as the Streamlit app's `KM_results_XX.xlsx`.
-
----
-
-## Credits
-
-Original Streamlit app: `003_KM_plotter` (V11) by
-Eduardo Reyes Alvarez, Ph.D. — `Streamlit_projects` repository.
-
-The Kaplan-Meier estimator follows the algorithm in
-[lifelines](https://github.com/CamDavidsonPilon/lifelines) 0.27.8
-(Cam Davidson-Pilon), which implements the exponential-Greenwood
-("log-log") confidence bounds described in R's `survival` package.
+Original reference: Eduardo Reyes Alvarez's `Streamlit_projects/003_KM_plotter` (V11). Estimator algorithms follow [lifelines](https://github.com/CamDavidsonPilon/lifelines) 0.27.8.

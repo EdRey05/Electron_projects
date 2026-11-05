@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 if ($env:USERNAME -ne 'WDAGUtilityAccount' -or !(Test-Path C:\Runner\recipe.json)) { throw 'Run only in the configured Windows Sandbox.' }
@@ -6,7 +6,14 @@ $recipe = Get-Content C:\Runner\recipe.json -Raw | ConvertFrom-Json
 $buildRoot = 'C:\Build'
 New-Item -ItemType Directory -Path $buildRoot -Force | Out-Null
 $export = 'C:\Export'
-function Step([string]$Message) { ((Get-Date).ToString('o') + ' ' + $Message) | Add-Content (Join-Path $export 'progress.log') }
+function Step([string]$Message) {
+    $line = (Get-Date).ToString('o') + ' ' + $Message
+    # Shared-folder readers can briefly lock logs; keep a transient lock from aborting the build.
+    for ($attempt = 0; $attempt -lt 30; $attempt++) {
+        try { Add-Content -LiteralPath (Join-Path $export 'progress.log') -Value $line -ErrorAction Stop; return }
+        catch [System.IO.IOException] { if ($attempt -eq 29) { throw }; Start-Sleep -Milliseconds 100 }
+    }
+}
 function Run([string]$Program,[string[]]$Arguments) {
     Step ($Program + ' ' + ($Arguments -join ' '))
     $previous = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
