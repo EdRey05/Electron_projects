@@ -3,8 +3,8 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 1.1
-Date: Oct 13, 2026
+Version: 1.4
+Date: Nov 04, 2026
 Notes: Label Generator subapp shell, modeled after the QC File Prep app
     (workflow dropdown + shared Process button + log box). It is a
     general router: every workflow registers through the
@@ -18,12 +18,30 @@ Notes: Label Generator subapp shell, modeled after the QC File Prep app
     every app opened afterwards); the app now inherits the hub
     appearance like the other subapps, and main() uses the standard
     standalone convention (System + blue).
+    v1.2 resizes for the tabbed rework (window +30% wide, +15% tall,
+    workflow panel grown and EXPANDING with the window - no leftover
+    grey space below the Process button), and puts the workflow selector
+    on a transparent grid row: label on the 3rd of 6 columns, dropdown
+    on the 4th. The log box moved into the hosting workflow's files row
+    via get_logbox().
+    v1.3 hardening: the shared log box is now state-disabled with the
+    write toggling state around each insert/clear (Tk Text rejects
+    programmatic inserts while disabled; stray typing no longer
+    pollutes the log).
+    v1.4 removes the shared Process button: the Sg Relabeling workflow
+    auto-parses on Add, so Process only re-ran the same parse on the
+    same file list (start_processing and the button gate went with it;
+    a parse that loses the race against an Add/Clear now re-runs itself
+    instead of waiting for a manual Process). The shell keeps
+    make_path_from_config in place: the workflow's new Autodiscovery
+    reuses it to resolve + background-validate the 4.6 Shipping list
+    folder (default_directories.ini 'Shipping_List' key, drive label
+    mapped by the launcher).
 """
 
 import configparser
 import os
 import sys
-import threading
 
 import customtkinter as ctk
 
@@ -54,7 +72,7 @@ class LabelGeneratorApp(ctk.CTkFrame):
 
         # --- Window Configuration ---
         if self.master:
-            self.master.geometry("1000x720")
+            self.master.geometry("1300x828")
 
         # Appearance/theme: NOT set here. The hub owns the process-wide
         # appearance (Light + app_theme_midnight.json); apps that re-apply a
@@ -74,33 +92,48 @@ class LabelGeneratorApp(ctk.CTkFrame):
         # Store hub-passed paths for workflows to use (none required yet)
         self.hub_paths = {}
 
+        # Log box state BEFORE the workflows load - the workflow create_ui
+        # calls get_logbox() (Ed hosts the log in the Sg Relabeling files
+        # row).
+        self.logbox = None
+        self._log_buffer = []   # messages logged before the box is placed
+
         # --- 2. Create the Workflow Selector (Dropdown) ---
         workflow_names = [name for name, _ in WORKFLOWS_TO_LOAD]
         self.selected_workflow = ctk.StringVar(
             value=workflow_names[0] if workflow_names else ""
         )
 
-        selector_frame = ctk.CTkFrame(self)
-        selector_frame.pack(fill="x", padx=12, pady=(12, 4))
+        # 6-col row (Ed): the workflow text sits on the 3rd column and the
+        # dropdown on the 4th spanning 4-6, so a short label no longer
+        # drags a super-wide dropdown across the whole row.
+        selector_frame = ctk.CTkFrame(self, fg_color="transparent")
+        selector_frame.pack(fill="x", padx=12, pady=(12, 10))
+        for i in range(6):
+            selector_frame.grid_columnconfigure(i, weight=1, uniform="selector_cols")
+        selector_frame.grid_rowconfigure(0, weight=1)
 
         ctk.CTkLabel(
             selector_frame,
             text="Select Workflow:",
             font=ctk.CTkFont(size=13, weight="bold"),
-        ).pack(side="left", padx=(0, 8))
+        ).grid(row=0, column=2, sticky="ew")
         self.workflow_dropdown = ctk.CTkOptionMenu(
             selector_frame,
             variable=self.selected_workflow,
             values=workflow_names,
             command=self.on_workflow_change,
         )
-        self.workflow_dropdown.pack(side="left", fill="x", expand=True)
+        self.workflow_dropdown.grid(row=0, column=3, columnspan=1, sticky="ew")
 
         # --- 3. Create Container for Workflow UI ---
         # The table workflow is the visual focus: container is the larger
-        # pane, the log box the smaller one (heights swapped per Ed).
-        self.workflow_container = ctk.CTkFrame(self, height=440)
-        self.workflow_container.pack(fill="x", padx=12, pady=0)
+        # pane and EXPANDS to eat whatever the window has left, so no
+        # dead grey space survives below the Process button; the former
+        # bottom log strip is freed to the tables - the log now lives in
+        # the workflow UI (see get_logbox).
+        self.workflow_container = ctk.CTkFrame(self, height=640)
+        self.workflow_container.pack(fill="both", expand=True, padx=12, pady=0)
         self.workflow_container.pack_propagate(False)  # Prevent shrinking
 
         # --- 4. Load Each Workflow ---
@@ -115,16 +148,7 @@ class LabelGeneratorApp(ctk.CTkFrame):
             workflow_instance.frame = workflow_frame  # Store reference for show/hide
             self.workflows[name] = workflow_instance
 
-        # --- 5. Create Log Box and Process Button ---
-        # Log is the SMALLER pane: the workflow UI (table) dominates.
-        self.logbox = ctk.CTkTextbox(self, height=150)
-        self.process_button = ctk.CTkButton(self, text="Process", command=self.start_processing)
-        self.process_button.configure(state="disabled")
-
-        self.logbox.pack(fill="both", expand=True, padx=12, pady=12)
-        self.process_button.pack(pady=(0, 12))
-
-        # --- 6. Final Setup ---
+        # --- 5. Final Setup ---
         if WORKFLOWS_TO_LOAD:
             initial_workflow_name = WORKFLOWS_TO_LOAD[0][0]
             for name, workflow in self.workflows.items():
@@ -137,7 +161,10 @@ class LabelGeneratorApp(ctk.CTkFrame):
 
     def on_workflow_change(self, selected_name=None):
         """Handles the event when a new workflow is selected from the dropdown."""
-        self.logbox.delete("1.0", "end")
+        if self.logbox is not None:
+            self.logbox.configure(state="normal")
+            self.logbox.delete("1.0", "end")
+            self.logbox.configure(state="disabled")
 
         if selected_name is None:
             selected_name = self.selected_workflow.get()
@@ -151,27 +178,42 @@ class LabelGeneratorApp(ctk.CTkFrame):
         self.log(f"--- Switched to '{selected_name}' workflow ---")
         active_workflow.setup_default_paths()
 
-    def update_log_gui(self, msg: str):
-        """Helper method to insert message into the logbox on the main GUI thread."""
+    def _logbox_write(self, msg: str):
+        """Inserts into the logbox, toggling state around the write - Tk
+        Text rejects programmatic inserts while state='disabled'."""
+        self.logbox.configure(state="normal")
         self.logbox.insert("end", msg + "\n")
         self.logbox.see("end")
+        self.logbox.configure(state="disabled")
+
+    def update_log_gui(self, msg: str):
+        """Helper method to insert message into the logbox on the main GUI thread."""
+        if self.logbox is None:
+            # Box not placed yet (no get_logbox call) - keep for the flush.
+            self._log_buffer.append(msg)
+            return
+        self._logbox_write(msg)
+
+    def get_logbox(self, parent, **grid_kwargs) -> ctk.CTkTextbox:
+        """Returns the shared log box, creating it inside the given parent
+        on first use with the given grid placement (the parent is the
+        workflow widget hosting it - currently the Sg Relabeling files
+        row). Earlier messages flush in order. The box stays state-
+        disabled: readable and copyable, stray typing ignored."""
+        if self.logbox is None:
+            self.logbox = ctk.CTkTextbox(parent, height=152)
+            self.logbox.grid(**grid_kwargs)
+            self.logbox.configure(state="normal")
+            for msg in self._log_buffer:
+                self.logbox.insert("end", msg + "\n")
+            self._log_buffer = []
+            self.logbox.see("end")
+            self.logbox.configure(state="disabled")
+        return self.logbox
 
     def log(self, msg: str):
         """Schedules a message to be appended to the logbox in a thread-safe way."""
         self.after(0, self.update_log_gui, msg)
-
-    def start_processing(self):
-        """Validates inputs and runs the workflow's processing task in a thread."""
-        selected_workflow_name = self.selected_workflow.get()
-        active_workflow = self.workflows[selected_workflow_name]
-
-        if not active_workflow.validate_inputs():
-            return
-
-        self.process_button.configure(state="disabled")
-        threading.Thread(
-            target=active_workflow.run_processing_task, daemon=True
-        ).start()
 
     def create_drive_dictionary(self) -> dict:
         """
@@ -219,6 +261,6 @@ if __name__ == "__main__":
     ctk.set_default_color_theme("blue")
     root = ctk.CTk()
     root.title("BBI Label Generator")
-    root.geometry("1000x720")
+    root.geometry("1300x828")
     app = LabelGeneratorApp(master=root)
     root.mainloop()

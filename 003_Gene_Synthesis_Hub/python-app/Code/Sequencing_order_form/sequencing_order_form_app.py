@@ -3,16 +3,14 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook
 
-Version: 4.5
-Date: Oct 15, 2026
-Notes: Fills Sample Type (col B) from the sample ID in col C ('Purified
-    PCR product' when the ID carries the PFr or PCR marker, 'Plasmid'
-    otherwise) and the working concentration (col F, always '40-60
-    ng/uL') alongside the other columns. Cell B18 (merged B18:D18) gets
-    the order form ID: 'Q' + run date + order form identifier, where
-    the run date comes from the Sequencing_ID/date_ID itself (letter
-    prefix = year code, U -> 2026 / T -> 2025, digits = MMDD) and the
-    identifier is the number after its dash, or 1 without a dash.
+Version: 4.7
+Date: Nov 4, 2026
+Notes: Works on customtkinter 5.x and 6.x. The Generate log's read-only
+    flip around each insert no longer reads the state back with
+    cget("state") — CTkTextbox on customtkinter 5.x does not support that
+    (ValueError killed Generate at its first log line). The state is now
+    set to normal for the insert and back to disabled unconditionally,
+    which 5.x and 6.x both accept.
 """
 
 import os
@@ -29,79 +27,90 @@ from tkinter import filedialog, messagebox
 
 PRIMER_LOG_SHEET = "input addon"
 
+# The empty form template's designed fill area ends at row 115 (its
+# borders and formatting stop there); rows written past it would land
+# outside the form table without styling.
+MAX_FILL_ROW = 115
+
 
 def get_primer_info(primerlog, work_nos, logger=print):
     # Open the primer log and select the "input addon" sheet
     wb = openpyxl.load_workbook(primerlog)
-    sheet = wb[PRIMER_LOG_SHEET]
+    try:
+        sheet = wb[PRIMER_LOG_SHEET]
 
-    # 2-step column finding: resolve the Work No. column and the primer
-    # block by header name on row 1 first (legacy JobID spellings
-    # tolerated); historic fixed positions (col A, primer columns from
-    # col Q) only as fallback. Whitespace is normalized on both sides.
-    # The fired path is logged.
-    from openpyxl.utils import get_column_letter
+        # 2-step column finding: resolve the Work No. column and the primer
+        # block by header name on row 1 first (legacy JobID spellings
+        # tolerated); historic fixed positions (col A, primer columns from
+        # col Q) only as fallback. Whitespace is normalized on both sides.
+        # The fired path is logged.
+        from openpyxl.utils import get_column_letter
 
-    def norm(h):
-        return re.sub(r"\s+", " ", str(h)).strip().lower() if h is not None else ""
+        def norm(h):
+            return re.sub(r"\s+", " ", str(h)).strip().lower() if h is not None else ""
 
-    header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), ())
-    idx = {norm(h): i for i, h in enumerate(header_row) if h is not None}
+        header_row = next(sheet.iter_rows(min_row=1, max_row=1, values_only=True), ())
+        idx = {norm(h): i for i, h in enumerate(header_row) if h is not None}
 
-    work_idx = next(
-        (idx[c] for c in ("work no.", "jobid", "job id", "job_id") if c in idx),
-        None,
-    )
-    amp_idx = next(
-        (i for key, i in idx.items() if "amplification primers" in key), None
-    )
-    if work_idx is not None and amp_idx is not None:
-        primer_start = amp_idx + 1  # individual primers follow the group header
-        logger(
-            f"'input addon': columns resolved by name "
-            f"(Work No.={get_column_letter(work_idx + 1)}, primer block "
-            f"from {get_column_letter(primer_start + 1)} after "
-            f"'Amplification primers')"
+        work_idx = next(
+            (idx[c] for c in ("work no.", "jobid", "job id", "job_id") if c in idx),
+            None,
         )
-    else:
-        work_idx = 0
-        primer_start = 16  # historic: Work No.=A, primers from col Q
-        logger(
-            "'input addon': header row not recognized; falling back to "
-            f"fixed columns (Work No.=A, primers from "
-            f"{get_column_letter(primer_start + 1)})"
+        amp_idx = next(
+            (i for key, i in idx.items() if "amplification primers" in key), None
         )
+        if work_idx is not None and amp_idx is not None:
+            primer_start = amp_idx + 1  # individual primers follow the group header
+            logger(
+                f"'input addon': columns resolved by name "
+                f"(Work No.={get_column_letter(work_idx + 1)}, primer block "
+                f"from {get_column_letter(primer_start + 1)} after "
+                f"'Amplification primers')"
+            )
+        else:
+            work_idx = 0
+            primer_start = 16  # historic: Work No.=A, primers from col Q
+            logger(
+                "'input addon': header row not recognized; falling back to "
+                f"fixed columns (Work No.=A, primers from "
+                f"{get_column_letter(primer_start + 1)})"
+            )
 
-    # Iterate through the rows and make a list of primers for each Work No.
-    primers_dict = {str(w).strip(): [] for w in work_nos}
+        # Iterate through the rows and make a list of primers for each Work No.
+        primers_dict = {str(w).strip(): [] for w in work_nos}
 
-    for row in sheet.iter_rows(min_row=2, values_only=True):
-        if work_idx < len(row) and row[work_idx]:
-            work_no_stripped = str(row[work_idx]).strip()
-            if work_no_stripped in primers_dict:
-                for col in range(primer_start, len(row)):
-                    if row[col]:
-                        primers_dict[work_no_stripped].append(row[col])
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            if work_idx < len(row) and row[work_idx]:
+                work_no_stripped = str(row[work_idx]).strip()
+                if work_no_stripped in primers_dict:
+                    for col in range(primer_start, len(row)):
+                        if row[col]:
+                            primers_dict[work_no_stripped].append(row[col])
 
-    return primers_dict
+        return primers_dict
+    finally:
+        wb.close()
 
 
 def get_sequence_sample_ID(seq_validation_file, work_nos):
     # Open the Sequencing Validation file and select the "Sequencing Pending" sheet
     wb = openpyxl.load_workbook(seq_validation_file)
-    sequencing_sheet = wb["Sequencing Pending"]
+    try:
+        sequencing_sheet = wb["Sequencing Pending"]
 
-    # Iterate through the rows and make a list of (Work No., Sample ID) tuples in order
-    samples = []
-    for row in sequencing_sheet.iter_rows(min_row=2, max_row=98, values_only=True):
-        if row[0]:
-            work_no_stripped = str(row[0]).strip()
-            if work_no_stripped in work_nos:
-                samples.append(
-                    (work_no_stripped, row[3])
-                )  # Column A is Work No., Column D is Vector # / Plasmid No.
+        # Iterate through the rows and make a list of (Work No., Sample ID) tuples in order
+        samples = []
+        for row in sequencing_sheet.iter_rows(min_row=2, max_row=98, values_only=True):
+            if row[0]:
+                work_no_stripped = str(row[0]).strip()
+                if work_no_stripped in work_nos:
+                    samples.append(
+                        (work_no_stripped, row[3])
+                    )  # Column A is Work No., Column D is Vector # / Plasmid No.
 
-    return samples
+        return samples
+    finally:
+        wb.close()
 
 
 def fill_order_form(
@@ -126,6 +135,11 @@ def fill_order_form(
 
     warnings = []
     reported_missing_primers = set()
+    total_primer_rows = sum(
+        len(primers_dict.get(wn, [])) for wn, _ in ordered_samples
+    )
+    written_rows = 0
+    form_full = False
 
     # Cell B18 (merged B18:D18) carries the order form reference ID:
     # 'Q' + the run date + the order form identifier for that day (the
@@ -139,24 +153,39 @@ def fill_order_form(
     code_digits = re.sub(r"\D", "", date_code)
     year_code = re.sub(r"[^A-Za-z]", "", date_code)
     # Letter -> year, reversed from the inhouse-app year-letter scheme:
-    # base_year/base_letter_ord = 2024/'S'.
+    # base_year/base_letter_ord = 2024/'S'. The code must be exactly one
+    # letter (a longer/mixed run in the folder name would derive a bogus
+    # year) and the order form number after the dash must be digits.
     year = (
-        2024 + (ord(year_code[0].upper()) - ord("S")) if year_code else None
+        2024 + (ord(year_code[0].upper()) - ord("S"))
+        if len(year_code) == 1 and year_code.isalpha()
+        else None
     )
-    if code_digits and year:
-        identifier = form_number.strip() or "1"
+    identifier = form_number.strip()
+    identifier_is_numeric = identifier == "" or identifier.isdigit()
+    if identifier == "":
+        identifier = "1"
+    if code_digits and year and 2020 <= year <= 2050 and identifier_is_numeric:
         order_form_ID = f"Q{year}{code_digits}{identifier}"
         sheet["B18"] = order_form_ID
         logger(f"Order form ID (B18): {order_form_ID}")
     else:
+        if not code_digits or year is None:
+            reason = "the year code must be a single letter followed by digits"
+        elif not 2020 <= year <= 2050:
+            reason = f"year code '{year_code}' maps to an implausible year ({year})"
+        else:
+            reason = f"order form number '{form_number.strip()}' is not a number"
         message = (
             f"Could not derive the order form ID (B18) from "
-            f"Sequencing_ID '{date_ID}'. Template value left in place."
+            f"Sequencing_ID '{date_ID}': {reason}. Template value left in place."
         )
         logger(f"WARNING: {message}")
         warnings.append(message)
 
     for work_no, sequence_sample_ID in ordered_samples:
+        if form_full:
+            break
         if (row - 19) % 10 == 0 or row == 20:
             logger(f"  ... processing sample {row - 19}/{total_samples}")
 
@@ -174,6 +203,17 @@ def fill_order_form(
             continue
 
         for primer in primers:
+            if row > MAX_FILL_ROW and not form_full:
+                dropped = total_primer_rows - written_rows
+                message = (
+                    f"Order form full: rows past {MAX_FILL_ROW} are outside "
+                    f"the template fill area; {dropped} primer row(s) were "
+                    f"not written."
+                )
+                logger(f"WARNING: {message}")
+                warnings.append(message)
+                form_full = True
+                break
             # Sample type (col B): purified PCR products carry the PFr or
             # PCR marker in the sample ID; everything else is a plasmid.
             sample_ID_text = str(sequence_sample_ID)
@@ -207,6 +247,7 @@ def fill_order_form(
             sheet[f"L{row}"] = formula_L
 
             row += 1
+            written_rows += 1
 
     # Save the filled form
     output_file = os.path.join(
@@ -214,6 +255,7 @@ def fill_order_form(
     )
     logger(f"Saving filled form to: {output_file}")
     wb.save(output_file)
+    wb.close()
     logger("Save complete.")
 
     return warnings, output_file
@@ -228,7 +270,7 @@ def process_work_nos(
 
     # Get all primers for each work_no
     logger("Fetching primer information from Primer Log...")
-    primers_dict = get_primer_info(primerlog, work_nos)
+    primers_dict = get_primer_info(primerlog, work_nos, logger=logger)
     logger("Primer information loaded.")
 
     # Get the Sequence Sample IDs (aka Vector # or Plasmid ID) in order
@@ -421,8 +463,16 @@ class OrderFormGUI:
 
     def _log(self, message):
         if self.log_textbox and self.log_textbox.winfo_exists():
+            # A disabled Tk Text rejects programmatic inserts too, so the
+            # state is flipped around the insert (the box stays read-only
+            # for the user while always accepting app-side lines). Never
+            # read it back with cget: CTkTextbox.cget("state") raises
+            # ValueError on customtkinter 5.x; configure(state=...) works
+            # on both 5.x and 6.x.
+            self.log_textbox.configure(state="normal")
             self.log_textbox.insert("end", message + "\n")
             self.log_textbox.see("end")
+            self.log_textbox.configure(state="disabled")
 
     def _log_threaded(self, message):
         # Safely log from a worker thread
@@ -492,32 +542,35 @@ class OrderFormGUI:
         try:
             # For non-Excel files, this will raise an error quickly.
             wb = openpyxl.load_workbook(file_path, read_only=True)
-            if expected_sheet and expected_sheet not in wb.sheetnames:
-                message = f"Sheet '{expected_sheet}' not found."
+            try:
+                if expected_sheet and expected_sheet not in wb.sheetnames:
+                    message = f"Sheet '{expected_sheet}' not found."
+                    self.master.after(
+                        0,
+                        self._update_validation_ui,
+                        entry_widget,
+                        validation_label_widget,
+                        False,
+                        message,
+                        validation_flag_name,
+                        next_callback,
+                    )
+                    return
+
+                # If we reach here, the file is valid.
+                message = "Validated"
                 self.master.after(
                     0,
                     self._update_validation_ui,
                     entry_widget,
                     validation_label_widget,
-                    False,
+                    True,
                     message,
                     validation_flag_name,
                     next_callback,
                 )
-                return
-
-            # If we reach here, the file is valid.
-            message = "Validated"
-            self.master.after(
-                0,
-                self._update_validation_ui,
-                entry_widget,
-                validation_label_widget,
-                True,
-                message,
-                validation_flag_name,
-                next_callback,
-            )
+            finally:
+                wb.close()
         except Exception as e:
             # Catches errors from openpyxl (e.g., corrupted file, not an Excel file)
             message = "Not a valid Excel file."
@@ -668,16 +721,52 @@ class OrderFormGUI:
                 "empty_form_valid",
             )
 
-    def generate_order_form(self):
-        primerlog = self.entry_primerlog.get()
-        seq_validation_file = self.entry_seq_validation_file.get()
-        empty_form = self.entry_empty_form.get()
+    def _sheet_problems(self, path, expected_sheet, label):
+        """Problem lines (or []) from opening the file and checking its sheet."""
+        wb = None
+        try:
+            wb = openpyxl.load_workbook(path, read_only=True)
+            if expected_sheet not in wb.sheetnames:
+                return [f"Sheet '{expected_sheet}' not found in {label}."]
+        except Exception:
+            return [f"{label} is not a valid Excel file."]
+        finally:
+            if wb is not None:
+                try:
+                    wb.close()
+                except Exception:
+                    pass
+        return []
 
-        if not seq_validation_file:
-            messagebox.showerror(
-                "Error", "Sequencing Validation Template path is missing."
+    def generate_order_form(self):
+        primerlog = self.entry_primerlog.get().strip()
+        seq_validation_file = self.entry_seq_validation_file.get().strip()
+        empty_form = self.entry_empty_form.get().strip()
+
+        # Revalidate the paths at generate time: the *_valid flags only
+        # reflect the last browse/autofill validation while the entries
+        # can be edited manually in between.
+        problems = []
+        if not primerlog or not os.path.exists(primerlog):
+            problems.append("Primer Log file not found.")
+        else:
+            problems.extend(
+                self._sheet_problems(primerlog, "input addon", "Primer Log")
             )
+        if not empty_form or not os.path.exists(empty_form):
+            problems.append("Empty Order Form file not found.")
+        if not seq_validation_file or not os.path.exists(seq_validation_file):
+            problems.append("Sequencing Validation file not found.")
+        else:
+            problems.extend(
+                self._sheet_problems(
+                    seq_validation_file, "Sequencing Pending", "Sequencing Validation"
+                )
+            )
+        if problems:
+            messagebox.showerror("Invalid files", "\n".join(problems))
             return
+
         output_dir = os.path.dirname(seq_validation_file)
 
         # Disable button, create log window, and start worker thread
@@ -711,9 +800,14 @@ class OrderFormGUI:
         self._log_threaded("Updating external links in layout file...")
         excel = None
         wb = None
+        com_initialized = False
         try:
             pythoncom.CoInitialize()
-            excel = win32com.client.Dispatch("Excel.Application")
+            com_initialized = True
+            # DispatchEx forces a dedicated Excel instance: a plain Dispatch
+            # can attach to the user's running Excel, which Visible=False
+            # would hide and Quit() would close (losing unsaved work).
+            excel = win32com.client.DispatchEx("Excel.Application")
             excel.Visible = False
             excel.DisplayAlerts = False
 
@@ -748,14 +842,18 @@ class OrderFormGUI:
             if wb:
                 try:
                     wb.Close(SaveChanges=False)
-                except:
+                except Exception:
                     pass
             if excel:
                 try:
                     excel.Quit()
-                except:
+                except Exception:
                     pass
-            pythoncom.CoUninitialize()
+            if com_initialized:
+                try:
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
 
     def _generation_worker(
         self, primerlog, seq_validation_file, empty_form, output_dir, seq_layout_path
@@ -764,28 +862,27 @@ class OrderFormGUI:
             self._log_threaded(
                 f"Reading Sequencing Validation file: {os.path.basename(seq_validation_file)}"
             )
+            wb = None
             try:
                 wb = openpyxl.load_workbook(seq_validation_file, read_only=True)
                 sequencing_sheet = wb["Sequencing Pending"]
-            except Exception as e:
-                self.master.after(
-                    0,
-                    lambda: messagebox.showerror(
-                        "File Read Error",
-                        f"Could not read the Sequencing Validation file: {e}",
-                    ),
-                )
-                return
 
-            self._log_threaded("Extracting unique Work No....")
-            work_nos = []
-            unique_work_nos = set()
-            for row in sequencing_sheet.iter_rows(
-                min_row=2, max_row=98, min_col=1, max_col=1, values_only=True
-            ):
-                if row[0] and row[0] not in unique_work_nos:
-                    work_nos.append(row[0])
-                    unique_work_nos.add(row[0])
+                self._log_threaded("Extracting unique Work No....")
+                work_nos = []
+                unique_work_nos = set()
+                for row in sequencing_sheet.iter_rows(
+                    min_row=2, max_row=98, min_col=1, max_col=1, values_only=True
+                ):
+                    if row[0] and row[0] not in unique_work_nos:
+                        work_nos.append(row[0])
+                        unique_work_nos.add(row[0])
+            except Exception as e:
+                message = f"Could not read the Sequencing Validation file: {e}"
+                self.master.after(0, messagebox.showerror, "File Read Error", message)
+                return
+            finally:
+                if wb is not None:
+                    wb.close()
             self._log_threaded(f"Found {len(work_nos)} unique Work No.")
 
             warnings, new_order_form_path = process_work_nos(
@@ -825,6 +922,11 @@ class OrderFormGUI:
                     self._log_threaded(f"WARNING: Could not copy layout file: {copy_e}")
                     status_messages.append(f"WARNING: Layout file copy failed: {copy_e}")
                     has_warnings = True
+            elif seq_layout_path:
+                message = f"Layout template not found: {seq_layout_path}"
+                self._log_threaded(f"WARNING: {message}")
+                status_messages.append(f"WARNING: {message}")
+                has_warnings = True
 
             final_message = "\n".join(status_messages)
             if has_warnings:
@@ -839,11 +941,18 @@ class OrderFormGUI:
                 )
         except Exception as e:
             self._log_threaded(f"\nERROR: {traceback.format_exc()}")
-            self.master.after(0, lambda: messagebox.showerror("Error", str(e)))
+            self.master.after(0, messagebox.showerror, "Error", str(e))
         finally:
-            self.master.after(0, self.button_generate.configure, {"state": "normal"})
+            # CTk's configure() takes kwargs only: a positional {"state": ...}
+            # dict binds to require_redraw and silently no-ops, so the button
+            # re-enable / log re-disable are passed as kwarg lambdas instead.
+            self.master.after(
+                0, lambda: self.button_generate.configure(state="normal")
+            )
             self._log_threaded("Process finished.")
-            self.master.after(0, self.log_textbox.configure, {"state": "disabled"})
+            self.master.after(
+                0, lambda: self.log_textbox.configure(state="disabled")
+            )
 
 
 def main():

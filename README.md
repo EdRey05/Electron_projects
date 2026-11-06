@@ -118,16 +118,16 @@ Process 68 paired reads from Sample 5, plate 2. Choose the input and a separate 
 
 **Summary**
 
-**Gene Synthesis Hub v2.1.0 brings eleven gene-synthesis tools into one portable Windows application.** Prepare ligation and colony-PCR layouts, search primers, export sequencing references and order forms, organize reads, prepare QC reports and delivery ZIPs, create vector maps, and export labels or Integra worklists. The catalog follows the original hub names and order in two clear columns, with larger text and a muted blue-green theme.
+**Gene Synthesis Hub v2.2.0 brings eleven gene-synthesis tools into one portable Windows application.** Prepare ligation and colony-PCR layouts, search primers, export sequencing references and order forms, organize reads, prepare QC reports and delivery ZIPs, create vector maps, and export labels or Integra worklists. The catalog follows the original hub names and order in two clear columns, with larger text and a muted blue-green theme.
 
-Every tool now has native Electron controls. Scientific, document and OCR tasks use bundled headless processing where needed; the app starts no Tk windows or Streamlit server. Seven QC File Prep workflows cover report edits, renaming, quantities, resuspension data, BATCH deliverables and packages built from scratch. Native confirmations collect vector/OD and alignment choices, while original ZIPs remain unchanged.
+The maximized workspace shows each tool’s reference version and date, with green validation checks for ready inputs. Eight QC File Prep workflows cover report preparation and checked shipment uploads; Upload Prep previews matching ZIPs and archives received originals after verified copying. Organizer can reload the last batch, Labels supports filtering and dated-folder discovery, and Integra provides sample-number, reaction-count or paste-order sorting.
 
 Extract the complete folder ZIP and run the application without installing Node, npm, Python or Tesseract. Configure local files or lab paths through **Directories**, review results and logs, and preserve the portable data folder between updates. GenBank and DOCX processing work independently; optional legacy DOC and SnapGene automation require those installed applications. Lab-network access and physical instrument operation remain separate acceptance checks.
 
 </div>
 <div class="right-column-65" markdown="1">
 
-<video width="100%" controls autoplay loop muted playsinline preload="none" poster="Images_GIFs_Videos/003_Gene_Synthesis_Hub.gif" aria-label="Gene Synthesis Hub recording"><source src="Images_GIFs_Videos/003_Gene_Synthesis_Hub.mp4" type="video/mp4"><a href="Images_GIFs_Videos/003_Gene_Synthesis_Hub.mp4"><img src="Images_GIFs_Videos/003_Gene_Synthesis_Hub.gif" alt="Gene Synthesis Hub recording"></a></video>
+<video width="100%" controls autoplay loop muted playsinline preload="none" poster="Images_GIFs_Videos/003_Gene_Synthesis_Hub.png" aria-label="Gene Synthesis Hub recording"><source src="Images_GIFs_Videos/003_Gene_Synthesis_Hub.mp4" type="video/mp4"><a href="Images_GIFs_Videos/003_Gene_Synthesis_Hub.mp4"><img src="Images_GIFs_Videos/003_Gene_Synthesis_Hub.gif" alt="Gene Synthesis Hub recording"></a></video>
 
 <div class="center-text" markdown="1">
 
@@ -147,14 +147,14 @@ Extract the complete folder ZIP and run the application without installing Node,
 3. Supply that tool's inputs and review its output folder before running.
 4. Inspect the generated files and processing log. Directory settings persist in `data/default_directories.ini`.
 
-The eleven tools use the reference hub names and order. QC File Prep offers seven workflows in its selector; the app-level instructions describe each input and output.
+The eleven tools use the reference hub names and order. QC File Prep offers eight workflows in its selector; the app-level instructions describe each input and output.
 
 </div>
 <div class="right-column-50" markdown="1">
 
 **In the demo**
 
-The existing recording shows the earlier interface exporting six reference sequence files from a synthetic Primer Log. The current redesign is shown in the app screenshot; a replacement recording will follow user acceptance. Local automated checks exercise the eleven tools and all seven QC File Prep processors; they do not certify lab-network, Word, SnapGene or physical instrument operation.
+The owner-recorded walkthrough tours the two-column catalog, directory settings and individual tool screens, including Primer Finder, Sequencing File Organizer, QC File Prep, Integra Worklist and QC Digestion Design. It shows the workspace and controls; processing is covered separately by workbook, ZIP, reference-parity and real UI tests.
 
 [Sample data and example outputs](demo-data/synthetic-data-and-outputs.zip)
 

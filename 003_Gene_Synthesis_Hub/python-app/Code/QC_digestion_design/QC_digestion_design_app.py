@@ -3,15 +3,20 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 1.4
-Date: Oct 13, 2026
-Notes: Standardized appearance and initial loading to match the rest of the
-    hub's apps. Primer Log is now a required, validated file (autodetected from
-    hub config, sheet 'input addon' checked in a background thread).
-    Process button stays disabled until Primer Log validates. Job fields
-    follow the canonical job-log naming (Work No.). Header matching in the
-    shared helper is whitespace-normalized on both the workbook-column and
-    the candidate side.
+Version: 1.5
+Date: Oct 31, 2026
+Notes: Primer Log validation reworked to the path-state pattern: the entry
+    revalidates on KeyRelease/Paste edits (fail-closed gate, 500 ms debounced
+    cancelable revalidation, generation counter so stale validation results
+    are dropped), and Process only runs the exact path that last validated.
+    The queue pump is now persistent (re-arms on every pass) so every run
+    after the first still logs, re-enables the gate and shows its summary;
+    a run that ended with an error popup does not also flash the Done popup.
+    Workbook handles are closed in finally. Only 'input addon' is required
+    in the Primer Log; 'Obsolete input addon(completed)' is checked and
+    reported as optional. Job fields follow the canonical job-log naming
+    (Work No.). Header matching in the shared helper is whitespace-normalized
+    on both the workbook-column and the candidate side.
 """
 
 import os
@@ -34,8 +39,11 @@ if SCRIPT_DIR not in sys.path:
     sys.path.append(SCRIPT_DIR)
 
 # --- Workflow Imports ---
-from workflows.vector_map_prep_biopython import VectorMapPrepBioPython
-from workflows.vector_map_prep_snapgene import VectorMapPrepSnapGene
+# Unique package name (not the generic 'workflows'): every hub app loads in
+# ONE process, and plain 'workflows' would merge with every other app's
+# workflows directory by sys.path order.
+from qcd_workflows.vector_map_prep_biopython import VectorMapPrepBioPython
+from qcd_workflows.vector_map_prep_snapgene import VectorMapPrepSnapGene
 
 # --- Workflow Configuration ---
 WORKFLOWS_TO_LOAD = [
@@ -43,13 +51,13 @@ WORKFLOWS_TO_LOAD = [
     ("Vector Map Prep (BioPython)", VectorMapPrepBioPython),
 ]
 
-# Sheet expected in the Primer Log workbook (matches the helper module used
-# by every other app that consumes the Primer Log).
+# Sheet required in the Primer Log workbook (the live sheet used by the
+# QC workflows).
 EXPECTED_PRIMER_LOG_SHEET = "input addon"
 
-# Sheet checked by the QC workflows themselves. Surfaced here so the user
-# gets a single consistent validation message when the Primer Log is loaded.
-QC_WORKFLOW_SHEETS = ("input addon", "Obsolete input addon(completed)")
+# Optional historical sheet consumed by the QC workflows when present.
+# Reported as a warning when missing; never blocks validation.
+OPTIONAL_COMPLETED_SHEET = "Obsolete input addon(completed)"
 
 
 class QCDesignApp:
@@ -65,9 +73,21 @@ class QCDesignApp:
         # --- Validation flags ---
         self.primerlog_valid = False
 
+        # --- Path-state bookkeeping for the Primer Log entry ---
+        # _primerlog_gen: bumped at every (re)validation start; validation
+        # results from an older generation are dropped instead of overwriting
+        # the state of a newer validation.
+        # _validated_primerlog_path: the exact path whose validation produced
+        # the current primerlog_valid state; Process refuses to run when the
+        # entry text no longer matches it.
+        self._primerlog_gen = 0
+        self._validated_primerlog_path = None
+        self._val_after_id = None
+
         # --- Log infrastructure ---
         self.log_queue = queue.Queue()
         self.processing_thread = None
+        self._error_shown_for_run = False
 
         self._build_ui()
 
@@ -96,6 +116,10 @@ class QCDesignApp:
 
         self.entry_primerlog = ctk.CTkEntry(entry_frame, border_width=1)
         self.entry_primerlog.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        # Fail-closed path-state: every edit to the entry invalidates the
+        # previous validation state and schedules a debounced revalidation.
+        self._bind_primerlog_entry_events()
 
         self.button_primerlog = ctk.CTkButton(
             entry_frame,
@@ -263,6 +287,49 @@ class QCDesignApp:
         self.txt_ids.delete("1.0", "end")
 
     # ----------------------------------------------------- Validation core
+    def _bind_primerlog_entry_events(self):
+        # CTkEntry.bind writes the binding onto the inner entry; readbacks
+        # would need ._entry, but the binding itself works.
+        self.entry_primerlog.bind(
+            "<KeyRelease>", self._on_primerlog_entry_changed, add="+"
+        )
+        self.entry_primerlog.bind(
+            "<<Paste>>", self._on_primerlog_entry_changed, add="+"
+        )
+
+    def _on_primerlog_entry_changed(self, _event=None):
+        # Fail closed immediately: the current valid state no longer belongs
+        # to whatever text is now in the entry.
+        self._validated_primerlog_path = None
+        self.primerlog_valid = False
+        self._refresh_process_button()
+
+        text = self.entry_primerlog.get().strip()
+        if not text:
+            self._reset_validation_visuals()
+            return
+
+        # Debounced cancelable revalidation while the user keeps typing.
+        if self._val_after_id is not None:
+            try:
+                self.master.after_cancel(self._val_after_id)
+            except Exception:
+                pass
+        self._val_after_id = self.master.after(
+            500, lambda: self._start_validation_thread(self.entry_primerlog.get())
+        )
+
+    def _reset_validation_visuals(self):
+        # Neutral (unvalidated) visuals without touching the gate flags.
+        self.entry_primerlog.configure(
+            border_width=1,
+            border_color=ctk.ThemeManager.theme["CTkEntry"]["border_color"],
+        )
+        self.primerlog_validation_label.configure(
+            text="",
+            text_color=ctk.ThemeManager.theme["CTkLabel"]["text_color"],
+        )
+
     def setup_initial_paths(self, primer_log_path):
         if primer_log_path:
             self.entry_primerlog.delete(0, "end")
@@ -270,63 +337,101 @@ class QCDesignApp:
             self._start_validation_thread(primer_log_path)
 
     def _start_validation_thread(self, file_path):
-        # Reset entry + label to a neutral state before validating.
-        self._update_validation_ui(None, "Validating...")
+        # A new validation supersedes any pending debounce and any running
+        # validation (stale results are dropped by generation check).
+        if self._val_after_id is not None:
+            try:
+                self.master.after_cancel(self._val_after_id)
+            except Exception:
+                pass
+            self._val_after_id = None
+        self._primerlog_gen += 1
+        gen = self._primerlog_gen
+        self._update_validation_ui(None, None, None, "Validating...")
 
         thread = threading.Thread(
             target=self._validate_file,
-            args=(file_path,),
+            args=(file_path, gen),
             daemon=True,
         )
         thread.start()
 
-    def _validate_file(self, file_path):
-        if not file_path:
-            self.master.after(0, self._update_validation_ui, False, "File not found.")
-            return
-
-        if not os.path.exists(file_path):
-            self.master.after(0, self._update_validation_ui, False, "File not found.")
-            return
-
+    def _validate_file(self, file_path, gen):
+        wb = None
         try:
+            if not file_path:
+                self.master.after(
+                    0, self._update_validation_ui, file_path, gen, False, "File not found."
+                )
+                return
+
+            if not os.path.exists(file_path):
+                self.master.after(
+                    0, self._update_validation_ui, file_path, gen, False, "File not found."
+                )
+                return
+
             wb = openpyxl.load_workbook(file_path, read_only=True)
             sheet_names_lower = {s.lower() for s in wb.sheetnames}
 
-            missing = [
-                s for s in QC_WORKFLOW_SHEETS if s.lower() not in sheet_names_lower
-            ]
-            if missing:
-                msg = f"Missing expected sheet(s): {', '.join(missing)}"
-                self.master.after(0, self._update_validation_ui, False, msg)
-                return
-
-            # The Primer Log itself uses 'input addon' (live sheet). Flag it
-            # if even that one is missing -- it should have been caught above.
             if EXPECTED_PRIMER_LOG_SHEET.lower() not in sheet_names_lower:
                 self.master.after(
                     0,
                     self._update_validation_ui,
+                    file_path,
+                    gen,
                     False,
                     f"Sheet '{EXPECTED_PRIMER_LOG_SHEET}' not found.",
                 )
                 return
 
-            self.master.after(0, self._update_validation_ui, True, "Validated")
+            # The historical 'Obsolete input addon(completed)' sheet is
+            # optional for the workflows; surface it when absent but do not
+            # fail the file over it.
+            if OPTIONAL_COMPLETED_SHEET.lower() not in sheet_names_lower:
+                self.master.after(
+                    0,
+                    self._update_validation_ui,
+                    file_path,
+                    gen,
+                    True,
+                    "Validated (optional sheet 'Obsolete input addon(completed)' not found)",
+                )
+                return
+
+            self.master.after(
+                0, self._update_validation_ui, file_path, gen, True, "Validated"
+            )
         except Exception:
             self.master.after(
-                0, self._update_validation_ui, False, "Not a valid Excel file."
+                0,
+                self._update_validation_ui,
+                file_path,
+                gen,
+                False,
+                "Not a valid Excel file.",
             )
+        finally:
+            if wb is not None:
+                try:
+                    wb.close()
+                except Exception:
+                    pass
 
-    def _update_validation_ui(self, is_valid, message):
-        self.primerlog_valid = bool(is_valid)
-
+    def _update_validation_ui(self, file_path, gen, is_valid, message=None):
+        if gen is not None and gen != self._primerlog_gen:
+            # Stale validation result for a superseded request.
+            return
         if is_valid is True:
+            self.primerlog_valid = True
+            self._validated_primerlog_path = file_path
             self.entry_primerlog.configure(border_color="dark green", border_width=2)
             self.primerlog_validation_label.configure(
                 text=f"\u2714 {message}", text_color="green"
             )
         elif is_valid is False:
+            self.primerlog_valid = False
+            self._validated_primerlog_path = None
             self.entry_primerlog.configure(border_color="#D32F2F", border_width=2)
             self.primerlog_validation_label.configure(
                 text=f"\u2716 Invalid: {message}", text_color="#D32F2F"
@@ -361,26 +466,40 @@ class QCDesignApp:
         self.master.after(0, self.log, message)
 
     def _start_log_queue_pump(self):
+        # Persistent pump: it ALWAYS re-arms (unless the window is gone), so
+        # every run -- not just the first -- streams its log, re-enables the
+        # Process button and shows its summary. DONE/ERROR only change the
+        # run state; a DONE after an already-shown ERROR stays popup-silent.
+        try:
+            if not self.master.winfo_exists():
+                return
+        except Exception:
+            return
+
         try:
             while True:
                 message = self.log_queue.get_nowait()
                 if message == "DONE":
-                    self.btn_process.configure(state="normal", fg_color="#3C702D")
                     self.processing_thread = None
-                    messagebox.showinfo(
-                        "Done", "Finished. Check the log for details."
-                    )
-                    return
-                elif isinstance(message, tuple) and message[0] == "ERROR":
-                    self.btn_process.configure(state="normal", fg_color="#3C702D")
+                    self._refresh_process_button()
+                    if not self._error_shown_for_run:
+                        messagebox.showinfo(
+                            "Done", "Finished. Check the log for details."
+                        )
+                    self._error_shown_for_run = False
+                elif isinstance(message, tuple) and len(message) >= 3 and message[0] == "ERROR":
                     self.processing_thread = None
+                    self._error_shown_for_run = True
+                    self._refresh_process_button()
                     messagebox.showerror(message[1], message[2])
-                    return
                 else:
                     self.log(message)
         except queue.Empty:
             pass
-        self.master.after(100, self._start_log_queue_pump)
+        try:
+            self.master.after(100, self._start_log_queue_pump)
+        except Exception:
+            pass
 
     # ----------------------------------------------------------- Processing
     def process_ids(self):
@@ -406,6 +525,20 @@ class QCDesignApp:
             return
 
         primer_log = self.entry_primerlog.get()
+        validated_path = self._validated_primerlog_path
+        if (
+            not validated_path
+            or os.path.abspath(str(validated_path)) != os.path.abspath(str(primer_log))
+        ):
+            # The valid state belongs to a different path than the entry now
+            # shows: re-validation has not confirmed the entered file.
+            messagebox.showerror(
+                "Primer Log Changed",
+                "The entered Primer Log has not been re-validated.\n"
+                "Edit the field again or use Select once to validate it.",
+            )
+            return
+
         output_dir = self.output_dir.get().strip()
         workflow_name = self.active_workflow_name.get()
         active_workflow = self.workflows.get(workflow_name)
@@ -440,6 +573,7 @@ class QCDesignApp:
         self.log_textbox.delete("1.0", "end")
         self.log_textbox.configure(state="disabled")
         self.btn_process.configure(state="disabled", fg_color="gray50")
+        self._error_shown_for_run = False
 
         self.log(f"Starting '{workflow_name}' for {len(work_nos)} Work No....")
 

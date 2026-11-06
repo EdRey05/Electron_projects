@@ -73,6 +73,17 @@ export function generateOutputFilename(date = new Date()) {
  * length:     { vectorName -> basePairLength (float) }
  * digested:   { (vectorName, enzyme) -> { lot, box_position, concentration } }
  */
+// Match upstream's anchor-delimited 500-row scan; ignore formatting-inflated dimensions.
+export function cappedVectorRows(sheet,anchorCol,maxCol){
+ const rows=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,blankrows:true,range:{s:{r:0,c:0},e:{r:0,c:maxCol-1}}});
+ for(let start=1;start<50000;start+=500){
+  const block=XLSX.utils.sheet_to_json(sheet,{header:1,raw:true,blankrows:true,range:{s:{r:start,c:0},e:{r:Math.min(start+499,50000),c:maxCol-1}}});
+  rows.push(...block);
+  if(block.every(row=>row[anchorCol]==null||String(row[anchorCol]).trim()===''))break;
+ }
+ return rows;
+}
+
 export function extractVectorDbLookups(arrayBuffer) {
   const wb = XLSX.read(arrayBuffer, { type: "array" });
   const result = {
@@ -89,7 +100,7 @@ export function extractVectorDbLookups(arrayBuffer) {
   // silently DROPPED from the length map.
   const vectorSheet = wb.Sheets["Vector"];
   if (vectorSheet) {
-    const aoa = XLSX.utils.sheet_to_json(vectorSheet, { header: 1, blankrows: false, raw: true });
+    const aoa = cappedVectorRows(vectorSheet,0,4);
     for (let i = 1; i < aoa.length; i++) {
       const r = aoa[i] || [];
       const rawVname = r[0];
@@ -115,7 +126,7 @@ export function extractVectorDbLookups(arrayBuffer) {
   // --- Digested_Vectors sheet (cols A=Box, B=Name, C=Enzymes, D=Lot, E=Conc, F=Length) ---
   const digSheet = wb.Sheets["Digested_Vectors"];
   if (digSheet) {
-    const aoa = XLSX.utils.sheet_to_json(digSheet, { header: 1, blankrows: false, raw: true });
+    const aoa = cappedVectorRows(digSheet,1,8);
     for (let i = 1; i < aoa.length; i++) {
       const r = aoa[i] || [];
       const rawName = r[1];
@@ -235,7 +246,7 @@ export function extractJobLogInfo(arrayBuffer, jobIds) {
       resistance: r[COL_RESISTANCE] != null ? String(r[COL_RESISTANCE]).trim() : "",
     };
     jobRows[jobId] = data;
-    if (data.vector === "DNA Fragment - No Vector") {
+    if (!data.vector || data.vector === "DNA Fragment - No Vector") {
       jobs_needing_manual_entry.push(jobId);
     }
   }
@@ -485,14 +496,19 @@ export function extractFragmentsWithReport(
   const out = [];
   const logs = [];
   let anySequenceColumn = false;
+  const missingRequired = headers => ['position','gene name','purity pass','sequence'].filter(name => !headers.some(header => header.trim().toLowerCase() === name));
 
   // Special "PCR Fragments" sheet has priority.
   if (allSheets.includes("PCR Fragments")) {
     const sheet = wb.Sheets["PCR Fragments"];
-    const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: false });
+    const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: true });
     const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
     const cols = resolveFragmentColumns(headers);
     logs.push("    - Checking special sheet 'PCR Fragments'...");
+    const missing = missingRequired(headers);
+    if (missing.length) {
+      logs.push(`    - Skipped 'PCR Fragments': missing required columns ${missing.join(', ')}.`);
+    } else {
     let pcrCount = 0;
     for (let i = 1; i < aoa.length; i++) {
       const row = readFragmentRow(aoa[i] || [], cols, "PCR Fragments");
@@ -502,6 +518,7 @@ export function extractFragmentsWithReport(
     }
     if (cols.sequenceByName) anySequenceColumn = true;
     logs.push(`      > Found ${pcrCount} PCR fragments.`);
+    }
   }
 
   // Monthly sheets
@@ -517,9 +534,14 @@ export function extractFragmentsWithReport(
   }
   for (const sheetName of monthlySheets) {
     const sheet = wb.Sheets[sheetName];
-    const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: false });
+    const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: true });
     // Build column map from header row
     const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
+    const missing = missingRequired(headers);
+    if (missing.length) {
+      logs.push(`    - Skipped '${sheetName}': missing required columns ${missing.join(', ')}.`);
+      continue;
+    }
     const cols = resolveFragmentColumns(headers);
     if (cols.sequenceByName) anySequenceColumn = true;
     let sheetCount = 0;

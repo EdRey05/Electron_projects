@@ -3,19 +3,24 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes and Fabien Lonjon, Ph.D.
 contact: ed5reyes@outlook.com
 
-Version: 1.2
-Date: Oct 13, 2026
-Notes: Improved file autodetection, naming, and column mapping. Internal
-    variables follow the canonical job-log naming (work_no); the
-    'input addon' read resolves Work No. / Vector / Insert Sequence /
-    Final Vector Sequence by header name first (legacy JobID spellings
-    tolerated) with fixed A/E/H/I fallback and logs the fired path.
+Version: 1.4
+Date: Nov 04, 2026
+Notes: Completed-archive guard: before a reference file is written, the
+    current-year and previous-year \\{YYYY}\\ folder paths are composed and
+    checked directly - the reference folder is never listed (it holds
+    thousands of files). A file already present in one of these folders
+    is skipped entirely - the project is finished and is never remade;
+    checking year-1 covers work completed late in the previous year.
+    Everything else keeps the previous behavior (created new /
+    overwritten in place), and every outcome is counted in the summary
+    and the success popup.
 """
 
 import os
 import sys
 import traceback
 import threading
+from datetime import date
 
 import openpyxl
 
@@ -30,8 +35,8 @@ class SequencingReferenceFilesApp:
 
     Reads Work No. / Vector / Insert Sequence / Final Vector Sequence from
     the 'input addon' sheet, resolved by header name first with the
-    fixed A/E/H/I indices as fallback.
-    from the "input addon" sheet and creates text files for each sequence.
+    fixed A/E/H/I indices as fallback, and creates text files for each
+    sequence.
     """
 
     def __init__(
@@ -47,6 +52,16 @@ class SequencingReferenceFilesApp:
         # --- Validation flags ---
         self.primer_log_valid = False
         self.reference_files_valid = False
+
+        # --- Validation bookkeeping ---
+        # Per-field generation counters: any validation result that arrives
+        # from a superseded validation run is dropped instead of applied.
+        self._validation_gens = {}
+        # Pending debounced re-validation after() handles, per field.
+        self._revalidation_handles = {}
+        # True while an export run is in flight; edits during a run must not
+        # re-enable the Export button.
+        self._processing_running = False
 
         # --- Internal storage ---
         self._primer_log_path = ""
@@ -168,6 +183,24 @@ class SequencingReferenceFilesApp:
         )
         self.log_textbox.pack(expand=True, fill="both", padx=10, pady=(2, 10))
 
+        # Manual entry edits invalidate the stored validation immediately and
+        # schedule a debounced re-validation, so Export can never run against
+        # a path the user typed since the last validation (fail-closed gate).
+        self.entry_primer_log.bind(
+            "<KeyRelease>", lambda _e: self._on_entry_change("primer_log_valid"), add="+"
+        )
+        self.entry_primer_log.bind(
+            "<<Paste>>", lambda _e: self._on_entry_change("primer_log_valid"), add="+"
+        )
+        self.entry_reference_files.bind(
+            "<KeyRelease>",
+            lambda _e: self._on_entry_change("reference_files_valid"),
+            add="+",
+        )
+        self.entry_reference_files.bind(
+            "<<Paste>>", lambda _e: self._on_entry_change("reference_files_valid"), add="+"
+        )
+
     # --- Logging methods ---
     def _log(self, message):
         """Appends a message to the log widget (main thread only)."""
@@ -190,6 +223,51 @@ class SequencingReferenceFilesApp:
             self.log_textbox.configure(state="disabled")
 
     # --- Validation methods ---
+    def _on_entry_change(self, validation_flag_name):
+        """Manual entry edit: fail closed immediately, re-validate debounced."""
+        if validation_flag_name == "primer_log_valid":
+            entry_widget = self.entry_primer_log
+            validation_label_widget = self.primer_log_validation_label
+        else:
+            entry_widget = self.entry_reference_files
+            validation_label_widget = self.reference_files_validation_label
+
+        handle = self._revalidation_handles.pop(validation_flag_name, None)
+        if handle:
+            self.master.after_cancel(handle)
+        self._update_validation_ui(
+            entry_widget, validation_label_widget, None, "", validation_flag_name
+        )
+        self._revalidation_handles[validation_flag_name] = self.master.after(
+            500, self._revalidate_field, validation_flag_name
+        )
+
+    def _revalidate_field(self, validation_flag_name):
+        """Deferred re-validation of one entry from its CURRENT text."""
+        self._revalidation_handles.pop(validation_flag_name, None)
+        if validation_flag_name == "primer_log_valid":
+            file_path = self.entry_primer_log.get().strip()
+            if not file_path:
+                return
+            self._start_validation_thread(
+                self.entry_primer_log,
+                self.primer_log_validation_label,
+                file_path,
+                "input addon",
+                "primer_log_valid",
+            )
+        else:
+            file_path = self.entry_reference_files.get().strip()
+            if not file_path:
+                return
+            self._start_validation_thread(
+                self.entry_reference_files,
+                self.reference_files_validation_label,
+                file_path,
+                None,
+                "reference_files_valid",
+            )
+
     def _start_validation_thread(
         self,
         entry_widget,
@@ -197,11 +275,17 @@ class SequencingReferenceFilesApp:
         file_path,
         expected_sheet,
         validation_flag_name,
-        file_display_name,
         next_callback=None,
     ):
         """Starts a background thread to validate a file/folder path."""
-        # Reset UI to neutral before starting validation
+        # Bump this field's generation so any older in-flight result is dropped.
+        self._validation_gens[validation_flag_name] = (
+            self._validation_gens.get(validation_flag_name, 0) + 1
+        )
+        generation = self._validation_gens[validation_flag_name]
+
+        # Reset UI to neutral before starting validation (also clears the
+        # stored path, so a failed re-validation cannot leave a stale one).
         self._update_validation_ui(
             entry_widget, validation_label_widget, None, "", validation_flag_name
         )
@@ -214,8 +298,8 @@ class SequencingReferenceFilesApp:
                 file_path,
                 expected_sheet,
                 validation_flag_name,
-                file_display_name,
                 next_callback,
+                generation,
             ),
             daemon=True,
         )
@@ -228,12 +312,13 @@ class SequencingReferenceFilesApp:
         file_path,
         expected_sheet,
         validation_flag_name,
-        file_display_name,
         next_callback=None,
+        generation=None,
     ):
         """
         Checks if a file/folder exists and (for files) contains the expected sheet.
-        This method runs in a background thread and schedules UI updates.
+        This method runs in a background thread and schedules UI updates that
+        carry the VALIDATED path and the generation of the validation run.
         """
         if not file_path:
             return
@@ -250,8 +335,9 @@ class SequencingReferenceFilesApp:
                     True,
                     message,
                     validation_flag_name,
-                    file_display_name,
+                    file_path,
                     next_callback,
+                    generation,
                 )
             else:
                 message = "Folder not found"
@@ -263,8 +349,9 @@ class SequencingReferenceFilesApp:
                     False,
                     message,
                     validation_flag_name,
-                    file_display_name,
+                    file_path,
                     next_callback,
+                    generation,
                 )
             return
 
@@ -279,42 +366,48 @@ class SequencingReferenceFilesApp:
                 False,
                 message,
                 validation_flag_name,
-                file_display_name,
+                file_path,
                 next_callback,
+                generation,
             )
             return
 
         try:
             wb = openpyxl.load_workbook(file_path, read_only=True)
-            if expected_sheet and expected_sheet not in wb.sheetnames:
-                message = f"Sheet '{expected_sheet}' not found."
+            try:
+                if expected_sheet and expected_sheet not in wb.sheetnames:
+                    message = f"Sheet '{expected_sheet}' not found."
+                    self.master.after(
+                        0,
+                        self._update_validation_ui,
+                        entry_widget,
+                        validation_label_widget,
+                        False,
+                        message,
+                        validation_flag_name,
+                        file_path,
+                        next_callback,
+                        generation,
+                    )
+                    return
+
+                # File is valid
+                message = "Validated"
                 self.master.after(
                     0,
                     self._update_validation_ui,
                     entry_widget,
                     validation_label_widget,
-                    False,
+                    True,
                     message,
                     validation_flag_name,
-                    file_display_name,
+                    file_path,
                     next_callback,
+                    generation,
                 )
-                return
-
-            # File is valid
-            message = "Validated"
-            self.master.after(
-                0,
-                self._update_validation_ui,
-                entry_widget,
-                validation_label_widget,
-                True,
-                message,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
-            )
-        except Exception as e:
+            finally:
+                wb.close()
+        except Exception:
             message = "Not a valid Excel file."
             self.master.after(
                 0,
@@ -324,8 +417,9 @@ class SequencingReferenceFilesApp:
                 False,
                 message,
                 validation_flag_name,
-                file_display_name,
+                file_path,
                 next_callback,
+                generation,
             )
 
     def _update_validation_ui(
@@ -335,23 +429,34 @@ class SequencingReferenceFilesApp:
         is_valid,
         message,
         validation_flag_name,
-        file_display_name=None,
+        validated_path=None,
         next_callback=None,
+        generation=None,
     ):
         """
         Updates the UI to reflect the validation status of a file/folder.
         This method is always run on the main UI thread.
+
+        Stores the VALIDATED path (not the entry's current text) so a result
+        can never attach to a path it did not check. Results from a
+        superseded validation run (generation mismatch) are dropped, and a
+        failed/neutral outcome clears the stored path.
         """
+        if generation is not None and generation != self._validation_gens.get(
+            validation_flag_name
+        ):
+            return  # stale result from a superseded validation
+
         # Update the validation status flag
         setattr(self, validation_flag_name, is_valid)
 
-        # Store the path if valid
-        if is_valid is True:
-            if validation_flag_name == "primer_log_valid":
-                self._primer_log_path = entry_widget.get()
-            elif validation_flag_name == "reference_files_valid":
-                self._reference_files_path = entry_widget.get()
+        # Keep the stored path in lockstep with the validation outcome
+        if validation_flag_name == "primer_log_valid":
+            self._primer_log_path = validated_path if is_valid is True else ""
+        elif validation_flag_name == "reference_files_valid":
+            self._reference_files_path = validated_path if is_valid is True else ""
 
+        if is_valid is True:
             entry_widget.configure(border_color="dark green", border_width=2)
             validation_label_widget.configure(text=f"✔ {message}", text_color="green")
         elif is_valid is False:
@@ -376,6 +481,8 @@ class SequencingReferenceFilesApp:
     def _check_all_validations(self):
         """Checks if all inputs are valid and enables/disables the Export button."""
         all_valid = self.primer_log_valid and self.reference_files_valid
+        if self._processing_running:
+            all_valid = False  # edits during a run must not re-enable the button
         if all_valid:
             self.button_export.configure(state="normal", fg_color="#3C702D")
         else:
@@ -389,6 +496,10 @@ class SequencingReferenceFilesApp:
             if os.path.isfile(primer_log_path):
                 self.entry_primer_log.delete(0, "end")
                 self.entry_primer_log.insert(0, primer_log_path)
+                # Manual browses should start in the prefilled file's folder
+                self._primer_log_initial_dir = (
+                    os.path.dirname(primer_log_path) or self._primer_log_initial_dir
+                )
             elif os.path.isdir(primer_log_path):
                 self._primer_log_initial_dir = primer_log_path
 
@@ -416,7 +527,6 @@ class SequencingReferenceFilesApp:
                     reference_files_path,
                     None,  # No sheet check for folders
                     "reference_files_valid",
-                    "Reference Files Folder",
                 )
 
         # 1. Primer Log (First)
@@ -427,7 +537,6 @@ class SequencingReferenceFilesApp:
                 primer_log_path,
                 "input addon",
                 "primer_log_valid",
-                "Primer Log",
                 next_callback=validate_reference_files,
             )
         else:
@@ -449,7 +558,6 @@ class SequencingReferenceFilesApp:
                 filename,
                 "input addon",
                 "primer_log_valid",
-                "Primer Log",
             )
 
     def _browse_reference_files(self):
@@ -463,12 +571,12 @@ class SequencingReferenceFilesApp:
                 folder,
                 None,
                 "reference_files_valid",
-                "Reference Files Folder",
             )
 
     # --- Processing methods ---
     def _start_processing(self):
         """Starts the processing logic in a background thread."""
+        self._processing_running = True
         self.button_export.configure(state="disabled", fg_color="gray50")
         self._clear_log()
         self._log("Processing started...")
@@ -478,154 +586,264 @@ class SequencingReferenceFilesApp:
 
     def _processing_thread(self):
         """The main processing logic that runs in a background thread."""
+        import re
+
         try:
             self._log_threaded(f"Loading Primer Log: {os.path.basename(self._primer_log_path)}")
 
             # Load the input addon sheet
             wb = openpyxl.load_workbook(self._primer_log_path, read_only=True, data_only=True)
-            
-            sheet_name = "input addon"
-            if sheet_name not in wb.sheetnames:
-                self._log_threaded(f"ERROR: '{sheet_name}' sheet not found in the file.")
-                self.master.after(
-                    0,
-                    lambda: messagebox.showerror("Error", f"Sheet '{sheet_name}' not found in the file.")
-                )
-                self.master.after(
-                    0, lambda: self.button_export.configure(state="normal", fg_color="#3C702D")
-                )
-                return
 
-            ws = wb[sheet_name]
+            try:
+                sheet_name = "input addon"
+                if sheet_name not in wb.sheetnames:
+                    self._log_threaded(f"ERROR: '{sheet_name}' sheet not found in the file.")
+                    self.master.after(
+                        0,
+                        lambda: messagebox.showerror("Error", f"Sheet '{sheet_name}' not found in the file.")
+                    )
+                    return
 
-            # Count sequences to export
-            sequences_exported = 0
-            rows_processed = 0
+                ws = wb[sheet_name]
 
-            self._log_threaded(f"Reference folder: {self._reference_files_path}")
-            self._log_threaded("")
+                # Counters
+                sequences_exported = 0
+                files_overwritten = 0
+                files_completed = 0
+                files_skipped = 0
+                rows_processed = 0
 
-            # Read header row (Row 1) to determine indices
-            rows_iter = ws.iter_rows(values_only=True)
-            headers = next(rows_iter, None)
-            
-            if not headers:
-                self._log_threaded("ERROR: File is empty.")
-                return
+                # Completed-project archive: the \{YYYY}\ year folders inside
+                # the reference folder hold the references of completed
+                # projects. The folder is never listed (it holds thousands of
+                # files) - the current-year and previous-year paths are
+                # composed directly, so work completed late in the previous
+                # year is still caught after the calendar rolls over.
+                year_dirs = [str(date.today().year), str(date.today().year - 1)]
 
-            # Map normalized column names to indices (both sides stripped +
-            # lowercased so surrounding whitespace never breaks a match).
-            import re
+                def _find_completed_in(file_name):
+                    """Returns the expected year folder holding the completed copy, or None."""
+                    for _yd in year_dirs:
+                        if os.path.exists(
+                            os.path.join(self._reference_files_path, _yd, file_name)
+                        ):
+                            return _yd
+                    return None
 
-            def norm_header(h):
-                return re.sub(r"\s+", " ", str(h)).strip().lower() if h is not None else ""
-
-            header_map = {norm_header(h): i for i, h in enumerate(headers) if h}
-
-            def resolve_column(candidates, fallback_idx):
-                """Canonical-first candidates; legacy spellings tolerated.
-                Falls back to the historic fixed index when no candidate
-                header matches. Returns (idx, matched_by_name)."""
-                for cand in candidates:
-                    key = re.sub(r"\s+", " ", str(cand)).strip().lower()
-                    if key in header_map:
-                        return header_map[key], True
-                return fallback_idx, False
-
-            # Fixed fallback indices: A=0, E=4, H=7, I=8.
-            idx_work_no, name_work_no = resolve_column(
-                ("Work No.", "JobID", "Job ID"), 0)
-            idx_vector, name_vector = resolve_column(("Vector",), 4)
-            idx_insert_sequence, name_insert = resolve_column(
-                ("Insert Sequence", "Insert Seq"), 7)
-            idx_final_vector_sequence, name_final = resolve_column(
-                ("Final Vector Sequence", "Final Vector"), 8)
-
-            def col_letter(i):
-                from openpyxl.utils import get_column_letter
-                return get_column_letter(i + 1)
-
-            col_report = ", ".join(
-                f"{label}={col_letter(idx)}"
-                f"{' (name)' if used_name else ' (fixed fallback)'}"
-                for label, idx, used_name in (
-                    ("Work No.", idx_work_no, name_work_no),
-                    ("Vector", idx_vector, name_vector),
-                    ("Insert Sequence", idx_insert_sequence, name_insert),
-                    ("Final Vector Sequence", idx_final_vector_sequence, name_final),
-                )
-            )
-            if name_work_no and name_vector and name_insert and name_final:
-                self._log_threaded(f"'input addon': columns resolved by name ({col_report})")
-            elif not (name_work_no or name_vector or name_insert or name_final):
+                self._log_threaded(f"Reference folder: {self._reference_files_path}")
+                years_txt = " and ".join(f"\\{_yd}\\" for _yd in year_dirs)
                 self._log_threaded(
-                    f"'input addon': header row not recognized; falling back to "
-                    f"fixed columns (Work No.=A, Vector=E, Insert Sequence=H, "
-                    f"Final Vector Sequence=I)"
+                    f"Completed archive check: {years_txt} "
+                    "(current + previous year; a completed copy there is skipped)"
                 )
-            else:
-                self._log_threaded(
-                    f"'input addon': partial header match; fixed fallback used "
-                    f"for missing columns ({col_report})"
-                )
+                self._log_threaded("")
 
-            # Process data rows
-            for row in rows_iter:
-                # Helper to safely get value by index
-                def get_val(idx):
+                # Read header row (Row 1) to determine indices
+                rows_iter = ws.iter_rows(values_only=True)
+                headers = next(rows_iter, None)
+
+                if not headers:
+                    self._log_threaded("ERROR: File is empty.")
+                    return
+
+                # Map normalized column names to indices (both sides stripped +
+                # lowercased so surrounding whitespace never breaks a match).
+                def norm_header(h):
+                    return re.sub(r"\s+", " ", str(h)).strip().lower() if h is not None else ""
+
+                header_map = {norm_header(h): i for i, h in enumerate(headers) if h}
+
+                def resolve_column(candidates, fallback_idx):
+                    """Canonical-first candidates; legacy spellings tolerated.
+                    Falls back to the historic fixed index when no candidate
+                    header matches. Returns (idx, matched_by_name)."""
+                    for cand in candidates:
+                        key = re.sub(r"\s+", " ", str(cand)).strip().lower()
+                        if key in header_map:
+                            return header_map[key], True
+                    return fallback_idx, False
+
+                # Fixed fallback indices: A=0, E=4, H=7, I=8.
+                idx_work_no, name_work_no = resolve_column(
+                    ("Work No.", "JobID", "Job ID"), 0)
+                idx_vector, name_vector = resolve_column(("Vector",), 4)
+                idx_insert_sequence, name_insert = resolve_column(
+                    ("Insert Sequence", "Insert Seq"), 7)
+                idx_final_vector_sequence, name_final = resolve_column(
+                    ("Final Vector Sequence", "Final Vector"), 8)
+
+                def col_letter(i):
+                    from openpyxl.utils import get_column_letter
+                    return get_column_letter(i + 1)
+
+                col_report = ", ".join(
+                    f"{label}={col_letter(idx)}"
+                    f"{' (name)' if used_name else ' (fixed fallback)'}"
+                    for label, idx, used_name in (
+                        ("Work No.", idx_work_no, name_work_no),
+                        ("Vector", idx_vector, name_vector),
+                        ("Insert Sequence", idx_insert_sequence, name_insert),
+                        ("Final Vector Sequence", idx_final_vector_sequence, name_final),
+                    )
+                )
+                if name_work_no and name_vector and name_insert and name_final:
+                    self._log_threaded(f"'input addon': columns resolved by name ({col_report})")
+                elif not (name_work_no or name_vector or name_insert or name_final):
+                    self._log_threaded(
+                        f"'input addon': header row not recognized; falling back to "
+                        f"fixed columns (Work No.=A, Vector=E, Insert Sequence=H, "
+                        f"Final Vector Sequence=I)"
+                    )
+                else:
+                    self._log_threaded(
+                        f"'input addon': partial header match; fixed fallback used "
+                        f"for missing columns ({col_report})"
+                    )
+
+                # Headerless-sheet guard: when NO candidate header matched at all,
+                # decide whether the consumed row 1 was really a header row.
+                HEADER_HINTS = ("work no", "jobid", "job id", "vector", "insert", "final")
+
+                def _looks_like_sequence(value):
+                    if not isinstance(value, str):
+                        return False
+                    compact = re.sub(r"[\s\r\n\-]+", "", value.upper())
+                    return len(compact) >= 40 and set(compact) <= set("ACGTUN")
+
+                consume_headers_as_data = False
+                if not (name_work_no or name_vector or name_insert or name_final):
+                    recognized_header = any(
+                        hint in norm_header(h)
+                        for h in headers if h
+                        for hint in HEADER_HINTS
+                    )
+                    if not recognized_header:
+                        if any(_looks_like_sequence(v) for v in headers):
+                            consume_headers_as_data = True
+                            self._log_threaded(
+                                "  ⚠ Row 1 carries no header text but looks like data — "
+                                "processing it as a data row"
+                            )
+                        else:
+                            self._log_threaded(
+                                "  ⚠ Row 1 carries no recognized header text and no "
+                                "sequence — verify the sheet layout (row skipped)"
+                            )
+
+                def get_val(idx, row):
                     return str(row[idx]).strip() if idx < len(row) and row[idx] is not None else ""
 
-                work_no = get_val(idx_work_no)
-                vector = get_val(idx_vector)
-                insert_sequence = get_val(idx_insert_sequence)
-                final_vector_sequence = get_val(idx_final_vector_sequence)
+                seen_work_nos = set()
 
-                # Skip empty rows
-                if not work_no:
-                    continue
+                def process_data_row(row):
+                    nonlocal rows_processed, sequences_exported
+                    nonlocal files_overwritten, files_completed, files_skipped
 
-                rows_processed += 1
+                    work_no = get_val(idx_work_no, row)
+                    vector = get_val(idx_vector, row)
+                    insert_sequence = get_val(idx_insert_sequence, row)
+                    final_vector_sequence = get_val(idx_final_vector_sequence, row)
 
-                # File 1: {Work No.}.txt with Insert Sequence
-                if insert_sequence:
-                    file_name = f"{work_no}.txt"
-                    file_path = os.path.join(self._reference_files_path, file_name)
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(insert_sequence)
-                    self._log_threaded(f"  ✓ Created: {file_name}")
-                    sequences_exported += 1
+                    # Skip empty rows
+                    if not work_no:
+                        return
 
-                # File 2: {Work No.}+{Vector}.txt with Final Vector Sequence (if present)
-                if final_vector_sequence:
-                    file_name = f"{work_no}+{vector}.txt"
-                    file_path = os.path.join(self._reference_files_path, file_name)
-                    with open(file_path, 'w', encoding='utf-8') as f:
-                        f.write(final_vector_sequence)
-                    self._log_threaded(f"  ✓ Created: {file_name}")
-                    sequences_exported += 1
+                    rows_processed += 1
 
-            wb.close()
+                    if work_no in seen_work_nos:
+                        self._log_threaded(
+                            f"  ⚠ Duplicate Work No. row: {work_no} — later rows overwrite earlier files"
+                        )
+                    seen_work_nos.add(work_no)
+
+                    # File 1: {Work No.}.txt with Insert Sequence
+                    if insert_sequence:
+                        file_name = f"{work_no}.txt"
+                        completed_in = _find_completed_in(file_name)
+                        if completed_in:
+                            files_completed += 1
+                            self._log_threaded(
+                                f"  ⏭ Skipped {file_name} - completed copy already in "
+                                f"\\{completed_in}\\ (project finished, not remade)"
+                            )
+                        else:
+                            file_path = os.path.join(self._reference_files_path, file_name)
+                            existed = os.path.exists(file_path)
+                            with open(file_path, 'w', encoding='utf-8') as f:
+                                f.write(insert_sequence)
+                            if existed:
+                                files_overwritten += 1
+                                self._log_threaded(f"  ⚠ Overwrote existing: {file_name}")
+                            else:
+                                sequences_exported += 1
+                                self._log_threaded(f"  ✓ Created: {file_name}")
+
+                    # File 2: {Work No.}+{Vector}.txt with Final Vector Sequence (if present)
+                    if final_vector_sequence:
+                        if not vector:
+                            files_skipped += 1
+                            self._log_threaded(
+                                f"  ⚠ Skipped {work_no}+{vector}.txt — Vector cell is empty; "
+                                f"the combined name needs a vector"
+                            )
+                        else:
+                            file_name = f"{work_no}+{vector}.txt"
+                            completed_in = _find_completed_in(file_name)
+                            if completed_in:
+                                files_completed += 1
+                                self._log_threaded(
+                                    f"  ⏭ Skipped {file_name} - completed copy already in "
+                                    f"\\{completed_in}\\ (project finished, not remade)"
+                                )
+                            else:
+                                file_path = os.path.join(self._reference_files_path, file_name)
+                                existed = os.path.exists(file_path)
+                                with open(file_path, 'w', encoding='utf-8') as f:
+                                    f.write(final_vector_sequence)
+                                if existed:
+                                    files_overwritten += 1
+                                    self._log_threaded(f"  ⚠ Overwrote existing: {file_name}")
+                                else:
+                                    sequences_exported += 1
+                                    self._log_threaded(f"  ✓ Created: {file_name}")
+
+                if consume_headers_as_data:
+                    process_data_row(headers)
+
+                # Process data rows
+                for row in rows_iter:
+                    process_data_row(row)
+
+            finally:
+                wb.close()
 
             self._log_threaded("")
             self._log_threaded(f"--- Processing Finished ---")
             self._log_threaded(f"Rows processed: {rows_processed}")
             self._log_threaded(f"Files created: {sequences_exported}")
+            self._log_threaded(f"Files overwritten: {files_overwritten}")
+            self._log_threaded(f"Files skipped (completed in year folder): {files_completed}")
+            self._log_threaded(f"Files skipped (empty Vector): {files_skipped}")
 
+            summary = (
+                f"Created: {sequences_exported}\n"
+                f"Overwritten: {files_overwritten}\n"
+                f"Skipped (completed in year folder): {files_completed}\n"
+                f"Skipped (empty Vector): {files_skipped}"
+            )
             self.master.after(
                 0,
-                lambda: messagebox.showinfo(
-                    "Success",
-                    f"Successfully exported {sequences_exported} sequence files.",
-                ),
+                lambda: messagebox.showinfo("Success", summary),
             )
 
         except Exception as e:
             self._log_threaded(f"\nERROR: {traceback.format_exc()}")
             self.master.after(0, messagebox.showerror, "Error", str(e))
         finally:
-            self.master.after(
-                0, lambda: self.button_export.configure(state="normal", fg_color="#3C702D")
-            )
+            self._processing_running = False
+            # Re-evaluate instead of unconditionally re-enabling: if the inputs
+            # were invalidated during the run the button must stay disabled.
+            self.master.after(0, self._check_all_validations)
 
 
 def main():

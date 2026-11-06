@@ -3,8 +3,13 @@ Bio Basic Inc. - Canada
 Made by: Fabien Lonjon and Eduardo Reyes.
 Contact: ed5reyes@outlook
 
-Version: 1.5
-Date: Oct 13, 2026
+Version: 1.6
+Date: Oct 31, 2026
+Notes v1.6: audit fix round — per-plate master-mix counts, primer-pair
+    reset on the pre-emptive plate flip, pristine plate copies (no
+    inherited summary blocks), main-thread clone dialog, args-form error
+    dialogs, validated-path storage with fail-close on edits, a
+    width-guarded fallback read, and NaN-safe cell writes.
 Notes: Both workbook reads use the two-step column pass: headers matched
     by name first (legacy Job ID / BBID / Length spellings tolerated),
     historic fixed positions only as fallback, with the fired path
@@ -13,6 +18,7 @@ Notes: Both workbook reads use the two-step column pass: headers matched
     file is saved, when it is replaced by the saved file name.
 """
 
+import math
 import os
 import traceback
 import threading
@@ -117,7 +123,15 @@ class CloneCountDialog(ctk.CTkToplevel):
         self.title("Number of Clones")
         self.geometry("700x500")
         self.transient(parent)
-        self.grab_set()
+        # grab_set fails on a not-yet-viewable toplevel; guard it
+        try:
+            self.grab_set()
+        except Exception:
+            pass
+
+        # Main-thread completion handshake for the worker-driven flow
+        self.done = threading.Event()
+        self.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self.spinboxes = []  # Store tuples of (Work No., SourceFile, spinbox_widget)
         self.clone_counts = {}
@@ -186,7 +200,7 @@ class CloneCountDialog(ctk.CTkToplevel):
             # BBI ID
             ctk.CTkLabel(
                 row_frame,
-                text=job_info["BBI ID"],
+                text=_blank_if_nan(job_info["BBI ID"]),
                 width=self.column_widths["BBI ID"],
                 anchor="center",
             ).grid(row=0, column=1, padx=self.column_padx, pady=3, sticky="ew")
@@ -194,7 +208,7 @@ class CloneCountDialog(ctk.CTkToplevel):
             # Vector
             ctk.CTkLabel(
                 row_frame,
-                text=job_info["Vector"],
+                text=_blank_if_nan(job_info["Vector"]),
                 width=self.column_widths["Vector"],
                 anchor="center",
             ).grid(row=0, column=2, padx=self.column_padx, pady=3, sticky="ew")
@@ -202,7 +216,7 @@ class CloneCountDialog(ctk.CTkToplevel):
             # Length
             ctk.CTkLabel(
                 row_frame,
-                text=str(job_info["Length (bp)"]),
+                text=_blank_if_nan(job_info["Length (bp)"]),
                 width=self.column_widths["Length (bp)"],
                 anchor="center",
             ).grid(row=0, column=3, padx=self.column_padx, pady=3, sticky="ew")
@@ -245,9 +259,15 @@ class CloneCountDialog(ctk.CTkToplevel):
         ).pack()
 
     def on_confirm(self):
-        """Collect values from all spinboxes and close dialog."""
+        """Collect values from all spinboxes, signal completion, close dialog."""
         for work_no, source_file, spinbox in self.spinboxes:
             self.clone_counts[(work_no, source_file)] = spinbox.get()
+        self.done.set()
+        self.destroy()
+
+    def _on_close(self):
+        """Window close (X / Alt+F4) = cancel: counts stay empty."""
+        self.done.set()
         self.destroy()
 
 
@@ -279,6 +299,13 @@ class ColonyPCRLayoutApp:
         self._primer_log_path = ""
         self._colony_pcr_template_path = ""
         self._ligation_files = []  # List of selected ligation layout files
+
+        # --- Validation bookkeeping: supersedes stale results, debounces
+        # manual edits, and freezes the button gate while a run is active ---
+        self._validation_gen = {"primer_log_valid": 0, "colony_pcr_template_valid": 0}
+        self._debounce_ids = {"primer_log_valid": None, "colony_pcr_template_valid": None}
+        self._processing_running = False
+        self._field_registry = {}  # flag_name -> UI/storage info (filled in _setup_ui)
 
         # --- Build UI ---
         self._setup_ui()
@@ -439,6 +466,31 @@ class ColonyPCRLayoutApp:
         )
         self.log_textbox.pack(expand=True, fill="both", padx=10, pady=(2, 10))
 
+        # --- Field registry: one authoritative map per validated path field ---
+        self._field_registry = {
+            "primer_log_valid": dict(
+                entry=self.entry_primer_log,
+                label=self.primer_log_validation_label,
+                attr="_primer_log_path",
+                sheet="input addon",
+                display="Primer Log",
+            ),
+            "colony_pcr_template_valid": dict(
+                entry=self.entry_colony_pcr_template,
+                label=self.colony_pcr_template_validation_label,
+                attr="_colony_pcr_template_path",
+                sheet=None,
+                display="Colony PCR Template",
+            ),
+        }
+        for flag_name, reg in self._field_registry.items():
+            reg["entry"].bind(
+                "<KeyRelease>", lambda e, f=flag_name: self._on_file_entry_edited(f)
+            )
+            reg["entry"].bind(
+                "<<Paste>>", lambda e, f=flag_name: self._on_file_entry_edited(f), add="+"
+            )
+
     # --- Logging methods ---
     def _log(self, message):
         """Appends a message to the log widget (main thread only)."""
@@ -459,6 +511,48 @@ class ColonyPCRLayoutApp:
             self.log_textbox.configure(state="normal")
             self.log_textbox.delete("1.0", "end")
             self.log_textbox.configure(state="disabled")
+
+    # --- Path state: fail-close on edits, debounced revalidation ---
+    def _on_file_entry_edited(self, flag_name):
+        """Any manual edit to a validated path field invalidates it
+        immediately (fail closed) and re-validates after a short debounce."""
+        # Bump the generation here so a still-in-flight validation result
+        # for this field is superseded the moment the edit happens (not
+        # only after the debounced revalidation starts).
+        self._validation_gen[flag_name] = self._validation_gen.get(flag_name, 0) + 1
+        setattr(self, flag_name, False)
+        reg = self._field_registry.get(flag_name)
+        if reg:
+            setattr(self, reg["attr"], "")
+            reg["entry"].configure(
+                border_width=1,
+                border_color=ctk.ThemeManager.theme["CTkEntry"]["border_color"],
+            )
+            reg["label"].configure(
+                text="", text_color=ctk.ThemeManager.theme["CTkLabel"]["text_color"]
+            )
+        self._check_all_validations()
+        prev = self._debounce_ids.get(flag_name)
+        if prev is not None:
+            try:
+                self.master.after_cancel(prev)
+            except Exception:
+                pass
+        self._debounce_ids[flag_name] = self.master.after(
+            500, lambda: self._revalidate_entry(flag_name)
+        )
+
+    def _revalidate_entry(self, flag_name):
+        """Debounced re-validation of a manually edited path (main thread)."""
+        reg = self._field_registry.get(flag_name)
+        if not reg:
+            return
+        path = reg["entry"].get()
+        if path:
+            self._start_validation_thread(
+                reg["entry"], reg["label"], path, reg["sheet"],
+                flag_name, reg["display"],
+            )
 
     # --- Ligation files management ---
     def _update_ligation_display(self):
@@ -502,9 +596,17 @@ class ColonyPCRLayoutApp:
         next_callback=None,
     ):
         """Starts a background thread to validate a file path."""
-        # Reset UI to neutral before starting validation
+        # Bump the generation first so a stale in-flight result for this
+        # field can never overwrite the outcome of this validation.
+        self._validation_gen[validation_flag_name] = (
+            self._validation_gen.get(validation_flag_name, 0) + 1
+        )
+        gen = self._validation_gen[validation_flag_name]
+
+        # Reset UI to neutral before starting validation (same generation)
         self._update_validation_ui(
-            entry_widget, validation_label_widget, None, "", validation_flag_name
+            entry_widget, validation_label_widget, None, "",
+            validation_flag_name, None, None, gen, None,
         )
 
         thread = threading.Thread(
@@ -517,6 +619,7 @@ class ColonyPCRLayoutApp:
                 validation_flag_name,
                 file_display_name,
                 next_callback,
+                gen,
             ),
             daemon=True,
         )
@@ -531,6 +634,7 @@ class ColonyPCRLayoutApp:
         validation_flag_name,
         file_display_name,
         next_callback=None,
+        gen=None,
     ):
         """
         Checks if a file exists and contains the expected sheet.
@@ -539,64 +643,69 @@ class ColonyPCRLayoutApp:
         if not file_path:
             return
 
-        if not os.path.exists(file_path):
-            message = "File not found."
+        def _done(is_valid, text):
             self.master.after(
                 0,
                 self._update_validation_ui,
                 entry_widget,
                 validation_label_widget,
-                False,
-                message,
+                is_valid,
+                text,
                 validation_flag_name,
                 file_display_name,
                 next_callback,
+                gen,
+                file_path,
             )
+
+        if not os.path.exists(file_path):
+            _done(False, "File not found.")
             return
 
+        wb = None
         try:
             wb = openpyxl.load_workbook(file_path, read_only=True)
             if expected_sheet and expected_sheet not in wb.sheetnames:
-                message = f"Sheet '{expected_sheet}' not found."
-                self.master.after(
-                    0,
-                    self._update_validation_ui,
-                    entry_widget,
-                    validation_label_widget,
-                    False,
-                    message,
-                    validation_flag_name,
-                    file_display_name,
-                    next_callback,
-                )
+                _done(False, f"Sheet '{expected_sheet}' not found.")
                 return
 
-            # File is valid
-            message = "Validated"
-            self.master.after(
-                0,
-                self._update_validation_ui,
-                entry_widget,
-                validation_label_widget,
-                True,
-                message,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
-            )
-        except Exception as e:
-            message = "Not a valid Excel file."
-            self.master.after(
-                0,
-                self._update_validation_ui,
-                entry_widget,
-                validation_label_widget,
-                False,
-                message,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
-            )
+            if expected_sheet is None:
+                # Colony PCR template shape check: the plate grid must be
+                # present (row-2 numbers 1..12, column-A letters A..H).
+                # Note: read_only iter_rows yields EmptyCell objects with no
+                # coordinate attribute for untouched cells — skip those.
+                grid_ws = wb.active
+                cells = {}
+                for row in grid_ws.iter_rows(
+                    min_row=1, max_row=10, min_col=1, max_col=13
+                ):
+                    for cell in row:
+                        coord = getattr(cell, "coordinate", None)
+                        if coord:
+                            cells[coord] = cell.value
+                checks = [
+                    (get_column_letter(c) + "2", c - 1) for c in range(2, 14)
+                ] + [("A%d" % r, "ABCDEFGH"[r - 3]) for r in range(3, 11)]
+                for coord, want in checks:
+                    got = cells.get(coord)
+                    try:
+                        ok = abs(float(got) - float(want)) < 1e-9
+                    except (TypeError, ValueError):
+                        ok = str(got).strip().upper() == str(want)
+                    if not ok:
+                        _done(
+                            False,
+                            "Not a Colony PCR Layout template "
+                            f"(plate grid missing at {coord}).",
+                        )
+                        return
+
+            _done(True, "Validated")
+        except Exception:
+            _done(False, "Not a valid Excel file.")
+        finally:
+            if wb is not None:
+                wb.close()
 
     def _update_validation_ui(
         self,
@@ -607,20 +716,26 @@ class ColonyPCRLayoutApp:
         validation_flag_name,
         file_display_name=None,
         next_callback=None,
+        gen=None,
+        file_path=None,
     ):
         """
         Updates the UI to reflect the validation status of a file.
         This method is always run on the main UI thread.
         """
-        # Update the validation status flag
-        setattr(self, validation_flag_name, is_valid)
+        # Superseded result: a newer validation for this field is in flight
+        if gen is not None and gen != self._validation_gen.get(validation_flag_name):
+            return
 
-        # Store the path if valid
+        # Update the validation status flag (a neutral reset also fails closed)
+        setattr(self, validation_flag_name, False if is_valid is None else bool(is_valid))
+
+        # Store the VALIDATED path (the thread's argument, not the entry text)
         if is_valid is True:
             if validation_flag_name == "primer_log_valid":
-                self._primer_log_path = entry_widget.get()
+                self._primer_log_path = file_path
             elif validation_flag_name == "colony_pcr_template_valid":
-                self._colony_pcr_template_path = entry_widget.get()
+                self._colony_pcr_template_path = file_path
 
             entry_widget.configure(border_color="dark green", border_width=2)
             validation_label_widget.configure(text=f"✔ {message}", text_color="green")
@@ -645,6 +760,10 @@ class ColonyPCRLayoutApp:
 
     def _check_all_validations(self):
         """Checks if all files are valid and enables/disables the Generate button."""
+        # The button state stays frozen while a run is active; the run's
+        # finally re-evaluates the gate once processing is done.
+        if getattr(self, "_processing_running", False):
+            return
         all_valid = (
             self.primer_log_valid
             and self.colony_pcr_template_valid
@@ -741,29 +860,35 @@ class ColonyPCRLayoutApp:
     # --- Processing methods ---
     def _start_processing(self):
         """Starts the processing logic in a background thread."""
+        # Snapshot the file list on the main thread so Add/Clear clicked
+        # during a run can never change what a run processes.
+        ligation_files = list(self._ligation_files)
+        self._processing_running = True
         self.button_generate.configure(state="disabled", fg_color="gray50")
         self._clear_log()
         self._log("Processing started...")
 
-        thread = threading.Thread(target=self._processing_thread, daemon=True)
+        thread = threading.Thread(
+            target=self._processing_thread, args=(ligation_files,), daemon=True
+        )
         thread.start()
 
-    def _processing_thread(self):
+    def _processing_thread(self, ligation_files):
         """The main processing logic that runs in a background thread."""
         try:
-            if not self._ligation_files:
+            if not ligation_files:
                 self.master.after(
                     0, lambda: messagebox.showerror("Error", "Please select at least one Ligation Layout file.")
                 )
                 self._log_threaded("ERROR: No Ligation Layout files selected. Processing stopped.")
                 return
 
-            self._log_threaded(f"Found {len(self._ligation_files)} Ligation Layout file(s) to process.")
+            self._log_threaded(f"Found {len(ligation_files)} Ligation Layout file(s) to process.")
 
             # Call the processing function
             output_path = fill_colony_pcr_layout(
                 self.master,
-                self._ligation_files,
+                ligation_files,
                 self._colony_pcr_template_path,
                 self._primer_log_path,
                 logger=self._log_threaded,
@@ -771,24 +896,18 @@ class ColonyPCRLayoutApp:
 
             if output_path:
                 self._log_threaded(f"\n--- Processing Finished ---")
-                self._log_threaded(f"File saved to: {output_path}")
-                self.master.after(
-                    0,
-                    lambda: messagebox.showinfo(
-                        "Success",
-                        f"Colony PCR Layout created successfully:\n{output_path}",
-                    ),
-                )
+                # The layout only exists after the Save-As dialog completes;
+                # do_save reports the real saved path there (no early popup).
+                self._log_threaded("Save dialog opened: choose a location to save the layout.")
             else:
                 self._log_threaded("\nProcessing cancelled or failed.")
 
         except Exception as e:
             self._log_threaded(f"\nERROR: {traceback.format_exc()}")
-            self.master.after(0, lambda: messagebox.showerror("Error", str(e)))
+            self.master.after(0, messagebox.showerror, "Error", str(e))
         finally:
-            self.master.after(
-                0, lambda: self.button_generate.configure(state="normal", fg_color="#3C702D")
-            )
+            self._processing_running = False
+            self.master.after(0, self._check_all_validations)
 
 
 _LIGATION_WANTED = [
@@ -853,10 +972,44 @@ def _read_ligation_layout(path, logger=print):
         logger(f"  > {os.path.basename(path)}: name-first probe failed ({e}), "
                f"falling back to fixed columns ({fallback_cols})")
 
-    df = pd.read_excel(path, sheet_name="Layout", engine="openpyxl",
-                       header=None, skiprows=1, usecols=fallback_cols)
+    df_full = pd.read_excel(path, sheet_name="Layout", engine="openpyxl",
+                            header=None, skiprows=1)
+    # Historic columns selected with a width guard: sheets can be narrower
+    # than W, so out-of-range positions are padded with empty columns
+    # instead of crashing the read.
+    picked = []
+    for i in (0, 1, 2, 3, 19, 20, 21, 22):
+        if i < df_full.shape[1]:
+            picked.append(df_full.iloc[:, i])
+        else:
+            picked.append(pd.Series([None] * len(df_full), index=df_full.index))
+    df = pd.concat(picked, axis=1)
     df.columns = fallback_names
     return df
+
+
+def _blank_if_nan(v):
+    """Coerces NaN/None to an empty string for display writes."""
+    if v is None:
+        return ""
+    try:
+        if isinstance(v, float) and math.isnan(v):
+            return ""
+    except Exception:
+        pass
+    if str(v) == "nan":
+        return ""
+    return v
+
+
+def _clean_cell_value(v):
+    """Coerces NaN/None to a blank cell so openpyxl never writes malformed
+    empty-numeric `<c><v></v></c>` entries (Excel repair-prompt state)."""
+    if v is None:
+        return None
+    if _blank_if_nan(v) == "":
+        return None
+    return v
 
 
 def _build_primer_mapping(df_primer, logger=print):
@@ -1015,7 +1168,7 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
             # Write data rows
             for r_idx, (_, row) in enumerate(samples_df.iterrows(), start_row + 1):
                 for c_idx, col in enumerate(headers, 1):
-                    sheet.cell(row=r_idx, column=c_idx + 1, value=row[col])
+                    sheet.cell(row=r_idx, column=c_idx + 1, value=_clean_cell_value(row[col]))
             
             # Apply borders to the entire table (header + data rows)
             if len(samples_df) > 0:
@@ -1032,8 +1185,12 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
             return samples_end_row
 
         # --- Helper function to write mix calculation table ---
-        def write_mix_calculation_table(sheet, plate_jobs, all_summary_data, all_clone_counts, start_row=13):
-            """Writes the mix calculation table below the samples table."""
+        def write_mix_calculation_table(sheet, plate_jobs, all_summary_data, plate_clone_counts, start_row=13):
+            """Writes the mix calculation table below the samples table.
+
+            Clone counts here are the clones physically placed on THIS
+            plate, so a job whose group wraps onto the next plate is
+            counted separately on each plate."""
             plate_summary = all_summary_data[all_summary_data["Work No."].isin(plate_jobs)]
             unique_primers_on_plate = plate_summary["Primers"].unique()
 
@@ -1054,7 +1211,7 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
 
                 jobs_with_this_primer = plate_summary[plate_summary["Primers"] == primer_pair]["Work No."]
                 num_clones_for_primer = sum(
-                    count for (job, _), count in all_clone_counts.items()
+                    count for (job, _), count in plate_clone_counts.items()
                     if job in jobs_with_this_primer.values
                 )
 
@@ -1149,15 +1306,36 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
                     max_length = max(max_length, len(str(cell.value)))
                 label_ws.column_dimensions[col[0].column_letter].width = max_length + 2
 
-        # --- Keep a template copy ---
-        template_plate = wb["Plate 1"]
+        # --- Keep a PRISTINE template copy for every new plate: Plate 1
+        # starts carrying its summary as soon as the first flip writes it,
+        # so copying from Plate 1 would duplicate that block on each new
+        # plate. The snapshot is removed before save. ---
+        pristine_template = wb.copy_worksheet(wb["Plate 1"])
+        pristine_template.title = "_TemplateSource"
 
-        # --- Ask user for clone counts ---
+        # --- Ask user for clone counts (dialog built on the main thread) ---
         job_details_for_dialog = summary_data.drop_duplicates(subset=["Work No.", "SourceFile"])
 
-        dialog = CloneCountDialog(parent_window, job_details_for_dialog)
-        parent_window.wait_window(dialog)
-        clone_counts = dialog.clone_counts
+        dialog_event = threading.Event()
+        dialog_box = {}
+
+        def _build_clone_dialog():
+            try:
+                dialog_box["dialog"] = CloneCountDialog(parent_window, job_details_for_dialog)
+            except Exception as e:
+                dialog_box["error"] = str(e)
+                logger(f"ERROR: clone-count dialog failed to open: {e}")
+            finally:
+                dialog_event.set()
+
+        parent_window.after(0, _build_clone_dialog)
+        dialog_event.wait()
+        dialog = dialog_box.get("dialog")
+        if dialog is not None:
+            dialog.done.wait()
+            clone_counts = dict(dialog.clone_counts)
+        else:
+            clone_counts = {}
 
         # Filter summary_data based on user selection
         summary_data = summary_data[summary_data.apply(
@@ -1175,6 +1353,8 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
         primers_in_current_col = None
         plate_number = 1
         plate_work_nos = set()
+        # Clones physically placed on the current plate (mix calc input)
+        plate_clone_counts = {}
 
         thin_side = Side(style="thin")
         thin_border = Border(left=thin_side, right=thin_side, top=thin_side, bottom=thin_side)
@@ -1307,12 +1487,16 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
             if (current_col + (1 if starts_in_new_col else 0)) >= 12:
                 plate_number += 1
                 current_col, current_row = 0, 0
+                # Reset the column's primer pair too, or the new plate's
+                # first column inherits the OLD plate's last primer pair
+                primers_in_current_col = None
                 plate_summary_df = summary_data[summary_data["Work No."].isin(plate_work_nos)]
                 samples_end_row = write_summary_to_sheet(ws, plate_summary_df)
                 # Leave empty row before mix calculation table
-                write_mix_calculation_table(ws, plate_work_nos, summary_data, clone_counts, start_row=samples_end_row + 1)
-                ws = create_new_plate(wb, template_plate, plate_number)
+                write_mix_calculation_table(ws, plate_work_nos, summary_data, plate_clone_counts, start_row=samples_end_row + 1)
+                ws = create_new_plate(wb, pristine_template, plate_number)
                 plate_work_nos = set()
+                plate_clone_counts = {}
 
             # Column transition
             new_col_needed = (
@@ -1344,9 +1528,10 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
                     plate_summary_df = summary_data[summary_data["Work No."].isin(plate_work_nos)]
                     samples_end_row = write_summary_to_sheet(ws, plate_summary_df)
                     # Leave empty row before mix calculation table
-                    write_mix_calculation_table(ws, plate_work_nos, summary_data, clone_counts, start_row=samples_end_row + 1)
-                    ws = create_new_plate(wb, template_plate, plate_number)
+                    write_mix_calculation_table(ws, plate_work_nos, summary_data, plate_clone_counts, start_row=samples_end_row + 1)
+                    ws = create_new_plate(wb, pristine_template, plate_number)
                     plate_work_nos = set()
+                    plate_clone_counts = {}
 
                 if current_row == 0 and primers_in_current_col is None:
                     primers_in_current_col = primers
@@ -1355,6 +1540,8 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
                 excel_col = current_col + 2
                 ws.cell(row=excel_row, column=excel_col, value=f"{work_no}-Clone{i}")
                 plate_work_nos.add(work_no)
+                count_key = (work_no, job_row["SourceFile"])
+                plate_clone_counts[count_key] = plate_clone_counts.get(count_key, 0) + 1
 
                 current_row += 1
 
@@ -1371,10 +1558,12 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
                 clone_count=num_clones
             )
 
-        # Place controls
-        control_start_row = current_row
-        control_start_col = current_col
-        
+        # Place controls. A column or plate break starts a new contiguous
+        # run, so every control cell gets its thick outline even when the
+        # pair wraps to a new column or a new plate.
+        control_runs = []
+        run_ws, run_col, run_first, run_last = None, None, None, None
+
         for control in ["CK+", "CK-"]:
             if current_row >= 8:
                 current_col += 1
@@ -1386,30 +1575,34 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
                 plate_summary_df = summary_data[summary_data["Work No."].isin(plate_work_nos)]
                 samples_end_row = write_summary_to_sheet(ws, plate_summary_df)
                 # Leave empty row before mix calculation table
-                write_mix_calculation_table(ws, plate_work_nos, summary_data, clone_counts, start_row=samples_end_row + 1)
-                ws = create_new_plate(wb, template_plate, plate_number)
+                write_mix_calculation_table(ws, plate_work_nos, summary_data, plate_clone_counts, start_row=samples_end_row + 1)
+                ws = create_new_plate(wb, pristine_template, plate_number)
                 plate_work_nos = set()
+                plate_clone_counts = {}
+
+            # A column or plate break ends the current contiguous run
+            if run_ws is not ws or run_col != current_col:
+                if run_ws is not None and run_last >= run_first:
+                    control_runs.append((run_ws, run_first, run_col, run_last))
+                run_ws, run_col, run_first = ws, current_col, current_row
 
             excel_row = current_row + 3
             excel_col = current_col + 2
             ws.cell(row=excel_row, column=excel_col, value=control)
+            run_last = current_row
             current_row += 1
-        
-        # Apply thick border around controls (single column range)
-        if current_row > control_start_row:
-            apply_thick_border_to_range(
-                ws,
-                control_start_row,
-                control_start_col,
-                current_row - 1,
-                control_start_col  # Single column for controls
-            )
+
+        if run_ws is not None and run_last >= run_first:
+            control_runs.append((run_ws, run_first, run_col, run_last))
+
+        for r_ws, r_first, r_col, r_last in control_runs:
+            apply_thick_border_to_range(r_ws, r_first, r_col, r_last, r_col)
 
         # Final updates
         final_plate_summary_df = summary_data[summary_data["Work No."].isin(plate_work_nos)]
         final_samples_end_row = write_summary_to_sheet(ws, final_plate_summary_df)
         # Leave empty row before mix calculation table
-        write_mix_calculation_table(ws, plate_work_nos, summary_data, clone_counts, start_row=final_samples_end_row + 1)
+        write_mix_calculation_table(ws, plate_work_nos, summary_data, plate_clone_counts, start_row=final_samples_end_row + 1)
 
         # Apply final formatting to all plate sheets: set column widths
         for sheet in wb.worksheets:
@@ -1436,6 +1629,9 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
                 filetypes=[("Excel files", "*.xlsx"), ("All files", "*.*")],
             )
             if save_path:
+                # Drop the pristine-template snapshot from the saved file
+                if "_TemplateSource" in wb.sheetnames:
+                    wb.remove(wb["_TemplateSource"])
                 # A1 must mirror the saved file name on every plate sheet
                 # (plate numbers stay visible in the sheet tab names).
                 file_stem = os.path.splitext(os.path.basename(save_path))[0]
@@ -1461,15 +1657,15 @@ def fill_colony_pcr_layout(parent_window, ligation_layout_paths, colony_pcr_temp
 
     except FileNotFoundError as e:
         logger(f"ERROR: File not found: {e}")
-        parent_window.after(0, lambda: messagebox.showerror("Error", f"File not found:\n{e}"))
+        parent_window.after(0, messagebox.showerror, "Error", f"File not found:\n{e}")
         return None
     except KeyError as e:
         logger(f"ERROR: Missing required column: {e}")
-        parent_window.after(0, lambda: messagebox.showerror("Error", f"Missing required column:\n{e}"))
+        parent_window.after(0, messagebox.showerror, "Error", f"Missing required column:\n{e}")
         return None
     except Exception as e:
         logger(f"ERROR: {traceback.format_exc()}")
-        parent_window.after(0, lambda: messagebox.showerror("Error", f"An unexpected error occurred:\n{e}"))
+        parent_window.after(0, messagebox.showerror, "Error", f"An unexpected error occurred:\n{e}")
         return None
 
 

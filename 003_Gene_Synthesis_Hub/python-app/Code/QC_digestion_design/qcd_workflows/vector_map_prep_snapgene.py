@@ -3,24 +3,30 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 1.1
-Date: Aug 11, 2026
+Version: 1.2
+Date: Oct 31, 2026
+Notes: Workflow for automating SnapGene to create .dna files. Two user-facing
+    safeguards run through modal dialogs that are built on the Tk main
+    thread while the automation waits on a threading.Event:
 
-Notes: Workflow for automating SnapGene to create .dna files. Adds two
-    user-facing safeguards driven by a modal dialog (thread-safe via
-    Tk's after() + threading.Event):
-
-    1. Pre-start "Ready" dialog. Replaces the silent 5-second sleep with
-        a modal dialog the user must acknowledge, followed by a visible
-        10-second countdown before any keystrokes fire.
-
-    2. Mid-run focus check. Before each Work No.'s automation block, verifies
-        SnapGene is the foreground window (via win32gui). If not, shows a
-        3-button dialog: Retry (recheck focus and restart current Work No.),
-        Continue (proceed anyway), or Cancel Run (abort).
+    1. Pre-start "Ready" dialog the user must acknowledge, followed by a
+        visible 10-second countdown before any keystrokes fire.
+    2. Mid-run focus check before each Work No.'s automation block, with
+        Retry / Continue / Cancel Run options.
 
     pyautogui FailSafe (mouse to top-left corner) remains the fastest
     abort mechanism during the actual automation.
+
+    Safeguard hardening in this version: the automation-error path no
+    longer posts both an ERROR popup and a trailing completion message --
+    the run posts exactly one terminator (ERROR tuple on automation
+    failure, completion line otherwise) plus DONE. Modal dialogs grab only
+    after the window is viewable (retrying guard), so a not-yet-viewable
+    Toplevel can no longer abort the run with 'grab failed'. Sheet search
+    follows a fixed 'input addon'-first priority, the fired column
+    resolution (name vs positional fallback) is logged, the insert
+    sequence is cleaned of whitespace before it is pasted into SnapGene,
+    and the workbook handle is closed.
 """
 
 import threading
@@ -30,7 +36,7 @@ import pandas as pd
 import pyautogui
 import pyperclip
 
-from .helpers import get_row_for_work_no, get_field_from_row
+from .helpers import normalize_column_lookup, get_row_for_work_no, get_field_from_row
 
 
 # --- Foreground-window detection (lazy import for non-Windows safety) ---
@@ -61,6 +67,25 @@ def _is_snapgene_foreground():
 # via master.after() and signal the worker's choice back with threading
 # Events.
 
+def _grab_when_viewable(dialog, max_tries=20):
+    """Guarded modal grab: a fresh CTkToplevel on Windows is often not yet
+    viewable when the builder runs, and an unguarded grab_set raises
+    'grab failed', aborting the whole run. Retry on a timer until the
+    window is viewable or the tries run out."""
+    def attempt(remaining):
+        try:
+            if not dialog.winfo_exists():
+                return
+            dialog.grab_set()
+        except Exception:
+            if remaining > 0:
+                try:
+                    dialog.after(50, lambda: attempt(remaining - 1))
+                except Exception:
+                    pass
+
+    attempt(max_tries)
+
 def _show_ready_dialog(master, work_no_count):
     """Show the pre-start 'Ready' dialog. Blocks until user clicks OK or
     Cancel. Returns 'ok' or 'cancel'.
@@ -74,7 +99,7 @@ def _show_ready_dialog(master, work_no_count):
     dialog.geometry("440x200")
     dialog.resizable(False, False)
     dialog.transient(master)
-    dialog.grab_set()
+    _grab_when_viewable(dialog)
 
     ctk.CTkLabel(
         dialog,
@@ -139,7 +164,7 @@ def _show_pre_start_countdown_dialog(master, seconds):
     dialog.geometry("320x160")
     dialog.resizable(False, False)
     dialog.transient(master)
-    dialog.grab_set()
+    _grab_when_viewable(dialog)
 
     ctk.CTkLabel(
         dialog,
@@ -282,7 +307,7 @@ def _show_focus_loss_dialog(master, work_no):
     dialog.geometry("460x250")
     dialog.resizable(False, False)
     dialog.transient(master)
-    dialog.grab_set()
+    _grab_when_viewable(dialog)
 
     ctk.CTkLabel(
         dialog,
@@ -447,126 +472,172 @@ class VectorMapPrepSnapGene:
         pyautogui.hotkey("ctrl", "w")
         time.sleep(0.75)
 
+    # --- shared run-scaffolding helpers --------------------------------------
+    def _log_column_provenance(self, df, sheet):
+        """Log which resolution path fired for every consumed column so a
+        workbook column move is visible in the run log instead of silently
+        switching to the positional fallback."""
+        checks = [
+            (["Work No.", "JobID", "Job Id", "Job_ID", "jobid"], None, "Work No."),
+            (
+                ["Final Vector Sequence", "Final Vector", "FinalVector"],
+                8,
+                "Final Vector Sequence",
+            ),
+            (["Insert Sequence", "Insert Seq", "InsertSeq"], 7, "Insert Sequence"),
+        ]
+        for candidates, fallback, label in checks:
+            named = normalize_column_lookup(df, candidates)
+            if named is not None:
+                self.log_queue.put(
+                    f"  [{sheet}] {label}: resolved by name (column '{named}')"
+                )
+            elif fallback is not None:
+                self.log_queue.put(
+                    f"  [{sheet}] {label}: header not recognized, "
+                    f"using positional fallback column index {fallback}"
+                )
+
+    @staticmethod
+    def _clean_sequence(seq_str):
+        return str(seq_str).replace(" ", "").replace("\n", "").replace("\r", "")
+
     def run_processing_task(self, excel_path, output_dir, work_nos):
         """The main processing logic for this workflow, run in a thread."""
         # output_dir is ignored in this workflow as SnapGene saves to its default folder.
         master = self.app.master
+        # Set when the run must end in an ERROR popup instead of a completion
+        # message; the finally posts exactly one terminator + DONE.
+        automation_error_message = None
 
+        xls = None
         try:
-            xls = pd.ExcelFile(excel_path, engine="openpyxl")
-            sheet_names = xls.sheet_names
-        except Exception as e:
-            self.log_queue.put(
-                ("ERROR", "Excel Read Error", f"Could not read Excel workbook: {e}")
-            )
-            return
-
-        target_sheets = ["input addon", "Obsolete input addon(completed)"]
-        sheets_to_load = [
-            s for s in sheet_names if s.lower() in (ts.lower() for ts in target_sheets)
-        ]
-
-        if not sheets_to_load:
-            self.log_queue.put(
-                (
-                    "ERROR",
-                    "Sheets Missing",
-                    f"Expected sheets not found: {target_sheets}",
-                )
-            )
-            return
-
-        dfs = {}
-        for sheet in sheets_to_load:
             try:
-                df = pd.read_excel(
-                    excel_path, sheet_name=sheet, engine="openpyxl", dtype=object
-                )
-                dfs[sheet] = df
-                self.log_queue.put(f"Loaded sheet: {sheet} ({len(df)} rows)")
+                xls = pd.ExcelFile(excel_path, engine="openpyxl")
+                sheet_names = xls.sheet_names
             except Exception as e:
-                self.log_queue.put(f"Warning: Failed to load sheet {sheet}: {e}")
+                self.log_queue.put(
+                    ("ERROR", "Excel Read Error", f"Could not read Excel workbook: {e}")
+                )
+                return
+            finally:
+                if xls is not None:
+                    try:
+                        xls.close()
+                    except Exception:
+                        pass
 
-        # --- Step 1: Gather all data in memory first ---
-        self.log_queue.put("Gathering data for all Work No....")
-        records_to_process = []
-        for work_no in work_nos:
-            row = None
+            # Fixed precedence: the live 'input addon' sheet is always
+            # searched first, the completed historical sheet after it,
+            # regardless of tab order in the workbook.
+            priority_sheets = ["input addon", "Obsolete input addon(completed)"]
+            sheets_to_load = [
+                t
+                for t in priority_sheets
+                if any(s.lower() == t.lower() for s in sheet_names)
+            ]
+
+            if not sheets_to_load:
+                self.log_queue.put(
+                    (
+                        "ERROR",
+                        "Sheets Missing",
+                        f"Expected sheets not found: {priority_sheets}",
+                    )
+                )
+                return
+
+            dfs = {}
             for sheet in sheets_to_load:
-                row = get_row_for_work_no(dfs.get(sheet), work_no)
-                if row is not None:
-                    break
+                try:
+                    df = pd.read_excel(
+                        excel_path, sheet_name=sheet, engine="openpyxl", dtype=object
+                    )
+                    dfs[sheet] = df
+                    self.log_queue.put(f"Loaded sheet: {sheet} ({len(df)} rows)")
+                    self._log_column_provenance(df, sheet)
+                except Exception as e:
+                    self.log_queue.put(f"Warning: Failed to load sheet {sheet}: {e}")
 
-            if row is None:
-                self.log_queue.put(f"  -> Work No. {work_no} not found. Skipping.")
-                continue
+            # --- Step 1: Gather all data in memory first ---
+            self.log_queue.put("Gathering data for all Work No....")
+            records_to_process = []
+            for work_no in work_nos:
+                row = None
+                for sheet in sheets_to_load:
+                    row = get_row_for_work_no(dfs.get(sheet), work_no)
+                    if row is not None:
+                        break
 
-            final_vector_sequence = get_field_from_row(
-                row, ["Final Vector Sequence", "Final Vector", "FinalVector"], fallback_index=8
+                if row is None:
+                    self.log_queue.put(f"  -> Work No. {work_no} not found. Skipping.")
+                    continue
+
+                final_vector_sequence = get_field_from_row(
+                    row, ["Final Vector Sequence", "Final Vector", "FinalVector"], fallback_index=8
+                )
+                insert_sequence = get_field_from_row(
+                    row, ["Insert Sequence", "Insert Seq", "InsertSeq"], fallback_index=7
+                )
+
+                if not final_vector_sequence:
+                    self.log_queue.put(f"  -> No 'Final Vector Sequence' for {work_no}. Skipping.")
+                    continue
+
+                # Clean whitespace like the vector side so a stray space or
+                # line break inside the cell can never derail SnapGene's find.
+                if insert_sequence:
+                    insert_sequence = self._clean_sequence(insert_sequence)
+
+                records_to_process.append(
+                    {"work_no": work_no, "vector": final_vector_sequence, "insert": insert_sequence}
+                )
+                self.log_queue.put(f"  -> Data for {work_no} collected.")
+
+            if not records_to_process:
+                self.log_queue.put("No valid records found to process.")
+                return
+
+            # --- Step 2: Pre-start "Ready" dialog ---
+            total = len(records_to_process)
+            self.log_queue.put(
+                f"\nAll {total} Work No. loaded. Waiting for user confirmation..."
             )
-            insert_sequence = get_field_from_row(
-                row, ["Insert Sequence", "Insert Seq", "InsertSeq"], fallback_index=7
+            self.log_queue.put(
+                "A dialog will appear. Click OK, then switch to SnapGene."
             )
 
-            if not final_vector_sequence:
-                self.log_queue.put(f"  -> No 'Final Vector Sequence' for {work_no}. Skipping.")
-                continue
+            try:
+                choice = _ask_main_thread(
+                    master, _show_ready_dialog, master, total
+                )
+            except Exception as e:
+                self.log_queue.put(f"Could not show ready dialog: {e}")
+                self.log_queue.put("Aborted before automation started.")
+                return
 
-            records_to_process.append(
-                {"work_no": work_no, "vector": final_vector_sequence, "insert": insert_sequence}
-            )
-            self.log_queue.put(f"  -> Data for {work_no} collected.")
+            if choice != "ok":
+                self.log_queue.put("Aborted by user before automation started.")
+                return
 
-        if not records_to_process:
-            self.log_queue.put("No valid records found to process.")
-            self.log_queue.put("DONE")
-            return
+            # --- Step 3: 10-second pre-start countdown ---
+            self.log_queue.put("Starting in 10 seconds. Switch to SnapGene now.")
+            try:
+                proceed = _ask_main_thread(
+                    master, _show_pre_start_countdown_dialog, master, 10
+                )
+            except Exception as e:
+                self.log_queue.put(f"Could not show countdown dialog: {e}")
+                self.log_queue.put("Aborted during countdown.")
+                return
 
-        # --- Step 2: Pre-start "Ready" dialog ---
-        total = len(records_to_process)
-        self.log_queue.put(
-            f"\nAll {total} Work No. loaded. Waiting for user confirmation..."
-        )
-        self.log_queue.put(
-            "A dialog will appear. Click OK, then switch to SnapGene."
-        )
+            if not proceed:
+                self.log_queue.put("Aborted by user during countdown (FailSafe).")
+                return
 
-        try:
-            choice = _ask_main_thread(
-                master, _show_ready_dialog, master, total
-            )
-        except Exception as e:
-            self.log_queue.put(f"Could not show ready dialog: {e}")
-            self.log_queue.put("Aborted before automation started.")
-            self.log_queue.put("DONE")
-            return
+            self.log_queue.put("Launching SnapGene automation...")
 
-        if choice != "ok":
-            self.log_queue.put("Aborted by user before automation started.")
-            self.log_queue.put("DONE")
-            return
-
-        # --- Step 3: 10-second pre-start countdown ---
-        self.log_queue.put("Starting in 10 seconds. Switch to SnapGene now.")
-        try:
-            proceed = _ask_main_thread(
-                master, _show_pre_start_countdown_dialog, master, 10
-            )
-        except Exception as e:
-            self.log_queue.put(f"Could not show countdown dialog: {e}")
-            self.log_queue.put("Aborted during countdown.")
-            self.log_queue.put("DONE")
-            return
-
-        if not proceed:
-            self.log_queue.put("Aborted by user during countdown (FailSafe).")
-            self.log_queue.put("DONE")
-            return
-
-        self.log_queue.put("Launching SnapGene automation...")
-
-        # --- Step 4: Per-Work No. automation with focus check ---
-        try:
+            # --- Step 4: Per-Work No. automation with focus check ---
             for i, record in enumerate(records_to_process, start=1):
                 work_no = record["work_no"]
                 vector = record["vector"]
@@ -639,23 +710,22 @@ class VectorMapPrepSnapGene:
                         f"  -> An error occurred during automation for {work_no}: {e}"
                     )
                     self.log_queue.put("  -> Aborting automation.")
-                    self.log_queue.put(
-                        (
-                            "ERROR",
-                            "Automation Error",
-                            f"An error occurred: {e}\nProcessing stopped.",
-                        )
+                    automation_error_message = (
+                        f"An error occurred: {e}\nProcessing stopped."
                     )
                     return
+
         finally:
-            # ALWAYS reach this block, even on exceptions or early returns.
-            # Guarantees the app's queue pump sees DONE and re-enables
-            # the Process IDs button.
-            #
-            # Brief sleep before the final puts: gives the app's queue
-            # pump (master.after(100, ...)) a chance to drain any earlier
-            # log messages and also makes sure "Automation complete."
-            # shows up AFTER all per-Work No. log lines, in the right order.
+            # ALWAYS reached, even on exceptions or early returns. Exactly one
+            # terminator is posted (ERROR tuple on an automation failure,
+            # completion line otherwise) plus DONE, so the app's queue pump
+            # re-enables the Process button.
             time.sleep(0.3)
-            self.log_queue.put("\nAutomation complete.")
+            if automation_error_message is not None:
+                self.log_queue.put(
+                    ("ERROR", "Automation Error", automation_error_message)
+                )
+            else:
+                self.log_queue.put("\nAutomation complete.")
             self.log_queue.put("DONE")
+

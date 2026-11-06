@@ -3,14 +3,20 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 2.4
-Date: Oct 13, 2026
-Notes: Added BATCH Post-Processing workflow to the workflow list. v2.4
-    removes the __init__ theme application (an always-missing theme
-    path fell back to the blue theme and mutated the hub process's
-    global ctk theme, re-styling every app opened afterwards); the app
-    now inherits the hub appearance like the other subapps, and main()
-    uses the standard standalone convention (System + blue).
+Version: 2.6
+Date: Nov 3, 2026
+Notes: Workflows may declare PANEL_HEIGHT / LOG_HEIGHT class attributes: on
+    workflow switch the container, the shared logbox and the WINDOW get a
+    deterministic size — declaring workflows (Upload Prep) open the
+    TALL_PANEL_GEOMETRY window (1020x782) and undeclared workflows keep
+    the base 1000x720 with the original 180px strip and expanding 240px
+    log. Upload Prep's review table needs the taller panel (the fixed
+    180px strip collapsed it to a header-only sliver).
+Notes: Added the Upload Prep workflow (workflows/upload_prep.py v1.0): reads
+    the Master Shipping Log, reviews rows in a check-off table, screens the
+    checked rows and organizes QC zips into Desktop\\QC_to_upload (email
+    folders + shipment-date folders). v2.5 also accepts a Shipping_List hub
+    path kwarg (4.6 Shipping list).
 """
 
 import configparser
@@ -37,6 +43,7 @@ from workflows.wgk_correction import WgkCorrection
 from workflows.resuspension_prep import ResuspensionPrep
 from workflows.batch_post_processing import BatchPostProcessing
 from workflows.inhouse_qc_new import InHouseQcNew
+from workflows.upload_prep import UploadPrep
 
 # 2. Add a tuple to this list: (Display Name, ClassName)
 WORKFLOWS_TO_LOAD = [
@@ -47,13 +54,28 @@ WORKFLOWS_TO_LOAD = [
     ("Resuspension Prep", ResuspensionPrep),
     ("BATCH Post-Processing", BatchPostProcessing),
     ("In-House QC New (from scratch)", InHouseQcNew),
+    ("Upload Prep", UploadPrep),
 ]
+
+# Workflow container height for workflows that do not declare PANEL_HEIGHT
+# (class attribute) — the pre-v2.6 fixed height, so existing layouts keep
+# rendering exactly as before.
+DEFAULT_PANEL_HEIGHT = 180
+
+# Shared logbox height for workflows that do not declare LOG_HEIGHT.
+DEFAULT_LOG_HEIGHT = 240
+
+# Window geometry: the base the shell sets in __init__, and the fixed
+# geometry for workflows that declare a PANEL_HEIGHT (15% under the
+# round-1 1200x920: the 9pt/24px compact tables need less room).
+BASE_GEOMETRY = "1000x720"
+TALL_PANEL_GEOMETRY = "1020x782"
 
 
 class QCFilePrepApp(ctk.CTkFrame):
     """Main application class for the BBI QC File Prep Hub."""
 
-    def __init__(self, master=None, initial_input_folder=None, output_folder=None, gel_ladder_path=None, gene_invoicing_db_path=None, job_log_path=None, **kwargs):
+    def __init__(self, master=None, initial_input_folder=None, output_folder=None, gel_ladder_path=None, gene_invoicing_db_path=None, job_log_path=None, shipping_list_path=None, **kwargs):
         """Initializes the main application window and all its components."""
         super().__init__(master, **kwargs)
         self.pack(fill="both", expand=True)
@@ -83,6 +105,7 @@ class QCFilePrepApp(ctk.CTkFrame):
             'Gel_Ladder': gel_ladder_path,
             'Job_Log': job_log_path,
             'QC_Output_Folder': output_folder,
+            'Shipping_List': shipping_list_path,
         }
 
         self.input_folder = ctk.StringVar()
@@ -169,10 +192,38 @@ class QCFilePrepApp(ctk.CTkFrame):
                 workflow.frame.pack_forget()
             # Show the initial workflow
             self.workflows[initial_workflow_name].frame.pack(fill="both", expand=True)
+            self._set_workflow_height(self.workflows[initial_workflow_name])
             self.log(f"--- Loaded '{initial_workflow_name}' workflow ---")
             self.workflows[initial_workflow_name].setup_default_paths()
         else:
             self.log("[ERROR] \t No workflows are configured to load.")
+
+    def _set_workflow_height(self, workflow):
+        """Apply the active workflow's declared panel/log geometry + the
+        matching window size, deterministically (no deltas to drift).
+
+        PANEL_HEIGHT (class attr; DEFAULT_PANEL_HEIGHT when undeclared):
+        container height. Workflows that declare it (taller UI, e.g. the
+        Upload Prep review table) get the TALL_PANEL_GEOMETRY window (20%
+        wider than base + grown for the strip) and the shared logbox pinned
+        at their LOG_HEIGHT with its expansion dropped, so the review table
+        dominates the leftover area. Undeclared workflows restore the exact
+        original layout: fixed 180px strip, expanding 240px log, base
+        window."""
+        height = getattr(workflow, "PANEL_HEIGHT", DEFAULT_PANEL_HEIGHT)
+        log_height = getattr(workflow, "LOG_HEIGHT", DEFAULT_LOG_HEIGHT)
+        self.workflow_container.configure(height=height)
+        self.logbox.configure(height=log_height)
+        if height != DEFAULT_PANEL_HEIGHT:
+            self.workflow_container.pack_configure(fill="both", expand=True)
+            self.logbox.pack_configure(expand=False, fill="both")
+            window = TALL_PANEL_GEOMETRY
+        else:
+            self.workflow_container.pack_configure(fill="x")
+            self.logbox.pack_configure(expand=True, fill="both")
+            window = BASE_GEOMETRY
+        if self.master:
+            self.master.geometry(window)
 
     def on_workflow_change(self, selected_name=None):
         """Handles the event when a new workflow is selected from the dropdown.
@@ -194,6 +245,7 @@ class QCFilePrepApp(ctk.CTkFrame):
         # Show the selected workflow
         active_workflow = self.workflows[selected_name]
         active_workflow.frame.pack(fill="both", expand=True)
+        self._set_workflow_height(active_workflow)
 
         # 'Folder with Zips' is only used by zip-input workflows; hide it for
         # workflows that declare NEEDS_INPUT_FOLDER = False.

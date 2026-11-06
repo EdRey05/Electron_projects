@@ -23,15 +23,24 @@ export function transfer(row,options) {
   if(!Number.isFinite(volume)||volume<5||volume>200||volume%5!==0)throw new Error('Volume must be 5–200 µL in steps of 5.');
   return {...row,Source_spot:options.source,Target_spot:options.target,Transfer_volume:volume,Source_well:source,Target_well:target,Automation_string:`${id};${options.source};${source};${options.target};${target};${volume}`};
 }
-export function buildBulk(input,{pool=true,autoWells=true,autoSort=true,...options}={}) {
+export function buildBulk(input,{pool=true,autoWells=true,autoSort=true,sortMode,...options}={}) {
+  const sort=sortMode ?? (autoSort?'reactions':'none');
   let rows=input.filter(r=>clean(r.work_no)&&clean(r.plasmid_no)).map((r,index)=>({...r,_index:index}));
   if(!rows.length)throw new Error('Add a Work No. and Plasmid No. to at least one row.');
   if(rows.length>96)throw new Error('Bulk input supports up to 96 rows.');
-  if(autoSort) {
+  const digits=row=>{
+    const text=clean(row.work_no).slice(5,9);
+    if(!text||!Number.isFinite(Number(text)))throw new Error(`Work No. ${row.work_no} has no readable digits at positions 6–9.`);
+    return Number(text);
+  };
+  if(autoWells && sort==='reactions') {
     if(rows.some(r=>clean(r.Seq_reactions)===''||!Number.isFinite(Number(r.Seq_reactions))))throw new Error('Enter a numeric Seq reactions value for each row, or turn off auto-sort.');
-    rows.sort((a,b)=>Number(b.Seq_reactions)-Number(a.Seq_reactions)||(clean(a.work_no)<clean(b.work_no)?-1:clean(a.work_no)>clean(b.work_no)?1:a._index-b._index));
+    rows.forEach(digits);
+    rows.sort((a,b)=>Number(b.Seq_reactions)-Number(a.Seq_reactions)||digits(a)-digits(b)||a._index-b._index);
+  } else if(autoWells && sort==='sample') {
+    rows.forEach(digits);rows.sort((a,b)=>digits(a)-digits(b)||a._index-b._index);
   }
-  const assigned=new Map();let next=0;
+  const assigned=new Map(),manualWells=new Set();let next=0;
   rows=rows.map(r=>{
     const key=pool&&clean(r.Clone)?'clone:'+clean(r.Clone):'row:'+r._index;
     let target=well(r.Seq_well);
@@ -41,11 +50,13 @@ export function buildBulk(input,{pool=true,autoWells=true,autoSort=true,...optio
     } else {
       if(!WELLS.includes(target))throw new Error(`Invalid Seq well for ${r.work_no}: use A1–H12.`);
       if(pool && assigned.has(key)&&assigned.get(key)!==target)throw new Error(`Clone ${r.Clone} has conflicting target wells.`);
+      if(!pool && manualWells.has(target))throw new Error(`Duplicate manual Seq well: ${target}.`);
+      manualWells.add(target);
       assigned.set(key,target);
     }
     return transfer({...r,Seq_well:`(#${target})`,Source_well:clean(r.plasmid_no).slice(7).replace(/Stbl.*$/,''),Target_well:target},options);
   });
-  if(autoSort)rows.sort((a,b)=>Number(b.Seq_reactions)-Number(a.Seq_reactions)||WELLS.indexOf(a.Target_well)-WELLS.indexOf(b.Target_well));
+  if(autoWells && sort==='reactions')rows.sort((a,b)=>Number(b.Seq_reactions)-Number(a.Seq_reactions)||WELLS.indexOf(a.Target_well)-WELLS.indexOf(b.Target_well));
   return rows;
 }
 export function validationRows(rows,pool) {

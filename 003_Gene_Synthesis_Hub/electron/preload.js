@@ -6,6 +6,8 @@
 const { contextBridge, ipcRenderer, webUtils } = require("electron");
 
 contextBridge.exposeInMainWorld("api", {
+  writeReferenceFile: request=>ipcRenderer.invoke('hub:writeReferenceFile',request),
+  inspectPath: request=>ipcRenderer.invoke('hub:inspectPath',request),
   runPythonJob: (requestId,action,input)=>ipcRenderer.invoke('hub:runPythonJob',{requestId,action,input}),
   cancelPythonJob: requestId=>ipcRenderer.invoke('hub:cancelPythonJob',requestId),
   answerPythonJob: (requestId,promptId,choice,data)=>ipcRenderer.invoke('hub:answerPythonJob',{requestId,promptId,choice,data}),
@@ -56,6 +58,8 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("hub:writeBinaryFile", { filePath, bytes }),
 
   // Copy a file (used to lay down template files alongside generated output).
+  organizerSession: (request={}) => ipcRenderer.invoke('hub:organizerSession',request),
+  saveSgWorkbook: (request) => ipcRenderer.invoke('hub:saveSgWorkbook',request),
   copyFile: ({ source, dest }) =>
     ipcRenderer.invoke("hub:copyFile", { source, dest }),
 

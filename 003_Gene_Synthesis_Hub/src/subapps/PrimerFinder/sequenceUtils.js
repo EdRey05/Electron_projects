@@ -44,8 +44,7 @@ export function findBinding(primer, target, targetRc) {
  * Same predicate the Python app uses.
  */
 export function isRelevantSheet(name) {
-  const c = (name || "").toUpperCase().charAt(0);
-  return c === "S" || c === "T" || c === "U" || c === "V";
+  return /^[STUV]\d{4}$/i.test(name || '');
 }
 
 /**

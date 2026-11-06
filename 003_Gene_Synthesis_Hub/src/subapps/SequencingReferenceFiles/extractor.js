@@ -12,7 +12,7 @@
  *      - Write `{Work No.}+{Vector}.txt` with the Final Vector Sequence.
  */
 import * as XLSX from "xlsx";
-import { resolveSpecSet, columnResolutionLog } from "../../ui/columns.js";
+import { resolveSpecSet, columnResolutionLog, normHeader } from "../../ui/columns.js";
 
 /**
  * Resolve column indices from a header row.
@@ -78,7 +78,11 @@ export async function extractSequences(file) {
   const headers = aoa[0].map((h) => (h == null ? "" : String(h)));
   const indices = resolveColumnIndices(headers);
   const rows = [];
-  for (const row of aoa.slice(1)) {
+  const hints=['work no','jobid','job id','vector','insert','final'];
+  const headerless=!Object.values(indices.byName).some(Boolean)&&
+    !headers.some(h=>hints.some(hint=>normHeader(h).includes(hint)))&&
+    headers.some(h=>{const seq=h.toUpperCase().replace(/[\s-]+/g,'');return seq.length>=40&&/^[ACGTUN]+$/.test(seq);});
+  for (const row of headerless?aoa:aoa.slice(1)) {
     const jobId = cleanCell(row[indices.workNo]);
     if (!jobId) continue;
     rows.push({
@@ -93,7 +97,7 @@ export async function extractSequences(file) {
     ok: true,
     indices,
     rows,
-    resolutionLog: columnResolutionLog("input addon", indices),
+    resolutionLog: columnResolutionLog("input addon", indices)+(headerless?" Row 1 contains sequence data and was included.":""),
   };
 }
 
@@ -106,7 +110,7 @@ export function planOutputs(row) {
   if (row.insertSeq) {
     out.push({ name: `${row.jobId}.txt`, contents: row.insertSeq });
   }
-  if (row.finalVector) {
+  if (row.finalVector && row.vector) {
     out.push({ name: `${row.jobId}+${row.vector}.txt`, contents: row.finalVector });
   }
   for (const file of out) {

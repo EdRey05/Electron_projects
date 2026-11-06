@@ -345,9 +345,9 @@ function writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, dat
       const cell = ws.getRow(excelRow).getCell(cIdx + 2);
       // Numeric fields (Length (bp)) must be written as NUMBERS, not text —
       // the Python writes the pandas value as-is.
-      const isNumeric =
-        h === "Length (bp)" && v !== "" && v != null && !Number.isNaN(Number(v));
-      cell.value = isNumeric ? Number(v) : (v ?? "");
+      const safe = typeof v === 'number' && !Number.isFinite(v) ? '' : v ?? '';
+      const isNumeric = h === "Length (bp)" && safe !== "" && Number.isFinite(Number(safe));
+      cell.value = isNumeric ? Number(safe) : safe;
     });
   });
 
@@ -392,11 +392,7 @@ function writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, dat
   let mixCol = 3; // column C, after the row labels
   let lastMixCol = 2;
   for (const [primer, jobIds] of primerGroups.entries()) {
-    let totalClones = 0;
-    for (const jobId of jobIds) {
-      const key = `${jobId}\0${sourceFileFor(jobId, summaryData)}`;
-      totalClones += requestedCloneCounts.get(key) ?? 0;
-    }
+    const totalClones = plate.jobs.filter(job => job.primers === primer).length;
     if (totalClones === 0) continue;
 
     const headerCell = ws.getRow(mixStartRow).getCell(mixCol);

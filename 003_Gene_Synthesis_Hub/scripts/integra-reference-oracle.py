@@ -21,6 +21,8 @@ class Widgets(ModuleType):
     def tabs(self,labels): return [self]*len(labels)
     def columns(self,widths,**kwargs): return [self]*(widths if isinstance(widths,int) else len(widths))
     def selectbox(self,label,options,index=0,**kwargs):
+        if 'sort' in label.lower():
+            return {'sample':'Sample number (last 4 digits of Work No.)','none':'None (paste order)','reactions':'Seq reactions, then digits'}[request['options'].get('sortMode', 'reactions' if request['options'].get('autoSort',True) else 'none')]
         return request['options']['source' if 'source' in label.lower() else 'target']
     def slider(self,label,**kwargs): return request['options']['volume']
     def checkbox(self,label,value=True,key=None,**kwargs):

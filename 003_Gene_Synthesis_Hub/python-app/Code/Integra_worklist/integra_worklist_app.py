@@ -3,19 +3,35 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 4.3
-Date: Oct 10, 2026
-Notes: Column names follow the canonical job-log naming: Work No., BBI ID,
-    Plasmid No. (internal df columns work_no/bbi_id/plasmid_no); ratio
-    displays align with the validation template (OD260/280, OD260/230).
-    Single-entries mode: Gene ID field/input renamed to Work No. The Integra
-    automation-string header (SampleID;SourceDeckPosition;...) is the
-    liquid-handler format and stays unchanged.
+Version: 4.6
+Date: Nov 4, 2026
+Notes: Row sort becomes a selector next to Auto-assign wells:
+    - Sample number (last 4 digits of Work No.) (default): Work No. digits 6-9 cast to int, ASC
+    - None (paste order): no sorting at all; with auto-assign wells the
+      target wells are generated in the pasted row order — the
+      "everything already prepared, just need the worklist" mode; pooling
+      still optional
+    - Seq reactions, then digits: reactions (DESC), digits (ASC), then
+      plate position; requires the Seq reactions column (hidden otherwise)
+    - Manual wells always keep the user's row order (info note shown when
+      a sort mode is picked with manual wells)
+    - Restores the v4.3 behavior the v4.4 audit round lost:
+      feature-locked editor columns hide again (Clone with Pool
+      replicates off, Seq well with Auto-assign wells on), Work No.
+      digits 6-9 keys survive appended suffixes, ties keep the pasted
+      order
+    - Keeps the v4.4 audit fixes: numeric Seq reactions handling, the
+      _BulkAbort error flow, the Plasmid No. source-well regex guard,
+      pooled validation blank-Clone keys, duplicate manual target well
+      rejection, validation rebuild on rerun, and the Clear worklist
+      button
 """
 
 ###############################################################################
 
 # Import the required libraries
+import re
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -39,10 +55,234 @@ st.markdown(
 
 # Create initial plate layouts (used by all modes)
 plate_rows = ["A", "B", "C", "D", "E", "F", "G", "H"]
-plate_cols_48 = range(1, 7)
-plate_wells_48 = [f"(#{r}{c})" for c in plate_cols_48 for r in plate_rows]
 plate_cols_96 = range(1, 13)
 plate_wells_96 = [f"(#{r}{c})" for c in plate_cols_96 for r in plate_rows]
+# Bare well keys ("A1".."H12") for sorting and manual-well comparisons
+_sort_well_keys = [w.replace("(#", "").replace(")", "") for w in plate_wells_96]
+
+
+def _norm_well(value):
+    """Normalize a well spelling like '(#A1)' or ' a1 ' to the bare 'A1' form."""
+    return (
+        str(value).replace("(", "").replace(")", "").replace("#", "").strip().upper()
+    )
+
+
+def _sort_digits(series):
+    """Work No. digits at positions 6-9 cast to int.
+
+    Work numbers are 9 chars in the common case, so this reads the last
+    4 characters; longer values keep the same key because additions are
+    appended at the end (pooling suffixes, Stbl marks), never before.
+    """
+    return pd.to_numeric(
+        series.fillna("").astype(str).str.strip().str.slice(5, 9),
+        errors="coerce",
+    )
+
+
+def assign_and_sort_worklist(df, *, pool, autowell, sort_mode):
+    """Pooling, well assignment and row ordering for bulk mode.
+
+    Pure helper (no Streamlit calls) so the order logic stays testable.
+    Returns (error message or None, assigned df).
+
+    Row order by sort mode (only applied on generated wells; manual wells
+    always keep the user's own row order):
+    - 'Seq reactions, then digits': Seq reactions (DESC), then Work No.
+      digits 6-9 (ASC), then plate position (ASC)
+    - 'Sample number (last 4 digits of Work No.)': Work No. digits 6-9 (ASC)
+    - 'None (paste order)': no sorting; wells are generated in paste order
+    """
+    df = df.copy()
+
+    def _digit_key_error():
+        _bad = ", ".join(
+            f"'{v}'" for v in df.loc[_digits.isna(), "work_no"].astype(str).head(10)
+        )
+        return (
+            "Error: these Work No. values have no readable digits at "
+            "positions 6-9 (expected 4 digits there, like XV1690506 giving "
+            f"506):\n{_bad}"
+        )
+
+    if autowell and sort_mode == "Seq reactions, then digits":
+        # Numeric sorting: sorting the raw strings would mis-order 9 vs 10
+        if df["Seq_reactions"].isnull().any() or (df["Seq_reactions"] == "").any():
+            return (
+                "Error: the reaction sort is selected, but some rows are "
+                "missing a 'Seq reactions' number.",
+                df,
+            )
+        numeric_reactions = pd.to_numeric(
+            df["Seq_reactions"].astype(str).str.strip(), errors="coerce"
+        )
+        if numeric_reactions.isnull().any():
+            return (
+                "Error: the reaction sort is selected, but the 'Seq "
+                "reactions' contains non-numeric values.",
+                df,
+            )
+        df["Seq_reactions"] = numeric_reactions
+
+        _digits = _sort_digits(df["work_no"])
+        if _digits.isnull().any():
+            return (_digit_key_error(), df)
+        # Ties (same reaction + same digits) keep the pasted order
+        df = (
+            df.assign(_sort_digits=_digits)
+            .sort_values(
+                ["Seq_reactions", "_sort_digits"],
+                ascending=[False, True],
+                kind="mergesort",
+            )
+            .reset_index(drop=True)
+        )
+    elif autowell and sort_mode == "Sample number (last 4 digits of Work No.)":
+        # Order by the Work No. digits 6-9 alone
+        _digits = _sort_digits(df["work_no"])
+        if _digits.isnull().any():
+            return (_digit_key_error(), df)
+        df = (
+            df.assign(_sort_digits=_digits)
+            .sort_values("_sort_digits", kind="mergesort")
+            .reset_index(drop=True)
+        )
+    # 'None (paste order)' and manual wells: no pre-sort
+
+    if autowell:
+        # --- AUTO-ASSIGN WELLS ---
+        if pool:
+            # Auto-assign wells AND pool replicates
+            assigned_wells = {}
+            well_index = 0
+            seq_well_values = []
+
+            for i, row in df.iterrows():
+                clone_id = row.get("Clone")
+                clone_key = (
+                    clone_id
+                    if pd.notna(clone_id) and clone_id != ""
+                    else f"__row_{i}"
+                )
+
+                if clone_key in assigned_wells:
+                    seq_well_values.append(assigned_wells[clone_key])
+                else:
+                    if well_index >= len(
+                        plate_wells_96
+                    ):  # Check against plate size
+                        return (
+                            "Error: More than "
+                            f"{len(plate_wells_96)} unique clone groups found. "
+                            "Cannot assign to a 96-well plate.",
+                            df,
+                        )
+                    assigned_well = plate_wells_96[well_index]
+                    assigned_wells[clone_key] = assigned_well
+                    seq_well_values.append(assigned_well)
+                    well_index += 1
+            df["Seq_well"] = (
+                seq_well_values  # Assign the generated well list
+            )
+        else:
+            # Auto-assign wells, NO pooling
+            if len(df) > len(plate_wells_96):
+                return (
+                    f"Error: There are {len(df)} samples, but only "
+                    f"{len(plate_wells_96)} wells available on the plate.",
+                    df,
+                )
+            # Assign wells sequentially to the (potentially sorted) dataframe
+            df["Seq_well"] = plate_wells_96[: len(df)]
+    else:
+        # --- MANUAL WELL ASSIGNMENT ---
+        # Validation: Ensure Seq_well is filled
+        if df["Seq_well"].isnull().any() or (df["Seq_well"] == "").any():
+            return (
+                "Error: 'Auto-assign wells' is unchecked, but some rows are "
+                "missing a 'Seq well' value.",
+                df,
+            )
+
+        if pool:
+            # Manual wells AND pool replicates
+            # Validation: Check for consistency within clone groups
+            inconsistent_clones = []
+            clones_to_check = df[df["Clone"].notna() & (df["Clone"] != "")]
+            for clone_id, group in clones_to_check.groupby("Clone"):
+                if group["Seq_well"].nunique() > 1:
+                    wells = ", ".join(group["Seq_well"].unique())
+                    inconsistent_clones.append(
+                        f"Clone '{clone_id}' has conflicting wells: {wells}"
+                    )
+
+            if inconsistent_clones:
+                return (
+                    "Error: 'Pool replicates' is checked, but there are "
+                    "inconsistencies in manual well assignments:\n\n"
+                    + "\n".join(inconsistent_clones),
+                    df,
+                )
+        else:
+            # Manual wells, no pooling: no two rows may share a target
+            # well (checked on normalized spellings so '(#A1)' and
+            # 'A1' still compare equal)
+            norm_wells = df["Seq_well"].astype(str).map(_norm_well)
+            dup_wells = sorted(set(norm_wells[norm_wells.duplicated()]))
+            if dup_wells:
+                return (
+                    "Error: 'Pool replicates' is unchecked, but multiple rows "
+                    "share the same Seq well: " + ", ".join(dup_wells),
+                    df,
+                )
+
+    # Final sort (reaction sort on generated wells only): reactions (DESC)
+    # then plate position (ASC). Wells sort on normalized bare keys so
+    # manually entered 'A1' and generated '(#A1)' compare equal; unknown
+    # formats sort to the end but keep their entered spelling in the
+    # output. Digits/paste-order modes are already in target order, and
+    # manual wells skip sorting: the user's row order is their layout.
+    if autowell and sort_mode == "Seq reactions, then digits":
+        df = df.assign(
+            _rx_sort=pd.to_numeric(df["Seq_reactions"], errors="coerce"),
+            _well_sort=pd.Categorical(
+                df["Seq_well"].astype(str).map(_norm_well),
+                categories=_sort_well_keys,
+                ordered=True,
+            ),
+        )
+        df = (
+            df.sort_values(
+                ["_rx_sort", "_well_sort"],
+                ascending=[False, True],
+                kind="mergesort",
+            )
+            .reset_index(drop=True)
+            .drop(columns=["_rx_sort", "_well_sort"])
+        )
+
+    return (None, df.drop(columns=["_sort_digits"], errors="ignore"))
+
+
+class _BulkAbort(Exception):
+    """Skips the rest of the bulk results without stopping the whole app.
+
+    Replaces st.stop() inside the bulk pipeline: st.stop() also kills the
+    validation section and the Single entries tab that render below it.
+    """
+
+
+# Columns accumulated by the Single entries mode
+_single_entry_columns = [
+    "work_no",
+    "Source_spot",
+    "Source_well",
+    "Target_spot",
+    "Target_well",
+    "Transfer_volume",
+    "Automation_string",
+]
 
 ################################## BULK MODE ####################################
 with bulk_mode_tab:
@@ -93,10 +333,11 @@ with bulk_mode_tab:
             value=True,
             key="auto_well",
         )
-        autosort_checkbox = st.checkbox(
-            "Auto-sort by reaction number",
-            value=True,
-            key="auto_sort",
+        sort_mode = st.selectbox(
+            "Row sort",
+            options=["Sample number (last 4 digits of Work No.)", "None (paste order)", "Seq reactions, then digits"],
+            index=0,
+            key="sort_mode",
         )
 
         st.divider()
@@ -127,6 +368,7 @@ with bulk_mode_tab:
         "Seq_reactions",
         "Seq_well",
     ]
+
     bm_df = pd.DataFrame("", index=range(96), columns=bm_df_columns)
 
     # Column aliases for display matching extraction log format
@@ -143,13 +385,27 @@ with bulk_mode_tab:
         "Seq_well": "Seq well",
     }
 
-    # Build column_config for data_editor
+    # Build column_config for data_editor: canonical labels in every mode,
+    # and feature-locked columns hidden for the modes where they are not
+    # relevant (None = hidden): Clone only matters with pooling on,
+    # Seq well only for manual assignment, Seq reactions only when the
+    # reaction sort is active on generated wells
     _editor_col_config = {
-        col: None if (
-            (col == "Clone" and not pool_checkbox)
-            or (col == "Seq_well" and autowell_checkbox)
-            or (col == "Seq_reactions" and not autosort_checkbox)
-        ) else st.column_config.TextColumn(_COLUMN_LABELS[col])
+        col: (
+            None
+            if (
+                (col == "Clone" and not pool_checkbox)
+                or (col == "Seq_well" and autowell_checkbox)
+                or (
+                    col == "Seq_reactions"
+                    and (
+                        sort_mode != "Seq reactions, then digits"
+                        or not autowell_checkbox
+                    )
+                )
+            )
+            else st.column_config.TextColumn(_COLUMN_LABELS[col])
+        )
         for col in bm_df_columns
     }
 
@@ -163,210 +419,162 @@ with bulk_mode_tab:
             column_config=_editor_col_config,
         )
 
-    # Make the worklist when the button is pressed
+    # Make the worklist when the button is pressed (or refresh a shown one).
+    # _BulkAbort skips the rest of the bulk results WITHOUT stopping the app:
+    # the validation section and the Single entries tab keep rendering.
     if create_worklist or "bm_df" in st.session_state:
-        # 1. Filter for rows that the user actually filled in.
-        active_df = bm_displayed_df.loc[
-            (bm_displayed_df["work_no"].fillna("") != "")
-            & (bm_displayed_df["plasmid_no"].fillna("") != "")
-        ].copy()
-
-        # 2. If no valid rows, stop.
-        if active_df.empty:
-            if create_worklist:  # Only show warning if button was clicked
-                st.warning(
-                    "Please fill in at least one row with both 'Work No.' and 'Plasmid No.'."
-                )
-            st.stop()
-
-        # 3. PRE-SORT BY REACTION (IF ENABLED)
-        if autosort_checkbox:
-            # Validation for sorting
-            if (
-                active_df["Seq_reactions"].isnull().any()
-                or (active_df["Seq_reactions"] == "").any()
-            ):
-                st.error(
-                    "Error: 'Auto-sort' is checked, but some rows are missing a 'Seq reactions' number."
-                )
-                st.stop()
-
-            # Attempt to convert to numeric and check for errors
-            numeric_reactions = pd.to_numeric(
-                active_df["Seq_reactions"], errors="coerce"
+        try:
+            # 1. Filter for rows that the user actually filled in.
+            bm_current = bm_displayed_df.copy()
+            work_filled = (
+                bm_current["work_no"].fillna("").astype(str).str.strip() != ""
             )
-            if numeric_reactions.isnull().any():
-                st.error(
-                    "Error: 'Auto-sort' is checked, but the 'Seq reactions' column contains non-numeric values."
-                )
-                st.stop()
+            plasmid_filled = (
+                bm_current["plasmid_no"].fillna("").astype(str).str.strip() != ""
+            )
+            active_df = bm_current[work_filled & plasmid_filled].copy()
 
-            # Sort by reaction number (DESC), then Work No. (ASC) for tie-breaking.
-            # This establishes the primary order for auto-well assignment.
-            active_df = active_df.sort_values(
-                by=['Seq_reactions', 'work_no'],
-                ascending=[False, True]
-            ).reset_index(drop=True)
+            def _fmt_cell(v):
+                s = str(v).strip()
+                return s if s else "(blank)"
 
-        # 4. HANDLE WELL ASSIGNMENT AND POOLING
-        if autowell_checkbox:
-            # --- AUTO-ASSIGN WELLS ---
-            # This logic now runs on a dataframe that is pre-sorted by reaction number if auto-sort is on.
-            if pool_checkbox:
-                # Auto-assign wells AND pool replicates
-                assigned_wells = {}
-                well_index = 0
-                seq_well_values = []
-
-                for (
-                    i,
-                    row,
-                ) in active_df.iterrows():  # Iterate over the now-sorted dataframe
-                    clone_id = row.get("Clone")
-                    clone_key = (
-                        clone_id
-                        if pd.notna(clone_id) and clone_id != ""
-                        else f"__row_{i}"
-                    )
-
-                    if clone_key in assigned_wells:
-                        seq_well_values.append(assigned_wells[clone_key])
-                    else:
-                        if well_index >= len(
-                            plate_wells_96
-                        ):  # Check against plate size
-                            st.error(
-                                f"Error: More than {len(plate_wells_96)} unique clone groups found. Cannot assign to a 96-well plate."
-                            )
-                            st.stop()
-                        assigned_well = plate_wells_96[well_index]
-                        assigned_wells[clone_key] = assigned_well
-                        seq_well_values.append(assigned_well)
-                        well_index += 1
-                active_df["Seq_well"] = (
-                    seq_well_values  # Assign the generated well list
-                )
-            else:
-                # Auto-assign wells, NO pooling
-                if len(active_df) > len(plate_wells_96):
-                    st.error(
-                        f"Error: There are {len(active_df)} samples, but only {len(plate_wells_96)} wells available on the plate."
-                    )
-                    st.stop()
-                # Assign wells sequentially to the (potentially sorted) dataframe
-                active_df["Seq_well"] = plate_wells_96[: len(active_df)]
-        else:
-            # --- MANUAL WELL ASSIGNMENT ---
-            # Validation: Ensure Seq_well is filled
-            if (
-                active_df["Seq_well"].isnull().any()
-                or (active_df["Seq_well"] == "").any()
-            ):
-                st.error(
-                    "Error: 'Auto-assign wells' is unchecked, but some rows are missing a 'Seq well' value."
-                )
-                st.stop()
-
-            if pool_checkbox:
-                # Manual wells AND pool replicates
-                # Validation: Check for consistency within clone groups
-                inconsistent_clones = []
-                clones_to_check = active_df[
-                    active_df["Clone"].notna() & (active_df["Clone"] != "")
-                ]
-                for clone_id, group in clones_to_check.groupby("Clone"):
-                    if group["Seq_well"].nunique() > 1:
-                        wells = ", ".join(group["Seq_well"].unique())
-                        inconsistent_clones.append(
-                            f"Clone '{clone_id}' has conflicting wells: {wells}"
+            # 2. Warn about rows missing one of the two key columns.
+            partial_rows = bm_current[work_filled != plasmid_filled]
+            if not partial_rows.empty:
+                _dropped = []
+                for i, row in partial_rows.head(10).iterrows():
+                    if str(row["plasmid_no"]).strip() == "":
+                        _dropped.append(
+                            f"row {i + 1}: Work No. '{_fmt_cell(row['work_no'])}' "
+                            "has no Plasmid No."
                         )
+                    else:
+                        _dropped.append(
+                            f"row {i + 1}: Plasmid No. '{_fmt_cell(row['plasmid_no'])}' "
+                            "has no Work No."
+                        )
+                if len(partial_rows) > 10:
+                    _dropped.append(f"... and {len(partial_rows) - 10} more rows")
+                st.warning(
+                    "Rows missing Work No. or Plasmid No. are excluded from the "
+                    "worklist:\n" + "\n".join(_dropped)
+                )
 
-                if inconsistent_clones:
-                    st.error(
-                        "Error: 'Pool replicates' is checked, but there are inconsistencies in manual well assignments:\n\n"
-                        + "\n".join(inconsistent_clones)
+            # 3. If no valid rows, nothing to build; skip the section cleanly.
+            if active_df.empty:
+                if create_worklist:  # Only show the prompt on a button click
+                    st.warning(
+                        "Please fill in at least one row with both 'Work No.' "
+                        "and 'Plasmid No.'."
                     )
-                    st.stop()
+                raise _BulkAbort()
 
-        # 5. FINAL SORT (IF ENABLED)
-        # This step ensures the final output is sorted correctly, respecting both reaction and well.
-        if autosort_checkbox:
-            # Ensure proper well sorting by converting to a categorical type
-            active_df["Seq_well"] = pd.Categorical(
-                active_df["Seq_well"], categories=plate_wells_96, ordered=True
+            # 4. Plasmid No. format guard: each value must contain a readable
+            #    source well (T0618P2A1 -> A1; two-digit plates and Stbl
+            #    suffixes are fine, missing/ambiguous wells are not).
+            src_wells = (
+                active_df["plasmid_no"]
+                .astype(str)
+                .str.strip()
+                .str.extract(
+                    r"([A-H](?:1[0-2]|[1-9]))(?:Stbl.*)?$", flags=re.IGNORECASE
+                )[0]
+            )
+            if src_wells.isna().any():
+                _bad_list = ", ".join(
+                    f"'{_fmt_cell(v)}'"
+                    for v in active_df.loc[src_wells.isna(), "plasmid_no"]
+                    .astype(str)
+                    .head(10)
+                )
+                st.error(
+                    "Error: these Plasmid No. values do not contain a readable "
+                    f"source well (expected like T0618P2A1, giving well A1):\n"
+                    f"{_bad_list}"
+                )
+                raise _BulkAbort()
+            active_df["Source_well"] = src_wells.str.upper()
+
+            # 5-7. Pooling, well assignment and row ordering:
+            #   Sample number (last 4 digits of Work No.): Work No. digits 6-9 (ASC)
+            #   None (paste order): no sorting, wells in paste order
+            #   Seq reactions, then digits: reactions (DESC), digits 6-9
+            #     (ASC), then plate position (ASC); reactions required
+            #   Manual wells: always the user's own row order
+            sort_error, active_df = assign_and_sort_worklist(
+                active_df,
+                pool=pool_checkbox,
+                autowell=autowell_checkbox,
+                sort_mode=sort_mode,
+            )
+            if sort_error:
+                st.error(sort_error)
+                raise _BulkAbort()
+
+            if not autowell_checkbox and sort_mode != "None (paste order)":
+                st.info(
+                    "Auto-assign wells is unchecked: the rows keep the order "
+                    "they were entered in (row sorting only applies with "
+                    "generated wells)."
+                )
+
+            # 8. Finalize the DataFrame for output
+            # Add constant values from the UI
+            active_df["Source_spot"] = bm_source_spot
+            active_df["Target_spot"] = bm_target_spot
+            active_df["Transfer_volume"] = bm_transfer_volume
+
+            active_df["Target_well"] = (
+                active_df["Seq_well"].astype(str).str.replace(
+                    r"[#\(\)]", "", regex=True
+                )
+            )
+            active_df["Automation_string"] = active_df.apply(
+                lambda row: f"{row['work_no']};{row['Source_spot']};{row['Source_well']};{row['Target_spot']};{row['Target_well']};{row['Transfer_volume']}",
+                axis=1,
             )
 
-            # Perform the double sort. This now works for both manual and auto-assigned wells.
-            active_df = active_df.sort_values(
-                by=["Seq_reactions", "Seq_well"], ascending=[False, True]
-            ).reset_index(drop=True)
+            # Save the processed dataframe to session state for display
+            st.session_state["bm_df"] = active_df
 
-            # Convert Seq_well back to a string for a clean output
-            active_df["Seq_well"] = active_df["Seq_well"].astype(str)
-
-        # 6. Finalize the DataFrame for output
-        # Add constant values from the UI
-        active_df["Source_spot"] = bm_source_spot
-        active_df["Target_spot"] = bm_target_spot
-        active_df["Transfer_volume"] = bm_transfer_volume
-
-        # Derive remaining columns for the automation string
-        # Assumes sample format like T0618P2A1, where slicing gives the well
-        # NEW: Strip "Stbl" suffix if present (e.g., U0416P1A5Stbl30C → A5)
-        active_df["Source_well"] = active_df["plasmid_no"].str.slice(7).str.replace(r"Stbl.*$", "", regex=True)
-        active_df["Target_well"] = active_df["Seq_well"].str.replace(
-            r"[#\(\)]", "", regex=True
-        )
-        active_df["Automation_string"] = active_df.apply(
-            lambda row: f"{row['work_no']};{row['Source_spot']};{row['Source_well']};{row['Target_spot']};{row['Target_well']};{row['Transfer_volume']}",
-            axis=1,
-        )
-
-        # Save the processed dataframe to session state for display
-        st.session_state["bm_df"] = active_df
-
-        # 7. Prepare for display and download
-        # Get the updated df, keep only the automation string and rename column as the software utilises
-        final_worklist2 = st.session_state["bm_df"]["Automation_string"]
-        final_worklist2 = final_worklist2.rename(
-            "SampleID;SourceDeckPosition;SourceWell;TargetDeckPosition;TargetWell;TransferVolume [µl]"
-        )
-
-        with bm_row2_col1:
-            worklist2_name = st.text_input("Worklist Name", key="worklist2_name")
-            download_worklist2 = st.download_button(
-                "Download Worklist",
-                data=final_worklist2.to_csv(index=False),
-                file_name=f"{worklist2_name}.csv",
-                mime="text/csv",
-                type="primary",
-                key="download_worklist2",
+            # 9. Prepare for display and download
+            # Get the updated df, keep only the automation string and rename column as the software utilises
+            final_worklist2 = st.session_state["bm_df"]["Automation_string"]
+            final_worklist2 = final_worklist2.rename(
+                "SampleID;SourceDeckPosition;SourceWell;TargetDeckPosition;TargetWell;TransferVolume [µl]"
             )
 
-        with bm_row2_col2:
-            # Create a temporary DataFrame for display by dropping unwanted columns
-            display_df = st.session_state["bm_df"].drop(
-                columns=[
-                    "bbi_id",
-                    "Notes",
-                    "Concentration",
-                    "ratio_260_280",
-                    "ratio_260_230",
-                    "Source_spot",
-                    "Target_spot",
-                    "Transfer_volume",
-                ]
-            )
-            st.dataframe(display_df, width="stretch")
+            with bm_row2_col1:
+                worklist2_name = st.text_input("Worklist Name", key="worklist2_name")
+                download_worklist2 = st.download_button(
+                    "Download Worklist",
+                    data=final_worklist2.to_csv(index=False),
+                    file_name=f"{(worklist2_name or '').strip() or 'worklist'}.csv",
+                    mime="text/csv",
+                    type="primary",
+                    key="download_worklist2",
+                )
 
-    # Create the validation df only once we have generated a worklist
-    if create_validation or "validation_df" in st.session_state:
-        # Only create the DataFrame on the initial button click
-        if create_validation and "bm_df" in st.session_state:
-            st.session_state["validation_df"] = None  # Reset previous validation df
+            with bm_row2_col2:
+                # Create a temporary DataFrame for display by dropping unwanted columns
+                display_df = st.session_state["bm_df"].drop(
+                    columns=[
+                        "bbi_id",
+                        "Notes",
+                        "Concentration",
+                        "ratio_260_280",
+                        "ratio_260_230",
+                        "Source_spot",
+                        "Target_spot",
+                        "Transfer_volume",
+                    ]
+                )
+                st.dataframe(display_df, width="stretch")
 
-            # Start with a copy of the final worklist DF
+            # 10. Validation df — rebuilt on every rerun so it always matches
+            #     the displayed worklist; the button only reveals the section.
             validation_df = st.session_state["bm_df"].copy()
+            validation_df["Clone"] = validation_df["Clone"].fillna("")
 
             # Define columns to keep (input order matches extraction log format)
             validation_columns = [
@@ -382,10 +590,15 @@ with bulk_mode_tab:
 
             # --- Conditionally consolidate rows if pooling is enabled ---
             if st.session_state.get("pool_replicates", False):
-                # Identify the first occurrence of each unique clone to maintain original order
-                first_occurrence_order = validation_df.drop_duplicates(
-                    subset=["Clone"], keep="first"
-                )["Clone"]
+                # Pool key = Clone, but every blank-Clone row is its own
+                # sample (mirrors the worklist well pooler, which gives each
+                # blank-Clone row a separate well). Cleared Clone cells are
+                # "" after the fillna above, so no null leaks into grouping.
+                validation_df["_pool_key"] = np.where(
+                    validation_df["Clone"] != "",
+                    validation_df["Clone"],
+                    "__row_" + validation_df.index.astype(str),
+                )
 
                 # Convert numeric columns to numeric types, coercing errors to NaN
                 validation_df["Concentration"] = pd.to_numeric(
@@ -398,11 +611,12 @@ with bulk_mode_tab:
                     validation_df["ratio_260_230"], errors="coerce"
                 )
 
-                # Consolidate by grouping and aggregating
+                # Consolidate by pool key; sort=False keeps first-appearance order
                 aggregated_df = (
-                    validation_df.groupby("Clone")
+                    validation_df.groupby("_pool_key", sort=False)
                     .agg(
                         {
+                            "Clone": "first",
                             "work_no": "first",
                             "bbi_id": "first",
                             "plasmid_no": lambda x: (
@@ -419,16 +633,7 @@ with bulk_mode_tab:
                     .reset_index()
                 )
 
-                # Reorder the consolidated DataFrame based on the original first occurrence
-                aggregated_df["Clone"] = pd.Categorical(
-                    aggregated_df["Clone"],
-                    categories=first_occurrence_order,
-                    ordered=True,
-                )
-                validation_df = aggregated_df.sort_values("Clone").reset_index(
-                    drop=True
-                )
-                validation_df = validation_df[validation_columns]
+                validation_df = aggregated_df[validation_columns].copy()
 
                 # Round the mean values to 3 decimal places
                 validation_df[["Concentration", "ratio_260_280", "ratio_260_230"]] = (
@@ -455,26 +660,37 @@ with bulk_mode_tab:
             # Save the processed DataFrame to session state
             st.session_state["validation_df"] = validation_df
 
-        # --- This part displays the widgets on every rerun ---
-        st.markdown("---")
-        st.subheader("Validation Data")
+            if create_validation and "bm_df" in st.session_state:
+                # The button reveals the section; the data itself refreshes live
+                st.session_state["show_validation"] = True
 
-        val_row_col1, val_row_col2 = st.columns([1.15, 4])
-        with val_row_col1:
-            # Use a new key for the text input to avoid conflicts
-            validation_name = st.text_input(
-                "Validation File Name", key="validation_name_input"
-            )
-            download_validation = st.download_button(
-                "Download Validation",
-                data=st.session_state["validation_df"].to_csv(index=False),
-                file_name=f"{validation_name}.csv",
-                mime="text/csv",
-                type="primary",
-                key="download_validation",
-            )
-        with val_row_col2:
-            st.dataframe(st.session_state["validation_df"], width="stretch")
+            # --- Display the validation section once it has been revealed ---
+            if st.session_state.get("show_validation", False) and (
+                "validation_df" in st.session_state
+            ):
+                st.markdown("---")
+                st.subheader("Validation Data")
+
+                val_row_col1, val_row_col2 = st.columns([1.15, 4])
+                with val_row_col1:
+                    # Use a new key for the text input to avoid conflicts
+                    validation_name = st.text_input(
+                        "Validation File Name", key="validation_name_input"
+                    )
+                    download_validation = st.download_button(
+                        "Download Validation",
+                        data=st.session_state["validation_df"].to_csv(index=False),
+                        file_name=(
+                            f"{(validation_name or '').strip() or 'validation'}.csv"
+                        ),
+                        mime="text/csv",
+                        type="primary",
+                        key="download_validation",
+                    )
+                with val_row_col2:
+                    st.dataframe(st.session_state["validation_df"], width="stretch")
+        except _BulkAbort:
+            pass
 
 ############################## SINGLE ENTRIES MODE ##############################
 with single_entries_tab:
@@ -524,7 +740,7 @@ with single_entries_tab:
             for col_index, col in enumerate(plate_cols_96):
                 # Generate button label (e.g., A1, B2, etc.)
                 button_label = f"{row}{col}"
-                # Display button in the appropriate column ]
+                # Display button in the appropriate column
                 with cols_1to12[col_index]:
                     if st.button(
                         button_label,
@@ -539,7 +755,7 @@ with single_entries_tab:
             for col_index2, col2 in enumerate(plate_cols_96_48):
                 # Generate button label (e.g., A1, B2, etc.)
                 button_label2 = f"{row}{col2}"
-                # Display button in the appropriate column ]
+                # Display button in the appropriate column
                 with cols_1to6[col_index2]:
                     if st.button(button_label2, key=button_label2 + "_48"):
                         # Update session state when a button is clicked
@@ -583,17 +799,7 @@ with single_entries_tab:
     if add_to_worklist:
         df = st.session_state.get(
             "df",
-            pd.DataFrame(
-                columns=[
-                    "work_no",
-                    "Source_spot",
-                    "Source_well",
-                    "Target_spot",
-                    "Target_well",
-                    "Transfer_volume",
-                    "Automation_string",
-                ]
-            ),
+            pd.DataFrame(columns=_single_entry_columns),
         )
 
         # Check forany missing info that would trigger an error
@@ -634,11 +840,20 @@ with single_entries_tab:
 
         with row4_col2:
             worklist_name = st.text_input("Save worklist as")
+            clear_worklist = st.button(
+                "Clear worklist", type="secondary", key="clear_single_worklist"
+            )
             download_worklist = st.download_button(
                 "Download Worklist",
                 data=final_worklist.to_csv(index=False),
-                file_name=f"{worklist_name}.csv",
+                file_name=f"{(worklist_name or '').strip() or 'worklist'}.csv",
                 mime="text/csv",
                 type="primary",
                 key="download_worklist",
             )
+        # Reset the accumulated rows and well selection on request
+        if clear_worklist:
+            st.session_state["df"] = pd.DataFrame(columns=_single_entry_columns)
+            st.session_state["source_well"] = ""
+            st.session_state["target_well"] = ""
+            st.rerun()

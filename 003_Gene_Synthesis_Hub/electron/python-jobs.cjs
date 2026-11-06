@@ -14,7 +14,7 @@ function registerPythonJobs({app,ipcMain,pythonAppRoot,pythonExe}) {
   };
   ipcMain.handle('hub:runPythonJob',async(event,{requestId,action,input})=>{
     if(!/^[a-zA-Z0-9-]{1,80}$/.test(requestId??''))return {ok:false,error:'Invalid job identifier.'};
-    if(!['qc-file-prep','labels','batch-report','qc-design-bio','qc-design-snapgene'].includes(action))return {ok:false,error:'Unknown processing action.'};
+    if(!['qc-file-prep','qc-upload','labels','labels-discover','batch-report','qc-design-bio','qc-design-snapgene'].includes(action))return {ok:false,error:'Unknown processing action.'};
     if([...active.values()].some(j=>j.sender===event.sender.id))return {ok:false,error:'A processing job is already running.'};
     let executable;
     try{executable=pythonExe();}catch(error){return {ok:false,error:'The bundled Python runtime is missing. Extract the complete ZIP and keep its resources folder. See the job log for details.'};}
@@ -42,6 +42,7 @@ function registerPythonJobs({app,ipcMain,pythonAppRoot,pythonExe}) {
           try {
             const item=JSON.parse(line);
             if(item.type==='result')data=item.data;
+            else if(item.type==='progress'&&Number.isFinite(item.fraction)&&item.fraction>=0&&item.fraction<=1){if(!event.sender.isDestroyed())event.sender.send('hub:pythonProgress',{requestId,fraction:item.fraction});}
             else if(item.type==='canceled')job.canceled=true;
             else if(item.type==='prompt') {
               job.prompt=item;

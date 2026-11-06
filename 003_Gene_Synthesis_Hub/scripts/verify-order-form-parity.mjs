@@ -374,5 +374,10 @@ check(
   JSON.stringify(realSamples)
 );
 
+
+const overflow=buildFormRows(Array.from({length:100},(_,i)=>['W'+i,'P'+i]),Object.fromEntries(Array.from({length:100},(_,i)=>['W'+i,['PF']])), 'U1105-1');
+check('96-row capacity stops at row 115',overflow.rows.length===96&&overflow.rows[95].workNo==='W95'&&overflow.warnings.some(w=>w.includes('4 primer row')));
+if(failures)process.exitCode=1;
+
 console.log("\n=== RESULT:", failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`, "===");
 process.exit(failures === 0 ? 0 : 1);

@@ -13,7 +13,8 @@ def run(payload,root,log):
     module=load_upstream('gsh_batch_report',root/'Code/BATCH_QC_report/batch_qc_report_app.py')
     executable=root/'tools/tesseract/tesseract.exe'
     if not executable.is_file():raise ValueError('Bundled OCR is missing. Extract the complete app ZIP.')
-    module.pytesseract.pytesseract.tesseract_cmd=str(executable)
+    import pytesseract
+    pytesseract.pytesseract.tesseract_cmd=str(executable)
     os.environ['TESSDATA_PREFIX']=str(executable.parent/'tessdata')
     module.find_tesseract=lambda:str(executable)
     module.configure_tesseract=lambda log=log:True

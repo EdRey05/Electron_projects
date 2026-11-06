@@ -329,6 +329,8 @@ export default function PrimerFinder({ onBack, initialPaths }) {
             <div className="flex items-center gap-2">
               <TextInput
                 value={primerFileName}
+                valid={primerFileValid && !primerFileError}
+                invalid={!!primerFileError}
                 readOnly
                 mono
                 placeholder="No file selected"
@@ -337,7 +339,7 @@ export default function PrimerFinder({ onBack, initialPaths }) {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".xlsx,.xls"
+                accept=".xlsx"
                 className="hidden"
                 onChange={(e) => handleFile(e.target.files?.[0])}
               />
@@ -349,7 +351,7 @@ export default function PrimerFinder({ onBack, initialPaths }) {
               <div className="mt-2">
                 {primerFileValid ? (
                   <Pill tone="good" icon={<CheckCircle2 size={11} />}>
-                    Valid Excel file
+                    Validated
                   </Pill>
                 ) : (
                   <Pill tone="bad" icon={<AlertCircle size={11} />}>

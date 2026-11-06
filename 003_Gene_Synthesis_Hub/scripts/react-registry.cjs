@@ -17,6 +17,7 @@ function normalize(registry) {
     const entry = section.match(/^entry\s*=\s*([^\r\n]+)/m);
     const route = entry && entries[entry[1].trim()];
     if (!route) return section;
+    if(route==='LabelGenerator.jsx'&&!section.includes('shipping_list_path'))section+='pass_dir_as_kwarg = Shipping_List:shipping_list_path\n';
     if(route==='QCFilePrep.jsx'){
       const extras='QC_Gel_Images:gel_images_path; Shipment_and_QC_Log:shipment_qc_log_path; Sorted_Sequencing_Files:sorted_sequencing_files_path';
       if(!section.includes('gel_images_path'))section=section.replace(/^(pass_dir_as_kwarg\s*=[^\r\n]*)/m,`$1; ${extras}`);

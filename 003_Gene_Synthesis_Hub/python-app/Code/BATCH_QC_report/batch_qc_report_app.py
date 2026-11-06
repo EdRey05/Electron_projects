@@ -3,15 +3,26 @@ Bio Basic Inc. - Canada
 Made by: Fabien Lonjon and Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 1.1
-Date: Oct 10, 2026
+Version: 1.2
+Date: Oct 31, 2026
 Notes: Batch QC report generator adapted to the Gene Synthesis hub.
     Simplified interface: folder browser + log area only. The processing
-    logic is preserved from the standalone QC Report Extractor: BBI ID /
-    Plasmid No. / sequence extraction, OD table OCR (multi-scale voting
-    with a majority-rule retry) and the Excel report with embedded OD
-    images. Field names and report labels follow the canonical job-log
-    naming (Plasmid No., Final Vector Sequence, ng/uL).
+    logic follows the standalone QC Report Extractor: BBI ID / Plasmid
+    No. / sequence extraction, OD table OCR (multi-scale voting with a
+    majority-rule retry) and the Excel report with embedded OD images.
+    Field names and report labels follow the canonical job-log naming
+    (Plasmid No., Final Vector Sequence, ng/uL).
+    v1.2: plasmid_no_from_docx reads real <w:tc> cells (a merged label
+    cell no longer repeats itself as the value); Word conversion uses
+    DispatchEx + DisplayAlerts=0 with word.Quit() in a finally (no
+    orphaned WINWORD.EXE processes, and the user's open Word is never
+    attached to); pytesseract is imported lazily - a missing OCR package
+    no longer blocks importing the module or launching the hub; stale
+    folder-validation results are dropped via a generation counter;
+    skipped sequence candidates and the picked OD image size are logged;
+    the report save cleans its image staging dir on every failure path;
+    *.zip scans ignore directories; the Tesseract popup guards grab_set
+    and wires the Run-anyways button.
 """
 
 import io
@@ -51,13 +62,11 @@ def require(pkg, import_as=None):
 require("python-docx", "docx")
 require("openpyxl")
 require("Pillow", "PIL")
-require("pytesseract")
 require("numpy")
 
 from docx import Document
 import numpy as np
 import openpyxl
-import pytesseract
 from openpyxl.drawing.image import Image as XLImage
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
@@ -68,10 +77,16 @@ from PIL import Image as PILImage, ImageOps, ImageFilter
 # Convert .doc → .docx using Microsoft Word
 # ─────────────────────────────────────────────────────────────────────────────
 def convert_doc_to_docx(doc_path: str, out_dir: str, log=print) -> str | None:
+    word = None
     try:
         import win32com.client
-        word    = win32com.client.Dispatch("Word.Application")
+        # DispatchEx forces a NEW Word instance: Dispatch could attach to
+        # a Word window the user has open, and the Quit() below would
+        # close it. DisplayAlerts=0 keeps corrupt/problem files from
+        # raising hidden modal dialogs inside this invisible instance.
+        word    = win32com.client.DispatchEx("Word.Application")
         word.Visible = False
+        word.DisplayAlerts = 0
         abs_in  = os.path.abspath(doc_path)
         abs_out = os.path.abspath(os.path.join(
             out_dir,
@@ -79,12 +94,20 @@ def convert_doc_to_docx(doc_path: str, out_dir: str, log=print) -> str | None:
         ))
         d = word.Documents.Open(abs_in)
         d.SaveAs2(abs_out, FileFormat=16)
-        d.Close()
-        word.Quit()
-        return abs_out if os.path.exists(abs_out) else None
+        saved = os.path.exists(abs_out)
+        d.Close(SaveChanges=0)
+        return abs_out if saved else None
     except Exception as e:
         log(f"      ⚠  win32com error: {e}")
         return None
+    finally:
+        # Quit in a finally: without it, any failure inside Open/SaveAs/
+        # Close leaves an invisible WINWORD.EXE process running forever.
+        if word is not None:
+            try:
+                word.Quit()
+            except Exception:
+                pass
 
 
 def open_as_docx(doc_path: str, tmp_dir: str, log=print) -> str | None:
@@ -127,7 +150,20 @@ def plasmid_no_from_docx(docx_path: str, log=print) -> str | None:
         d = Document(docx_path)
         for table in d.tables:
             for row in table.rows:
-                cells = [c.text.strip() for c in row.cells]
+                # Real cells by identity, NOT plain row.cells: row.cells
+                # repeats a merged cell once per grid column, so a
+                # horizontally merged "Plasmid No." label appears twice and
+                # the first "non-empty" value after it is the label itself.
+                # Dedupe repeats by the underlying <w:tc> element, then read
+                # through the _Cell wrapper (CT_Tc.text is not populated in
+                # python-docx 1.2).
+                seen_tcs = set()
+                cells = []
+                for _c in row.cells:
+                    if id(_c._tc) in seen_tcs:
+                        continue
+                    seen_tcs.add(id(_c._tc))
+                    cells.append(_c.text.strip())
                 for i, cell in enumerate(cells):
                     if re.search(r'plasmid\s*no', cell, re.IGNORECASE):
                         for val in cells[i+1:]:
@@ -207,12 +243,19 @@ def extract_sequence_files(zip_ref: zipfile.ZipFile, bbi_id: str, log=print) -> 
             if insert_seq is None:
                 insert_seq = seq
                 log(f"      ✓  Insert sequence: {basename} ({len(seq):,} bp)")
+            else:
+                log(
+                    f"      ⚠  Skipped extra file matching {bbi_id} "
+                    f"(insert already read): {basename} ({len(seq):,} bp)"
+                )
             continue
 
         if re.match(r"^LA\d+_.+\.seq$", basename, re.IGNORECASE):
             if final_vector_seq is None:
                 final_vector_seq = seq
                 log(f"      ✓  Final vector sequence: {basename} ({len(seq):,} bp)")
+            else:
+                log(f"      ⚠  Skipped extra vector-candidate file (vector already read): {basename}")
 
     return insert_seq, final_vector_seq
 
@@ -234,6 +277,15 @@ def find_tesseract() -> "str | None":
     global _TESSERACT_RESOLVED
     if _TESSERACT_RESOLVED is not _UNSET:
         return _TESSERACT_RESOLVED
+
+    # pytesseract is lazy-imported (OD OCR is an optional feature): a
+    # missing package must not block importing this module or launching
+    # the hub.
+    try:
+        import pytesseract
+    except ImportError:
+        _TESSERACT_RESOLVED = None
+        return None
 
     candidates = [
         shutil.which("tesseract"),
@@ -426,6 +478,7 @@ def build_cell_votes(cell_img: "PILImage.Image") -> dict[str, int]:
     even when several selection strategies are tried.
     """
     votes: dict[str, int] = {}
+    import pytesseract
 
     for scale in (3, 4, 5, 6, 7, 8):
         big = cell_img.resize((cell_img.width * scale, cell_img.height * scale), PILImage.NEAREST)
@@ -549,6 +602,12 @@ def od_values_from_blob(blob: bytes, log=print) -> dict:
     layout), fall back to a whole-row, multi-scale/psm OCR pass.
     """
     result = {"od260": None, "od280": None, "od_ratio": None, "ng_ul": None}
+
+    try:
+        import pytesseract  # bound here for the whole-row fallback below
+    except ImportError:
+        log("      ⚠  OCR package pytesseract not installed - OD values could not be read.")
+        return result
 
     if not configure_tesseract(log=log):
         log("      ⚠  Tesseract not found - OD values could not be read.")
@@ -700,7 +759,16 @@ def process_zip(zip_path: str, tmp_dir: str, log=print) -> dict:
                     log(f"      ✓  Plasmid No.: {plasmid_no}")
 
                     od_blob = od_image_blob_from_docx(docx_local, log=log)
-                    log(f"      {'✓' if od_blob else '⚠ '}  OD image {'found' if od_blob else 'not found'}")
+                    if od_blob:
+                        dims = ""
+                        try:
+                            w, h = PILImage.open(io.BytesIO(od_blob)).size
+                            dims = f" ({w}x{h} px)"
+                        except Exception:
+                            pass
+                        log(f"      ✓  OD image found{dims}")
+                    else:
+                        log("      ⚠  OD image not found")
                     if od_blob:
                         od_values = od_values_from_blob(od_blob, log=log)
                 else:
@@ -828,13 +896,13 @@ def write_excel_report(records: list[dict], output_path: str, log=print):
     try:
         wb.save(output_path)
     except PermissionError as e:
-        shutil.rmtree(img_tmp_dir, ignore_errors=True)
         raise RuntimeError(
             f"Could not save the report: {output_path}\n"
             f"It is likely open in Excel - close it and run the report again.\n"
             f"({e})"
         ) from e
-    shutil.rmtree(img_tmp_dir, ignore_errors=True)
+    finally:
+        shutil.rmtree(img_tmp_dir, ignore_errors=True)
     log(f"\n✅  Excel report saved → {output_path}")
 
 
@@ -857,6 +925,7 @@ class BatchQCReportApp:
         self._folder_valid = False
         self._folder_path = ""
         self._processing = False
+        self._validation_gen = 0
 
         self._setup_ui()
 
@@ -986,6 +1055,11 @@ class BatchQCReportApp:
     # ─────────────────────────────────────────────────────────────────────
     def _validate_folder(self, folder_path):
         """Validate the selected folder in a background thread."""
+        # A generation counter stamps every validation: a stale result
+        # from a slow older validation (the user picked another folder in
+        # the meantime) must not overwrite the newer one.
+        self._validation_gen += 1
+        gen = self._validation_gen
         self._update_validation_ui(None, "", None)
 
         if not folder_path:
@@ -994,22 +1068,24 @@ class BatchQCReportApp:
         def _validate():
             if not os.path.isdir(folder_path):
                 self.master.after(0, self._update_validation_ui, False,
-                                  "Folder not found.", folder_path)
+                                  "Folder not found.", folder_path, gen)
                 return
 
-            zips = sorted(Path(folder_path).glob("*.zip"))
+            zips = sorted(z for z in Path(folder_path).glob("*.zip") if z.is_file())
             if not zips:
                 self.master.after(0, self._update_validation_ui, False,
-                                  "No .zip files found in that folder.", folder_path)
+                                  "No .zip files found in that folder.", folder_path, gen)
                 return
 
             msg = f"✔ Validated - {len(zips)} ZIP file(s) found"
-            self.master.after(0, self._update_validation_ui, True, msg, folder_path)
+            self.master.after(0, self._update_validation_ui, True, msg, folder_path, gen)
 
         threading.Thread(target=_validate, daemon=True).start()
 
-    def _update_validation_ui(self, is_valid, message, folder_path):
+    def _update_validation_ui(self, is_valid, message, folder_path, gen=None):
         """Update the folder validation UI (main thread only)."""
+        if gen is not None and gen != self._validation_gen:
+            return  # stale result from a superseded validation
         self._folder_valid = bool(is_valid)
 
         if is_valid is True:
@@ -1056,7 +1132,10 @@ class BatchQCReportApp:
         popup.title("Tesseract not found")
         popup.geometry("520x300")
         popup.transient(self.master)
-        popup.grab_set()
+        try:
+            popup.grab_set()
+        except Exception:
+            pass  # toplevel not yet viewable for a modal grab - harmless
 
         ctk.CTkLabel(
             popup,
@@ -1106,7 +1185,7 @@ class BatchQCReportApp:
         ctk.CTkButton(
             btn_frame,
             text="Run anyways",
-            command=popup.destroy,
+            command=_run_anyways,
             fg_color="#3C702D",
             hover_color="#4CAF50",
             width=130,
@@ -1144,7 +1223,7 @@ class BatchQCReportApp:
             messagebox.showerror("Error", "Please select a valid folder.")
             return
 
-        zips = sorted(Path(folder).glob("*.zip"))
+        zips = sorted(z for z in Path(folder).glob("*.zip") if z.is_file())
         if not zips:
             messagebox.showerror("Error", "No .zip files found in that folder.")
             return
@@ -1170,7 +1249,7 @@ class BatchQCReportApp:
         tmp_dir = tempfile.mkdtemp()
         output_path = None
         try:
-            zips = sorted(Path(folder).glob("*.zip"))
+            zips = sorted(z for z in Path(folder).glob("*.zip") if z.is_file())
             for i, zp in enumerate(zips, start=1):
                 if i > 1:
                     self._log_threadsafe("─" * 80)

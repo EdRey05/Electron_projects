@@ -55,6 +55,7 @@ import {
 } from "../../ui/xlsxEdit.js";
 
 const START_ROW = 20; // 1-based, matches the Python original
+export const MAX_FILL_ROW = 115;
 
 /** The sheet the Python's `wb.active` resolves to in the template. */
 export const ORDER_FORM_SHEET_NAME = "Order form";
@@ -152,7 +153,9 @@ export function buildFormRows(orderedSamples, primersDict, dateId) {
   const { id: orderFormId, warning } = deriveOrderFormId(dateId);
   if (warning) warnings.push(warning);
 
-  return { rows, warnings, orderFormId };
+  const capacity=MAX_FILL_ROW-START_ROW+1;
+  if(rows.length>capacity)warnings.push(`Order form full: ${rows.length-capacity} primer row(s) past row ${MAX_FILL_ROW} were not written.`);
+  return { rows:rows.slice(0,capacity), warnings, orderFormId };
 }
 
 /**
@@ -237,6 +240,7 @@ export async function buildOrderFormBytes(built, opts) {
 
   let rowIdx = START_ROW; // 1-based row in the form
   for (const r of rows) {
+    if(rowIdx>MAX_FILL_ROW)break;
     const f = buildRowFormulas(rowIdx, validationRefPath);
     ws.getCell(`B${rowIdx}`).value = r.sampleType;
     ws.getCell(`C${rowIdx}`).value = r.sequenceSampleId;

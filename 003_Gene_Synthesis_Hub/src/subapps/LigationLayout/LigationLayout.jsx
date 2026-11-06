@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {useWorkbookValidation} from '../../ui/useWorkbookValidation.js';
 import {
   FileSpreadsheet,
   Database,
@@ -65,6 +66,10 @@ export default function LigationLayout({ onBack, initialPaths }) {
   const [fragmentsPath, setFragmentsPath] = useState(initialPaths?.fragments_log_path || "");
   const [templatePath, setTemplatePath] = useState(initialPaths?.ligation_template_path || "");
   const [vectorDbPath, setVectorDbPath] = useState(initialPaths?.vector_db_path || "");
+  const jobValidation = useWorkbookValidation(jobLogPath,['Initiated']);
+  const fragmentValidation = useWorkbookValidation(fragmentsPath);
+  const templateValidation = useWorkbookValidation(templatePath,['Layout']);
+  const vectorValidation = useWorkbookValidation(vectorDbPath,['Vector','Digested_Vectors']);
 
   const [jobIdsText, setJobIdsText] = useState("");
   const [conditions, setConditions] = useState([]); // [{ jobId, host, temperature }]
@@ -117,10 +122,10 @@ export default function LigationLayout({ onBack, initialPaths }) {
   const appendLog = (msg) => setLogs((prev) => [...prev, { msg, t: Date.now() }]);
 
   const canGenerate =
-    jobLogPath && fragmentsPath && templatePath && vectorDbPath && !running;
+    jobValidation.valid && fragmentValidation.valid && templateValidation.valid && vectorValidation.valid && !running;
 
   const jobIdsList = useMemo(
-    () => jobIdsText.split("\n").map((s) => s.trim()).filter(Boolean),
+    () => [...new Set(jobIdsText.split("\n").map((s) => s.trim()).filter(Boolean))],
     [jobIdsText]
   );
   const canGenerateWithIds = canGenerate && jobIdsList.length > 0;
@@ -333,6 +338,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
               <FilePicker
                 label="Job Log"
+                validation={jobValidation}
                 inputRef={jobLogInputRef}
                 value={jobLogPath}
                 onPick={(f) => setJobLogPath(window.api.getPathForFile(f))}
@@ -340,6 +346,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
               />
               <FilePicker
                 label="Fragments File"
+                validation={fragmentValidation}
                 inputRef={fragmentsInputRef}
                 value={fragmentsPath}
                 onPick={(f) => setFragmentsPath(window.api.getPathForFile(f))}
@@ -347,6 +354,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
               />
               <FilePicker
                 label="Ligation Layout Template"
+                validation={templateValidation}
                 inputRef={templateInputRef}
                 value={templatePath}
                 onPick={(f) => setTemplatePath(window.api.getPathForFile(f))}
@@ -354,6 +362,7 @@ export default function LigationLayout({ onBack, initialPaths }) {
               />
               <FilePicker
                 label="Vector Database (.xlsx)"
+                validation={vectorValidation}
                 inputRef={vectorDbInputRef}
                 value={vectorDbPath}
                 onPick={(f) => setVectorDbPath(window.api.getPathForFile(f))}
@@ -668,7 +677,7 @@ function ManualVectorModal({
 // =============================================================================
 // Shared file picker
 // =============================================================================
-function FilePicker({ label, inputRef, value, onPick, icon }) {
+function FilePicker({ label, inputRef, value, onPick, icon, validation }) {
   return (
     <div>
       <div className="flex items-center gap-1.5 mb-1">
@@ -678,7 +687,7 @@ function FilePicker({ label, inputRef, value, onPick, icon }) {
         </span>
       </div>
       <div className="flex items-center gap-2">
-        <PathInput value={value} style={{ flex: 1 }} />
+        <PathInput value={value} valid={validation?.valid} invalid={validation?.state === 'invalid'} style={{ flex: 1 }} />
         <input
           ref={inputRef}
           type="file"
@@ -694,6 +703,7 @@ function FilePicker({ label, inputRef, value, onPick, icon }) {
           Select…
         </Button>
       </div>
+      <div role="status" style={{minHeight:24,fontSize:14,color:validation?.valid?C.tealDeep:validation?.error?C.coral:C.inkMuted}}>{validation?.valid?'✓ Validated':validation?.error?`✕ ${validation.error}`:validation?.state==='checking'?'Checking…':''}</div>
     </div>
   );
 }

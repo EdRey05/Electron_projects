@@ -20,3 +20,10 @@ assert.throws(()=>planWorkbookOutputs([{jobId:'../outside',insertSeq:'ACGT'}]),/
 assert.throws(()=>planWorkbookOutputs([{jobId:'CON',insertSeq:'ACGT'}]),/Invalid output filename/);
 assert.throws(()=>planWorkbookOutputs([{jobId:'TEST',insertSeq:'AAAA'},{jobId:'test',insertSeq:'CCCC'}]),/Conflicting sequences/);
 console.log('Reference Files: reordered headers, exact sequence bytes, optional empty cells, duplicate coalescing, filename and conflicting-output preflight passed.');
+
+const headerless=XLSX.utils.book_new();
+XLSX.utils.book_append_sheet(headerless,XLSX.utils.aoa_to_sheet([['W-HEADERLESS','','','','pUC57','','','ACGT'.repeat(12),'TTAA'.repeat(12)]]),'input addon');
+const headerlessResult=await extractSequences({arrayBuffer:async()=>XLSX.write(headerless,{type:'array',bookType:'xlsx'})});
+assert.equal(headerlessResult.rows[0].jobId,'W-HEADERLESS');
+assert.equal(headerlessResult.rows[0].insertSeq,'ACGT'.repeat(12));
+console.log('Headerless first data row retained.');

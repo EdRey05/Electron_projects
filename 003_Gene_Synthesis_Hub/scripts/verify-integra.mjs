@@ -10,9 +10,10 @@ const rows=[
 let cases=0;
 for(const pool of [false,true])for(const autoWells of [false,true])for(const autoSort of [false,true]) {
  const options={source:'B',target:'C',volume:85,pool,autoWells,autoSort};
- const native=buildBulk(rows,options);
+ const caseRows=!pool&&!autoWells?rows.map((r,i)=>({...r,Seq_well:['A1','B1','C1'][i]})):rows;
+ const native=buildBulk(caseRows,options);
  const python=fileURLToPath(new URL('../python-app/runtime/python.exe',import.meta.url));
- const result=spawnSync(python,[fileURLToPath(new URL('./integra-reference-oracle.py',import.meta.url))],{input:JSON.stringify({rows,options}),encoding:'utf8',timeout:30000,env:{...process.env,PYTHONIOENCODING:'utf-8'}});
+ const result=spawnSync(python,[fileURLToPath(new URL('./integra-reference-oracle.py',import.meta.url))],{input:JSON.stringify({rows:caseRows,options}),encoding:'utf8',timeout:30000,env:{...process.env,PYTHONIOENCODING:'utf-8'}});
  assert.equal(result.status,0,result.stderr||result.error?.message);
  const oracle=JSON.parse(result.stdout);
  assert.deepEqual(native.map(r=>r.Automation_string),oracle.automation);

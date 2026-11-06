@@ -1,3 +1,4 @@
+import {ValidatedPath} from '../../ui/ValidatedPath.jsx';
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   FileSpreadsheet,
@@ -173,20 +174,21 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
       const total = planned.length;
       let filesWritten = 0;
       let failures = 0;
+      let overwritten = 0, completed = 0;
       for (let i = 0; i < total; i++) {
         const outputs = [planned[i]];
         for (const o of outputs) {
           const filePath = `${outputDir}/${o.name}`.replace(/\\/g, "/");
-          const result = await window.api.writeTextFile({
-            filePath,
+          const result = await window.api.writeReferenceFile({
+            directory:outputDir,name:o.name,
             text: o.contents,
           });
           if (!result?.ok) {
             failures++;
             appendLog(`  ✗ ${o.name}: ${result?.error || "write failed"}`);
           } else {
-            appendLog(`  ✓ Created: ${o.name}`);
-            filesWritten++;
+            if(result.outcome==='completed'){completed++;appendLog(`  ⏭ Completed in ${result.year}: ${o.name} · skipped`);}
+            else {filesWritten++;if(result.outcome==='overwritten')overwritten++;appendLog(`  ✓ ${result.outcome==='overwritten'?'Overwritten':'Created'}: ${o.name}`);}
           }
         }
         setProgress((i + 1) / total);
@@ -196,11 +198,11 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
 
       setResults({ filesWritten, rowsProcessed: extracted.rows.length });
       setProgress(1);
-      const summary = `--- Processing Finished ---\nRows processed: ${extracted.rows.length}\nFiles created: ${filesWritten}`;
+      const summary = `--- Processing Finished ---\nRows processed: ${extracted.rows.length}\nCreated: ${filesWritten-overwritten} · Overwritten: ${overwritten} · Completed/skipped: ${completed}`;
       appendLog("");
       appendLog(summary);
       setStatus({
-        text: failures ? `${filesWritten} written · ${failures} failed. See log.` : `Done. ${filesWritten} file${filesWritten === 1 ? "" : "s"} written.`,
+        text: `${filesWritten-overwritten} created · ${overwritten} overwritten · ${completed} completed/skipped${failures?` · ${failures} failed`:''}`,
         color: failures ? "bad" : filesWritten > 0 ? "good" : "warn",
       });
     } catch (err) {
@@ -299,27 +301,9 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
             title="Reference Files Folder"
             subtitle="Destination for the generated .txt files"
           >
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                disabled={running}
-                value={outputDir}
-                onChange={(e) => setOutputDir(e.target.value)}
-                placeholder="Click 'Select…' to choose the output folder"
-                className="flex-1 px-3 py-2 text-xs rounded outline-none"
-                style={{
-                  background: C.surface,
-                  border: "1px solid " + C.border,
-                  borderRadius: 6,
-                  color: outputDir ? C.ink : C.inkFaint,
-                  fontFamily: FONT_MONO,
-                  userSelect: "text",
-                }}
-              />
-              <Button variant="primary" disabled={running} onClick={chooseOutputDir}>
-                Select…
-              </Button>
-            </div>
+            <ValidatedPath value={outputDir} onChange={setOutputDir} readOnly={false} disabled={running} placeholder="Choose the output folder" style={{flex:1}}>
+              <Button variant="primary" disabled={running} onClick={chooseOutputDir}>Select…</Button>
+            </ValidatedPath>
             <p className="mt-2 text-[11px]" style={{ color: C.inkFaint }}>
               Each row produces up to two files:{" "}
               <span style={{ fontFamily: FONT_MONO }}>{`{Work No.}.txt`}</span> (Insert

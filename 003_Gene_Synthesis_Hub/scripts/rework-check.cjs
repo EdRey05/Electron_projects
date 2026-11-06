@@ -19,6 +19,7 @@ app.on('browser-window-created',(_event,win)=>{
         return {names:cards.map(c=>c.querySelector('h3').innerText),rects:cards.slice(0,2).map(c=>c.getBoundingClientRect().toJSON()),text:document.body.innerText,background:getComputedStyle(document.body).backgroundColor};
       })()`);
       assert.equal(state.names.length,11);
+      assert(win.isMaximized(),"Main window did not launch maximized");
       assert.equal(state.names[0],'Ligation Layout');
       assert.equal(state.names[10],'Label Generator');
       assert(!state.names.includes('QC Vector Map Prep'));
@@ -33,7 +34,7 @@ app.on('browser-window-created',(_event,win)=>{
       XLSX.utils.sheet_add_aoa(sheet,[['Oligo Name',"Sequence (5' to 3')"]],{origin:'A34'});
       XLSX.utils.sheet_add_aoa(sheet,[['Early','ACGTTGCAACCT']],{origin:'A35'});
       XLSX.utils.sheet_add_aoa(sheet,[['Late','ACGTTGCAACCT']],{origin:'A150'});
-      XLSX.utils.book_append_sheet(workbook,sheet,'S-test');
+      XLSX.utils.book_append_sheet(workbook,sheet,'S0104');
       XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([
         ['Work No.','Vector','Insert Sequence','Final Vector Sequence','Colony PCR primers','Amplification primers','Seq primer 1','Seq primer 2'],
         ['GSH-TEST-01','pUC57','ACGT','GGACGTCC','PF/PR','','GSH-TEST-01_F','GSH-TEST-01_R'],
@@ -47,10 +48,10 @@ app.on('browser-window-created',(_event,win)=>{
       for(let i=0;i<100;i++){if(await win.webContents.executeJavaScript(`!![...document.querySelectorAll('button')].find(b=>b.innerText==='Rescan'&&!b.disabled)`))break;await wait(200);}
       await win.webContents.executeJavaScript(`document.querySelector('[aria-label="Open Primer Finder"]')?.click()`);
       for(let i=0;i<60;i++) {
-        if(await win.webContents.executeJavaScript('document.body.innerText.includes("Valid Excel file")'))break;
+        if(await win.webContents.executeJavaScript('document.body.innerText.includes("Validated")'))break;
         await wait(200);
       }
-      assert(await win.webContents.executeJavaScript('document.body.innerText.includes("Valid Excel file")'),'Configured workbook was not loaded');
+      assert(await win.webContents.executeJavaScript('document.body.innerText.includes("Validated")'),'Configured workbook was not loaded');
       await win.webContents.executeJavaScript(`(()=>{const e=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,'TTTACGTTGCAACCTGGG');e.dispatchEvent(new Event('input',{bubbles:true}));})()`);
       await wait(200);
       await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Find Binding Primers').click()`);
@@ -60,7 +61,7 @@ app.on('browser-window-created',(_event,win)=>{
       }
       assert(await win.webContents.executeJavaScript('document.body.innerText.includes("Found 2 matching primers")'),'Late primer row was not searched');
       fs.writeFileSync('C:/Export/primer-finder.png',(await win.webContents.capturePage()).toPNG());
-      fs.writeFileSync('C:/Export/primer-ui.json',JSON.stringify({status:'passed',configuredWorkbook:true,lateRow150:true,matchingPrimers:2}));
+      fs.writeFileSync('C:/Export/primer-ui.json',JSON.stringify({status:'passed',launchMaximized:true,configuredWorkbook:true,lateRow150:true,matchingPrimers:2}));
       stage='reference-config';
       fs.mkdirSync('C:/Export/reference-files',{recursive:true});
       await win.webContents.executeJavaScript(`window.api.saveConfig({Reference_Sequences:'C:/Export/reference-files'},{})`);
@@ -73,15 +74,15 @@ app.on('browser-window-created',(_event,win)=>{
       stage='open-reference-files';
       await win.webContents.executeJavaScript(`document.querySelector('[aria-label="Open Sequencing Reference Files"]').click()`);
       for(let i=0;i<60;i++) {
-        if(await win.webContents.executeJavaScript('document.body.innerText.includes("Validated (input addon sheet found)")'))break;
+        if(await win.webContents.executeJavaScript('document.body.innerText.includes("Validated · (input addon sheet found)")'))break;
         await wait(200);
       }
-      assert(await win.webContents.executeJavaScript('document.body.innerText.includes("Validated (input addon sheet found)")'),'Reference file path did not load');
-      assert.equal(await win.webContents.executeJavaScript(`document.querySelector('input[type=text]').value.replaceAll('\\\\','/')`),'C:/Export/reference-files','Configured output folder mismatch');
+      assert(await win.webContents.executeJavaScript('document.body.innerText.includes("Validated · (input addon sheet found)")'),'Reference file path did not load');
+      assert.equal(await win.webContents.executeJavaScript(`[...document.querySelectorAll('input')].find(e=>e.value.includes('reference-files')).value.replaceAll('\\\\','/')`),'C:/Export/reference-files','Configured output folder mismatch');
       stage='export-reference-files';
       await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Export Sequences').click()`);
       for(let i=0;i<60;i++) {
-        if(await win.webContents.executeJavaScript('document.body.innerText.includes("Done. 4 files written.")'))break;
+        if(await win.webContents.executeJavaScript('document.body.innerText.includes("completed/skipped")'))break;
         await wait(200);
       }
       for(const [name,contents] of Object.entries({'GSH-TEST-01.txt':'ACGT','GSH-TEST-01+pUC57.txt':'GGACGTCC','GSH-TEST-02.txt':'TTAA','GSH-TEST-02+pET24a.txt':'CCTTAAGG'}))assert.equal(fs.readFileSync('C:/Export/reference-files/'+name,'utf8'),contents);
@@ -187,7 +188,7 @@ app.on('browser-window-created',(_event,win)=>{
       const ioRoot='C:/Export/organizer-'+Date.now(),rawDir=ioRoot+'/raw',sortedDir=ioRoot+'/sorted',sgDir=ioRoot+'/sg-check';
       for(const dir of [rawDir,sortedDir,sgDir])fs.mkdirSync(dir,{recursive:true});
       const rawName='U1029P1A1_GSH-TEST-01_F.AB1';
-      fs.copyFileSync('C:/Control/fixtures/real-trace.ab1',rawDir+'/'+rawName);
+      fs.copyFileSync('C:/TestData/sequencing/After PT/P1905987_2026-10-19/U1015P1E2._.XP1690484._.M13F-108._.U1016.ab1',rawDir+'/'+rawName);
       fs.writeFileSync(rawDir+'/U1029P1A1_GSH-TEST-01_R.fasta','>synthetic\nACGTACGT\n');
       fs.writeFileSync(rawDir+'/pOs_control_F.AB1','positive control fixture');
       fs.writeFileSync(rawDir+'/unparseable.AB1','unparseable fixture');
@@ -231,6 +232,7 @@ app.on('browser-window-created',(_event,win)=>{
       stage='integra-worklist';
       await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText.trim().endsWith('Hub')).click()`);await wait(200);
       await win.webContents.executeJavaScript(`document.querySelector('[aria-label="Open Integra Worklist"]').click()`);await wait(400);
+      await setField('[aria-label="Row sort"]','none');
       const bulkPaste=[['GSH-TEST-01','BBI-TEST','Clone-X','U1029P1A1','note','20','1.8','2.0','3',''],['GSH-TEST-01','BBI-TEST','Clone-X','U1029P1B1','note','40','2.0','2.2','3',''],['GSH-TEST-02','BBI-TEST-2','Clone-Y','U1029P1C1','note','50','1.9','2.1','2','']].map(r=>r.join('\t')).join('\n');
       await win.webContents.executeJavaScript(`(()=>{const e=document.querySelector('textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(e,${JSON.stringify(bulkPaste)});e.dispatchEvent(new Event('input',{bubbles:true}));})()`);await wait(100);
       await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Load rows').click()`);await wait(100);
@@ -265,12 +267,13 @@ app.on('browser-window-created',(_event,win)=>{
       const labelDocument=await win.webContents.debugger.sendCommand('DOM.getDocument');
       const labelInput=await win.webContents.debugger.sendCommand('DOM.querySelector',{nodeId:labelDocument.root.nodeId,selector:'input[type=file]'});
       await win.webContents.debugger.sendCommand('DOM.setFileInputFiles',{nodeId:labelInput.nodeId,files:[shippingFile]});win.webContents.debugger.detach();await wait(150);
-      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Read shipping lists').click()`);
-      await until(`!![...document.querySelectorAll('button')].find(b=>b.innerText==='Add all'&&!b.disabled)`);
-      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Add all').click()`);await wait(100);
+
+      await until(`!![...document.querySelectorAll('button')].find(b=>b.innerText==='Check all shown'&&!b.disabled)`);
+      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Check all shown').click()`);await wait(100);
+      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText.startsWith('Selected')).click()`);await wait(150);
       const labelDir='C:/Export/labels-'+Date.now();fs.mkdirSync(labelDir);
       dialog.showSaveDialog=async()=>({canceled:false,filePath:labelDir+'/Shipping_labels.csv'});
-      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Copy labels').click()`);await wait(100);
+      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Copy Selected').click()`);await wait(100);
       assert(require('electron').clipboard.readText().includes('BBI-TEST-01\tGeneOne\tpUC57'));
       await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Save CSV').click()`);await wait(150);
       const labelCsv=fs.readFileSync(labelDir+'/Shipping_labels.csv','utf8');
@@ -285,7 +288,7 @@ app.on('browser-window-created',(_event,win)=>{
       const cancelDocument=await win.webContents.debugger.sendCommand('DOM.getDocument');
       const cancelInput=await win.webContents.debugger.sendCommand('DOM.querySelector',{nodeId:cancelDocument.root.nodeId,selector:'input[type=file]'});
       await win.webContents.debugger.sendCommand('DOM.setFileInputFiles',{nodeId:cancelInput.nodeId,files:[largeFile]});win.webContents.debugger.detach();await wait(100);
-      await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Read shipping lists').click()`);
+
       await until('pythonProgress.length>0');
       await win.webContents.executeJavaScript(`[...document.querySelectorAll('button')].find(b=>b.innerText==='Stop').click()`);
       await until(`document.body.innerText.includes('Canceled.')`);

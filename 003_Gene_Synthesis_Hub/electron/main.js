@@ -7,6 +7,13 @@ const fs = require("fs");
 const fsp = require("fs/promises");
 const os = require("os");
 const {verifiedCopy,verifiedMove}=require("./file-operations.cjs");
+const {writeReference}=require('./reference-files.cjs');
+ipcMain.handle('hub:writeReferenceFile',async(_event,request)=>{
+  try{return await writeReference(request);}catch(error){return {ok:false,error:error.message};}
+});
+ipcMain.handle('hub:inspectPath',async(_event,{filePath,kind})=>{
+  try{const stat=await fsp.stat(filePath);if(kind==='directory'&&!stat.isDirectory())throw new Error('Choose a folder.');if(kind==='file'&&!stat.isFile())throw new Error('Choose a file.');return {ok:true};}catch(error){return {ok:false,error:error.message};}
+});
 
 // ---------------------------------------------------------------------------
 // Filesystem layout helpers
@@ -145,6 +152,7 @@ const isDev = !app.isPackaged && process.env.NODE_ENV !== "production";
 
 function createWindow() {
   const win = new BrowserWindow({
+    show: false,
     width: 1280,
     height: 860,
     minWidth: 1000,
@@ -159,6 +167,8 @@ function createWindow() {
       sandbox: false,
     },
   });
+
+  win.once("ready-to-show", () => { win.maximize(); win.show(); });
 
   if (isDev) {
     win.loadURL("http://localhost:5173");
@@ -368,6 +378,23 @@ ipcMain.handle("hub:writeBinaryFile", async (_evt, { filePath, bytes }) => {
   }
 });
 
+const organizerState=require('./organizer-state.cjs');
+ipcMain.handle('hub:organizerSession',async(_event,{record}={})=>{
+  try{const file=path.join(app.getPath('userData'),'organizer','last_session_log.json');
+    if(record){await organizerState.saveSession(file,record);return {ok:true};}
+    return {ok:true,record:await organizerState.loadSession(file)};
+  }catch(error){return {ok:false,error:error.message};}
+});
+ipcMain.handle('hub:saveSgWorkbook',async(event,{filePath,bytes})=>{
+  try{return await organizerState.saveWorkbook(filePath,Buffer.from(bytes),async filename=>{
+    const {response}=await dialog.showMessageBox(BrowserWindow.fromWebContents(event.sender),{
+      type:'question',title:'Workbook already exists',message:filename,
+      detail:'Overwrite the existing workbook or keep it and save the next version.',
+      buttons:['Cancel','Save v2','Overwrite'],defaultId:1,cancelId:0});
+    return ['cancel','version','overwrite'][response];
+  });}catch(error){return {ok:false,error:error.message};}
+});
+
 // Copy a file (used by subapps that need to lay down a template alongside
 // their generated output, e.g. Sequencing Order Form copying the layout
 // template). Returns { ok, error? }.
@@ -473,6 +500,7 @@ ipcMain.handle("hub:createDirectory", async (_evt, { dirPath }) => {
 
 ipcMain.handle("hub:getLayout", async () => {
   return {
+    desktopFolder:app.getPath('desktop'),
     pythonAppRoot: pythonAppRoot(),
     runtimeDir: runtimeDir(),
     // Compatibility field for existing UI; packages live in the full runtime.

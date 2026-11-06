@@ -23,6 +23,7 @@
  * worker.
  */
 import * as XLSX from "xlsx";
+import {validateWorkbookSheets} from '../../ui/workbookValidation.js';
 import { isRelevantSheet, isValidPrimer } from "./sequenceUtils.js";
 import { normHeader, columnLetter } from "../../ui/columns.js";
 
@@ -137,6 +138,7 @@ function readSheetCandidates(sheet, sheetName, nameIdx, seqIdx) {
 
 export async function loadPrimerCandidatesFromFile(file) {
   const buf = await file.arrayBuffer();
+  validateWorkbookSheets(buf);
   const wb = XLSX.read(buf, { type: "array" });
   const relevantSheets = wb.SheetNames.filter(isRelevantSheet);
   const out = [];

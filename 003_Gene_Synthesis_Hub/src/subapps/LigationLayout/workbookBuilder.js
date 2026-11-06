@@ -59,7 +59,8 @@ export function writeLayoutRows(wb, layoutRows, lookups) {
 
     // Write B/C/D/E/T/V/W from the layout row.
     for (const [key, colLetter] of Object.entries(columnMapping)) {
-      sheet[`${colLetter}${row}`] = { t: typeof item[key] === "number" ? "n" : "s", v: item[key] ?? "" };
+      const value = typeof item[key] === 'number' && !Number.isFinite(item[key]) ? '' : item[key] ?? '';
+      sheet[`${colLetter}${row}`] = { t: typeof value === "number" ? "n" : "s", v: value };
     }
     // Compute F/G/H/U from the digested_vectors_lookup + resistance lookup.
     if (!item.job_id) {
@@ -87,7 +88,7 @@ export function writeLayoutRows(wb, layoutRows, lookups) {
         sheet[`H${row}`] = { t: "s", v: "" };
       }
       const resistance = lookups?.resistance?.[vectorName];
-      sheet[`U${row}`] = { t: "s", v: resistance || "" };
+      sheet[`U${row}`] = { t: "s", v: resistance || item.resistance || "" };
     }
     rowIdx += 1;
   }

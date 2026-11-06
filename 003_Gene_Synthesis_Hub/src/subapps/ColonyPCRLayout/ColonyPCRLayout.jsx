@@ -1,4 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import {useWorkbookValidation,useWorkbookSetValidation} from '../../ui/useWorkbookValidation.js';
+import {ValidationStatus} from '../../ui/kit.jsx';
 import {
   FileSpreadsheet,
   FlaskConical,
@@ -44,6 +46,9 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
   const [primerLogPath, setPrimerLogPath] = useState(initialPaths?.primer_log_path || "");
   const [templatePath, setTemplatePath] = useState(initialPaths?.colony_pcr_template_path || "");
   const [outputDir, setOutputDir] = useState("");
+  const primerValidation=useWorkbookValidation(primerLogPath,['input addon']);
+  const templateValidation=useWorkbookValidation(templatePath);
+  const ligationValidation=useWorkbookSetValidation(ligationFiles.map(file=>file.path),['Layout']);
 
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState({ text: "Ready", color: "info" });
@@ -69,7 +74,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
 
   const appendLog = (msg) => setLogs((prev) => [...prev, { msg, t: Date.now() }]);
 
-  const canGenerate = ligationFiles.length > 0 && primerLogPath && templatePath && !running;
+  const canGenerate = ligationValidation.valid && primerValidation.valid && templateValidation.valid && !running;
 
   // -------- file pickers --------
   const chooseLigationFiles = async () => {
@@ -284,9 +289,10 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
               >
                 {ligationFiles.map((f, i) => (
                   <div key={i} className="flex items-center justify-between gap-2">
-                    <span className="text-xs truncate" style={{ fontFamily: FONT_MONO }}>
+                    <div className="text-xs truncate" style={{ fontFamily: FONT_MONO,border:'1px solid '+(ligationValidation.entries[i]?.valid?C.validated:ligationValidation.entries[i]?.error?C.coral:C.border),borderRadius:6,padding:8 }}>
                       {baseName(f.path)}
-                    </span>
+                      <ValidationStatus validation={ligationValidation.entries[i]}/>
+                    </div>
                     <button
                       onClick={() => setLigationFiles((prev) => prev.filter((_, j) => j !== i))}
                       style={{ color: C.inkFaint }}
@@ -306,7 +312,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
             subtitle="Sheet 'input addon'"
           >
             <div className="flex items-center gap-2">
-              <PathInput value={primerLogPath} style={{ flex: 1 }} />
+              <PathInput value={primerLogPath} valid={primerValidation.valid} invalid={!!primerValidation.error} style={{ flex: 1 }} />
               <input
                 ref={primerLogInputRef}
                 type="file"
@@ -322,6 +328,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
                 Select…
               </Button>
             </div>
+            <ValidationStatus validation={primerValidation}/>
           </Panel>
 
           {/* Colony PCR Template */}
@@ -331,7 +338,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
             subtitle="Detected automatically from the bundled Templates folder"
           >
             <div className="flex items-center gap-2">
-              <PathInput value={templatePath} style={{ flex: 1 }} />
+              <PathInput value={templatePath} valid={templateValidation.valid} invalid={!!templateValidation.error} style={{ flex: 1 }} />
               <input
                 ref={templateInputRef}
                 type="file"
@@ -347,6 +354,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
                 Replace…
               </Button>
             </div>
+            <ValidationStatus validation={templateValidation}/>
           </Panel>
 
           {/* Output Folder */}
@@ -359,7 +367,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
               <PathInput
                 value={outputDir}
                 readOnly={false}
-                onChange={(e) => setOutputDir(e.target.value)}
+                onChange={setOutputDir}
                 placeholder="Defaults to the same folder as your first ligation file"
                 style={{ flex: 1 }}
               />

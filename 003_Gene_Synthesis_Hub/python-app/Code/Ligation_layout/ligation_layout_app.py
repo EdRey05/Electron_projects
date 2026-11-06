@@ -3,18 +3,37 @@ Bio Basic Inc. - Canada
 Made by: Fabien Lonjon and Eduardo Reyes.
 Contact: ed5reyes@outlook
 
-Version: 3.2
-Date: Oct 10, 2026
-Field names follow the canonical job-log naming: Job IDs / JobID /
-    BBID become Work No. / work_no / bbi_id, and the layout-row
-    'enzyme' key becomes 'cloning_site' (the Job Log column name).
-    Fragment sheets are read with the corrected 'Insert Length'
-    header (live Summary IDT Log sheets still carry the 'Insert
-    Lenght' typo - fix the workbook, see the pre-deploy list).
-    Vector Database sheets are read positionally.
-    Separated vector database from template. Direct value lookups replace
-    external Excel formulas. Manual vector entry dialog with DB-backed combobox.
-    PCR fragments priority search with concentration-based volume adjustment.
+Version: 3.3
+Date: Oct 30, 2026
+Audit-fix release.
+- Error dialogs survive worker failures (args-form after()) and the
+    Generate button re-enables on every early or failed run path.
+- Work No. text and special conditions are snapshot on the main
+    thread before the worker starts (worker never touches widgets).
+- File-entry path state hardened: the validated file path is stored
+    (not the entry text), entries fail-closed reset + debounced
+    revalidation on edit, generation counter drops stale
+    completions.
+- Job Log reads resolve columns by name first (legacy spellings
+    kept, historic positions as fallback, which path fired is
+    logged). Blank cells become clean text "" so no NaN rows,
+    CK-nan-nan control rows or malformed <v></v> cells are written;
+    blank or placeholder Vector triggers manual entry.
+- Fragments sheets are admitted only with required headers
+    ('Position', 'Gene Name', 'Purity Pass', 'Sequence'); PCR
+    'Concentration' resolves by name first, historic column G as
+    fallback; per-sheet skips carry provenance; the consolidated
+    Gene Name column is normalized to text (all-digit name columns
+    type-infer as ints under some pandas versions and silently
+    break matching); fragments with no usable sequence leave the
+    volume blank with a warning.
+- Vector database: 'Vector' sheet joined to the validation gate,
+    swept once (duplicate resistance block removed) with row caps
+    before inflated sheet dims, workbooks closed after reads.
+- Manual-entry dialog: guarded grab_set, deadlock-proof completion
+    event, typed resistance used when the DB lacks the vector, no
+    silent resistance default, >50-match hint in the vector search,
+    duplicate Work No. lines deduped with a warning.
 """
 
 import math
@@ -34,6 +53,86 @@ from openpyxl import load_workbook
 
 import customtkinter as ctk
 from tkinter import filedialog, messagebox
+
+
+# =============================================================================
+# Module-level helpers
+# =============================================================================
+def _excel_value(value):
+    """openpyxl write guard: blank out NaN/inf so a saved XLSX never carries
+    malformed numeric cells (openpyxl 3.1.5 silently writes NaN as an empty
+    <v></v> element, which Excel's strict parser flags as unreadable)."""
+    if isinstance(value, float) and (math.isnan(value) or math.isinf(value)):
+        return ""
+    return value
+
+
+def _col_key(col):
+    """Normalizes a column header for lookup (strip + lowercase)."""
+    return str(col).strip().lower()
+
+
+def _resolve_column(df, canonical_name, candidates, fallback_idx=None):
+    """Family two-step column resolution for workbook reads.
+
+    Resolves the column by its standardized header name first (candidates
+    include legacy spellings), then falls back to the historic position.
+
+    Returns:
+        tuple: (column_label, path_description) - the path description is
+               logged by callers so a silent header drift shows up in the
+               run log immediately.
+    Raises:
+        ValueError: when no candidate matches and the fallback position
+                    does not exist.
+    """
+    lookup = {_col_key(c): c for c in df.columns}
+    for cand in candidates:
+        col = lookup.get(_col_key(cand))
+        if col is not None:
+            return col, "resolved by name"
+    if fallback_idx is not None and fallback_idx < len(df.columns):
+        return df.columns[fallback_idx], (
+            "resolved by fallback position"
+        )
+    raise ValueError(
+        f"Column '{canonical_name}' not found: no header matches "
+        f"{candidates} and there is no fallback position "
+        f"(sheet has {len(df.columns)} columns)."
+    )
+
+
+def _iter_capped_rows(ws, anchor_col, max_col, block_size=500, max_rows=50000):
+    """Iterate data rows of a read_only sheet until the anchor column stays
+    empty for a whole block or the hard cap is reached.
+
+    openpyxl reports stale, formatting-inflated max_row values on
+    coworker-edited workbooks (up to ~1M rows); an uncapped sweep over those
+    dims freezes the run for minutes. Sweeping in empty-anchor-delimited
+    blocks stays proportional to the real data.
+    """
+    start = 2  # row 1 is the header row
+    while start <= max_rows:
+        block = list(
+            ws.iter_rows(
+                min_row=start,
+                max_row=start + block_size - 1,
+                max_col=max_col,
+                values_only=True,
+            )
+        )
+        if not block:
+            break
+        yield from block
+        anchor_empty = all(
+            row[anchor_col] is None
+            or (isinstance(row[anchor_col], str) and not row[anchor_col].strip())
+            for row in block
+        )
+        if anchor_empty:
+            # All-empty block: only stale formatting would follow.
+            break
+        start += block_size
 
 
 # =============================================================================
@@ -78,15 +177,17 @@ class BulkManualVectorDialog(ctk.CTkToplevel):
                 return {}, []
             ws = wb["Vector"]
             vec_to_res = {}
-            for row in ws.iter_rows(min_row=2, values_only=True):
-                vec_name = row[0]   # Column A: Vector Name
-                resistance = row[2]  # Column C: Resistance
-                if vec_name and resistance:
-                    # Strip whitespace to ensure clean keys
-                    vec_name = str(vec_name).strip()
-                    resistance = str(resistance).strip()
-                    vec_to_res[vec_name] = resistance
-            wb.close()
+            try:
+                for row in _iter_capped_rows(ws, anchor_col=0, max_col=3):
+                    vec_name = row[0]   # Column A: Vector Name
+                    resistance = row[2]  # Column C: Resistance
+                    if vec_name and resistance:
+                        # Strip whitespace to ensure clean keys
+                        vec_name = str(vec_name).strip()
+                        resistance = str(resistance).strip()
+                        vec_to_res[vec_name] = resistance
+            finally:
+                wb.close()
 
             # Build sorted list: common vectors first, then remaining alphabetically
             common_set = set(BulkManualVectorDialog._COMMON_VECTORS)
@@ -115,7 +216,12 @@ class BulkManualVectorDialog(ctk.CTkToplevel):
 
         self._show_selection_view()
         self.transient(parent)
-        self.grab_set()
+        try:
+            self.grab_set()
+        except Exception:
+            # Tk can refuse the grab while the toplevel is not viewable yet;
+            # the dialog still works (wait_window keeps it blocking).
+            pass
 
     # ---- helpers ----
     def _clear_window(self):
@@ -247,7 +353,9 @@ class BulkManualVectorDialog(ctk.CTkToplevel):
                 width=120,
                 values=["Ampicillin", "Kanamycin", "Chloramphenicol"],
             )
-            e_res.set("Ampicillin")  # Most common default
+            # No silent default: resistance stays empty until the user picks
+            # or types it (a pre-set value used to be recorded untouched).
+            e_res.set("")
 
             # Vector entry: searchable entry with a small dropdown of common vectors
             vec_row = ctk.CTkFrame(row, fg_color="transparent")
@@ -328,6 +436,11 @@ class BulkManualVectorDialog(ctk.CTkToplevel):
         search_entry.pack(fill="x", padx=20, pady=5)
         search_entry.focus_set()
 
+        hint_label = ctk.CTkLabel(
+            search_diag, text="", font=("Arial", 11), text_color="gray50"
+        )
+        hint_label.pack(fill="x", padx=20)
+
         scroll = ctk.CTkScrollableFrame(search_diag)
         scroll.pack(fill="both", expand=True, padx=20, pady=10)
 
@@ -346,6 +459,12 @@ class BulkManualVectorDialog(ctk.CTkToplevel):
             buttons.clear()
             query = search_var.get().lower()
             filtered = [v for v in self._vector_names if query in v.lower()]
+            if len(filtered) > 50:
+                hint_label.configure(
+                    text=f"{len(filtered)} matches - showing first 50, keep typing to narrow"
+                )
+            else:
+                hint_label.configure(text=f"{len(filtered)} matches")
             for v in filtered[:50]:
                 btn = ctk.CTkButton(scroll, text=v, anchor="w", fg_color="transparent", text_color=("gray10", "gray90"), command=lambda val=v: _select(val))
                 btn.pack(fill="x", pady=1)
@@ -374,6 +493,45 @@ class LigationLayoutApp:
     - Manual entry when Work No. are not in the Job Log
     """
 
+    # --- File-field registry: every workbook input the Generate gate needs.
+    # expected = sheets the validation thread must find (Vector DB needs both
+    # of its sheets; the Fragments Log accepts any Excel). Titles match the
+    # pre-registry browse dialogs.
+    _FILE_FIELDS = {
+        "job_log": {
+            "entry_attr": "entry_job_log",
+            "label_attr": "job_log_validation_label",
+            "flag": "job_log_valid",
+            "stored": "_job_log_path",
+            "expected": ("Initiated",),
+            "title": "Select Job Log File",
+        },
+        "fragments_log": {
+            "entry_attr": "entry_fragments",
+            "label_attr": "fragments_validation_label",
+            "flag": "fragments_log_valid",
+            "stored": "_fragments_path",
+            "expected": (),
+            "title": "Select Fragments File",
+        },
+        "ligation_template": {
+            "entry_attr": "entry_ligation_template",
+            "label_attr": "ligation_template_validation_label",
+            "flag": "ligation_template_valid",
+            "stored": "_ligation_layout_path",
+            "expected": ("Layout",),
+            "title": "Select Ligation Layout Template",
+        },
+        "vector_db": {
+            "entry_attr": "entry_vector_db",
+            "label_attr": "vector_db_validation_label",
+            "flag": "vector_db_valid",
+            "stored": "_vector_db_path",
+            "expected": ("Vector", "Digested_Vectors"),
+            "title": "Select Vector Database",
+        },
+    }
+
     def __init__(
         self,
         master,
@@ -392,11 +550,23 @@ class LigationLayoutApp:
         self.ligation_template_valid = False
         self.vector_db_valid = False
 
-        # --- Internal path storage ---
+        # --- Internal path storage (VALIDATED paths only, see _FILE_FIELDS) ---
         self._job_log_path = ""
         self._fragments_path = ""
         self._ligation_layout_path = ""
         self._vector_db_path = ""
+
+        # --- Per-field validation generation counters: a completion belongs
+        #     to the request that scheduled it; a slow earlier thread
+        #     finishing after a newer browse or entry edit is dropped ---
+        self._validation_generation = {
+            "job_log": 0,
+            "fragments_log": 0,
+            "ligation_template": 0,
+            "vector_db": 0,
+        }
+        # Debounced revalidation handles (one per field, cancelable)
+        self._revalidation_after_id = {}
 
         # --- Build UI ---
         self._setup_ui()
@@ -577,7 +747,7 @@ class LigationLayoutApp:
         self.button_job_log = ctk.CTkButton(
             entry_frame_jl,
             text="Select",
-            command=self._browse_job_log,
+            command=lambda k="job_log": self._browse_file(k),
             width=70,
         )
         self.button_job_log.pack(side="right")
@@ -610,7 +780,7 @@ class LigationLayoutApp:
         self.button_fragments = ctk.CTkButton(
             entry_frame_fl,
             text="Select",
-            command=self._browse_fragments,
+            command=lambda k="fragments_log": self._browse_file(k),
             width=70,
         )
         self.button_fragments.pack(side="right")
@@ -643,7 +813,7 @@ class LigationLayoutApp:
         self.button_ligation_template = ctk.CTkButton(
             entry_frame_lt,
             text="Select",
-            command=self._browse_ligation_template,
+            command=lambda k="ligation_template": self._browse_file(k),
             width=70,
         )
         self.button_ligation_template.pack(side="right")
@@ -676,7 +846,7 @@ class LigationLayoutApp:
         self.button_vector_db = ctk.CTkButton(
             entry_frame_vdb,
             text="Select",
-            command=self._browse_vector_db,
+            command=lambda k="vector_db": self._browse_file(k),
             width=70,
         )
         self.button_vector_db.pack(side="right")
@@ -727,6 +897,11 @@ class LigationLayoutApp:
         )
         self.log_textbox.pack(expand=True, fill="both", padx=10, pady=(2, 10))
 
+        # --- Family path-state: file entries fail-closed reset + debounced
+        #     revalidation when edited (no stale-path runs) ---
+        for field_key in self._FILE_FIELDS:
+            self._bind_file_entry_events(field_key)
+
     # =========================================================================
     # Logging methods
     # =========================================================================
@@ -764,11 +939,24 @@ class LigationLayoutApp:
         evt = threading.Event()
 
         def _open_dialog():
-            diag = BulkManualVectorDialog(self.master, work_nos, vector_db_path=self._vector_db_path)
-            self.master.wait_window(diag)
-            if diag.results:
-                results.update(diag.results)
-            evt.set()
+            try:
+                diag = BulkManualVectorDialog(
+                    self.master, work_nos, vector_db_path=self._vector_db_path
+                )
+                self.master.wait_window(diag)
+                if diag.results:
+                    results.update(diag.results)
+            except Exception as e:
+                # Runs on the main thread: log + popup directly.
+                self._log(f"ERROR: Manual vector entry dialog failed: {e}")
+                messagebox.showerror(
+                    "Error", f"Manual vector entry dialog failed:\n{e}"
+                )
+            finally:
+                # ALWAYS release the worker: without this, a dialog-creation
+                # failure (e.g. Tk 'grab failed' timing) would hang the
+                # processing thread forever.
+                evt.set()
 
         self.master.after(0, _open_dialog)
         evt.wait()  # Processing thread waits for user interaction
@@ -902,83 +1090,110 @@ class LigationLayoutApp:
     # =========================================================================
     # Validation methods
     # =========================================================================
-    def _start_validation_thread(
-        self,
-        entry_widget,
-        validation_label_widget,
-        file_path,
-        expected_sheet,
-        validation_flag_name,
-        file_display_name,
-        next_callback=None,
-    ):
-        """Starts a background thread to validate a file path."""
-        # Reset UI to neutral before starting validation
+    def _bind_file_entry_events(self, field_key):
+        """Binds edit events on one file entry: fail-closed reset + debounced
+        revalidation (family path-state pattern)."""
+        entry = getattr(self, self._FILE_FIELDS[field_key]["entry_attr"])
+        for seq in ("<KeyRelease>", "<<Paste>>"):
+            entry.bind(
+                seq, lambda event, k=field_key: self._on_file_entry_changed(k), add="+"
+            )
+
+    def _on_file_entry_changed(self, field_key):
+        """Entry edited: invalidate immediately (fail-closed), neutralize the
+        UI, and schedule a debounced revalidation of the new text."""
+        f = self._FILE_FIELDS[field_key]
+        setattr(self, f["flag"], False)
+        setattr(self, f["stored"], "")
+        self._check_all_validations()
         self._update_validation_ui(
-            entry_widget, validation_label_widget, None, "", validation_flag_name
+            field_key, getattr(self, f["entry_attr"]), getattr(self, f["label_attr"]),
+            None, "",
+        )
+        if self._revalidation_after_id.get(field_key):
+            self.master.after_cancel(self._revalidation_after_id.pop(field_key))
+        self._revalidation_after_id[field_key] = self.master.after(
+            500, self._start_field_validation, field_key
         )
 
-        thread = threading.Thread(
-            target=self._validate_file,
-            args=(
-                entry_widget,
-                validation_label_widget,
-                file_path,
-                expected_sheet,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
-            ),
-            daemon=True,
+    def _start_field_validation(self, field_key):
+        """Debounce target: validates the entry text currently in the field."""
+        self._revalidation_after_id.pop(field_key, None)
+        self._start_validation_thread(field_key)
+
+    def _start_validation_thread(self, field_key):
+        """Validates the CURRENT entry content of one file field in a
+        background thread, stamped with a fresh generation counter."""
+        f = self._FILE_FIELDS[field_key]
+        entry_widget = getattr(self, f["entry_attr"])
+        validation_label_widget = getattr(self, f["label_attr"])
+        file_path = entry_widget.get()
+        if not file_path:
+            return
+
+        # Invalidate any pending completion for this field, then reset the UI
+        self._validation_generation[field_key] += 1
+        generation = self._validation_generation[field_key]
+        self._update_validation_ui(
+            field_key, entry_widget, validation_label_widget, None, ""
         )
-        thread.start()
+
+        threading.Thread(
+            target=self._validate_file,
+            args=(field_key, validation_label_widget, file_path, generation),
+            daemon=True,
+        ).start()
 
     def _validate_file(
-        self,
-        entry_widget,
-        validation_label_widget,
-        file_path,
-        expected_sheet,
-        validation_flag_name,
-        file_display_name,
-        next_callback=None,
+        self, field_key, validation_label_widget, file_path, generation
     ):
         """
-        Checks if a file exists and contains the expected sheet.
+        Checks if a file exists and contains the expected sheets.
         This method runs in a background thread and schedules UI updates.
         """
+        f = self._FILE_FIELDS[field_key]
+        entry_widget = getattr(self, f["entry_attr"])
+
         if not file_path:
             return
 
         if not os.path.exists(file_path):
-            message = "File not found."
             self.master.after(
                 0,
                 self._update_validation_ui,
+                field_key,
                 entry_widget,
                 validation_label_widget,
                 False,
-                message,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
+                "File not found.",
+                file_path,
+                generation,
             )
             return
 
+        wb = None
         try:
             wb = openpyxl.load_workbook(file_path, read_only=True)
-            if expected_sheet and expected_sheet not in wb.sheetnames:
-                message = f"Sheet '{expected_sheet}' not found."
+            missing_sheets = [
+                sheet
+                for sheet in f["expected"]
+                if sheet not in wb.sheetnames
+            ]
+            if missing_sheets:
+                if len(missing_sheets) == 1:
+                    message = f"Sheet '{missing_sheets[0]}' not found."
+                else:
+                    message = f"Sheets {missing_sheets} not found."
                 self.master.after(
                     0,
                     self._update_validation_ui,
+                    field_key,
                     entry_widget,
                     validation_label_widget,
                     False,
                     message,
-                    validation_flag_name,
-                    file_display_name,
-                    next_callback,
+                    file_path,
+                    generation,
                 )
                 return
 
@@ -987,56 +1202,66 @@ class LigationLayoutApp:
             self.master.after(
                 0,
                 self._update_validation_ui,
+                field_key,
                 entry_widget,
                 validation_label_widget,
                 True,
                 message,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
+                file_path,
+                generation,
             )
-        except Exception as e:
+        except Exception:
             message = "Not a valid Excel file."
             self.master.after(
                 0,
                 self._update_validation_ui,
+                field_key,
                 entry_widget,
                 validation_label_widget,
                 False,
                 message,
-                validation_flag_name,
-                file_display_name,
-                next_callback,
+                file_path,
+                generation,
             )
+        finally:
+            if wb is not None:
+                wb.close()
 
     def _update_validation_ui(
         self,
+        field_key,
         entry_widget,
         validation_label_widget,
         is_valid,
         message,
-        validation_flag_name,
-        file_display_name=None,
-        next_callback=None,
+        file_path=None,
+        generation=None,
     ):
         """
         Updates the UI to reflect the validation status of a file.
-        This method is always run on the main UI thread.
+        Always run on the main UI thread.
+
+        Completions carry the file_path the thread actually validated and
+        the generation that scheduled them: a completion whose generation
+        no longer matches the field's current generation belongs to a
+        superseded request (a later edit or browse) and is dropped.
         """
+        if (
+            generation is not None
+            and generation != self._validation_generation.get(field_key)
+        ):
+            return  # Stale completion: a newer edit/browse superseded it.
+
+        f = self._FILE_FIELDS[field_key]
+
         # Update the validation status flag
-        setattr(self, validation_flag_name, is_valid)
+        setattr(self, f["flag"], is_valid)
 
-        # Store the path if valid
+        # Store the path IF this completion validated it (never the entry text)
+        if is_valid is True and file_path:
+            setattr(self, f["stored"], file_path)
+
         if is_valid is True:
-            if validation_flag_name == "job_log_valid":
-                self._job_log_path = entry_widget.get()
-            elif validation_flag_name == "fragments_log_valid":
-                self._fragments_path = entry_widget.get()
-            elif validation_flag_name == "ligation_template_valid":
-                self._ligation_layout_path = entry_widget.get()
-            elif validation_flag_name == "vector_db_valid":
-                self._vector_db_path = entry_widget.get()
-
             entry_widget.configure(border_color="dark green", border_width=2)
             validation_label_widget.configure(text=f"✔ {message}", text_color="green")
             # Note: No logging during validation (matches Sequencing_order_form pattern)
@@ -1056,9 +1281,6 @@ class LigationLayoutApp:
             )
 
         self._check_all_validations()
-
-        if next_callback:
-            next_callback()
 
     def _check_all_validations(self):
         """Checks if all files are valid and enables/disables the Generate button."""
@@ -1095,166 +1317,86 @@ class LigationLayoutApp:
             self.entry_vector_db.insert(0, vector_db_path)
 
         # --- Phase 2: Start the validation chain ---
-        self._start_sequential_validation()
+        self._validate_all_fields()
 
-    def _start_sequential_validation(self):
-        """Starts the validation for any pre-filled paths in sequence."""
-        # Get paths from the entry widgets now that they are filled
-        job_log_path = self.entry_job_log.get()
-        fragments_log_path = self.entry_fragments.get()
-        ligation_template_path = self.entry_ligation_template.get()
-        vector_db_path = self.entry_vector_db.get()
+    def _validate_all_fields(self):
+        """Starts validation for every file entry that currently has a path.
 
-        # Define chained callbacks (LIFO definition)
-
-        # 4. Vector Database (Last)
-        def validate_vector_db():
-            if vector_db_path:
-                self._start_validation_thread(
-                    self.entry_vector_db,
-                    self.vector_db_validation_label,
-                    vector_db_path,
-                    "Digested_Vectors",
-                    "vector_db_valid",
-                    "Vector Database",
-                )
-
-        # 3. Ligation Template
-        def validate_template():
-            if ligation_template_path:
-                self._start_validation_thread(
-                    self.entry_ligation_template,
-                    self.ligation_template_validation_label,
-                    ligation_template_path,
-                    "Layout",
-                    "ligation_template_valid",
-                    "Ligation Template",
-                    next_callback=validate_vector_db,
-                )
-            else:
-                validate_vector_db()
-
-        # 2. Fragments Log
-        def validate_fragments():
-            if fragments_log_path:
-                self._start_validation_thread(
-                    self.entry_fragments,
-                    self.fragments_validation_label,
-                    fragments_log_path,
-                    None,  # No specific sheet required for fragments
-                    "fragments_log_valid",
-                    "Fragments Log",
-                    next_callback=validate_template,
-                )
-            else:
-                validate_template()  # Skip to next if path is missing
-
-        # 1. Job Log (First)
-        if job_log_path:
-            self._start_validation_thread(
-                self.entry_job_log,
-                self.job_log_validation_label,
-                job_log_path,
-                "Initiated",
-                "job_log_valid",
-                "Job Log",
-                next_callback=validate_fragments,
-            )
-        else:
-            validate_fragments()  # Skip to next if path is missing
+        Fields validate independently (no sequential chain): each completion
+        is generation-stamped per field, so a slow earlier thread can never
+        re-enable a gate with a path the current state never checked.
+        """
+        for field_key in self._FILE_FIELDS:
+            self._start_field_validation(field_key)
 
     # =========================================================================
     # Browse methods
     # =========================================================================
-    def _browse_job_log(self):
+    def _browse_file(self, field_key, event=None):
+        """Opens the file dialog for one registered field and validates the
+        pick immediately (superseding any pending debounced revalidation)."""
+        f = self._FILE_FIELDS[field_key]
         filename = filedialog.askopenfilename(
-            title="Select Job Log File",
+            title=f["title"],
             filetypes=[("Excel files", "*.xlsx *.xlsm"), ("All files", "*.*")],
         )
         if filename:
-            self.entry_job_log.delete(0, "end")
-            self.entry_job_log.insert(0, filename)
-            self._start_validation_thread(
-                self.entry_job_log,
-                self.job_log_validation_label,
-                filename,
-                "Initiated",
-                "job_log_valid",
-                "Job Log",
-            )
-
-    def _browse_fragments(self):
-        filename = filedialog.askopenfilename(
-            title="Select Fragments File",
-            filetypes=[("Excel files", "*.xlsx *.xlsm"), ("All files", "*.*")],
-        )
-        if filename:
-            self.entry_fragments.delete(0, "end")
-            self.entry_fragments.insert(0, filename)
-            self._start_validation_thread(
-                self.entry_fragments,
-                self.fragments_validation_label,
-                filename,
-                None,
-                "fragments_log_valid",
-                "Fragments Log",
-            )
-
-    def _browse_ligation_template(self):
-        filename = filedialog.askopenfilename(
-            title="Select Ligation Layout Template",
-            filetypes=[("Excel files", "*.xlsx *.xlsm"), ("All files", "*.*")],
-        )
-        if filename:
-            self.entry_ligation_template.delete(0, "end")
-            self.entry_ligation_template.insert(0, filename)
-            self._start_validation_thread(
-                self.entry_ligation_template,
-                self.ligation_template_validation_label,
-                filename,
-                "Layout",
-                "ligation_template_valid",
-                "Ligation Template",
-            )
-
-    def _browse_vector_db(self):
-        filename = filedialog.askopenfilename(
-            title="Select Vector Database",
-            filetypes=[("Excel files", "*.xlsx *.xlsm"), ("All files", "*.*")],
-        )
-        if filename:
-            self.entry_vector_db.delete(0, "end")
-            self.entry_vector_db.insert(0, filename)
-            self._start_validation_thread(
-                self.entry_vector_db,
-                self.vector_db_validation_label,
-                filename,
-                "Digested_Vectors",
-                "vector_db_valid",
-                "Vector Database",
-            )
+            entry_widget = getattr(self, f["entry_attr"])
+            entry_widget.delete(0, "end")
+            entry_widget.insert(0, filename)
+            # A browse is authoritative: cancel any debounce scheduled by an
+            # earlier edit so it cannot re-run against a superseding state.
+            if self._revalidation_after_id.get(field_key):
+                self.master.after_cancel(self._revalidation_after_id.pop(field_key))
+            self._start_field_validation(field_key)
 
     # =========================================================================
     # Processing methods
     # =========================================================================
     def _start_processing(self):
-        """Starts the processing logic in a background thread."""
+        """Starts the processing logic in a background thread.
+
+        MAIN-THREAD SNAPSHOT (family thread-widget rule): everything the
+        worker reads from the UI (Work No. text, special conditions) is
+        taken here, before the thread starts - the worker never touches
+        widgets or tk variables.
+        """
         self.button_generate.configure(state="disabled", fg_color="gray50")
         self._clear_log()
         self._log("Processing started...")
 
-        thread = threading.Thread(target=self._processing_thread, daemon=True)
+        work_nos_text = self.text_work_nos.get("1.0", "end")
+        parsed_work_nos = [
+            work_no.strip()
+            for work_no in work_nos_text.splitlines()
+            if work_no.strip()
+        ]
+        # Dedupe repeated lines up front (order preserved)
+        duplicate_count = len(parsed_work_nos) - len(set(parsed_work_nos))
+        work_nos = list(dict.fromkeys(parsed_work_nos))
+        if duplicate_count:
+            self._log(
+                f"WARNING: {duplicate_count} duplicate Work No. line(s) ignored."
+            )
+
+        special_conditions = self.get_conditions()
+
+        thread = threading.Thread(
+            target=self._processing_thread,
+            args=(work_nos, special_conditions),
+            daemon=True,
+        )
         thread.start()
 
-    def _processing_thread(self):
+    def _processing_thread(self, work_nos, special_conditions):
         """The main processing logic that runs in a background thread."""
+        save_pending = False
         try:
-            work_nos_text = self.text_work_nos.get("1.0", "end").strip()
-            work_nos = [work_no.strip() for work_no in work_nos_text.splitlines() if work_no.strip()]
-
             if not work_nos:
+                # Args form for scheduled calls: a lambda closing over
+                # except-block state breaks once CPython unbinds the name.
                 self.master.after(
-                    0, lambda: messagebox.showerror("Error", "Please paste Work No.")
+                    0, messagebox.showerror, "Error", "Please paste Work No."
                 )
                 self._log_threaded("ERROR: No Work No. provided. Processing stopped.")
                 return
@@ -1273,16 +1415,20 @@ class LigationLayoutApp:
                 vector_db_wb = openpyxl.load_workbook(self._vector_db_path, read_only=True)
                 try:
                     # --- Build lookups from Vector Database ---
-                    
-                    # 1. Build self._vector_resistance_lookup and initial self._vector_length_map from 'Vector' sheet
-                    # This covers standard sizes for known vectors regardless of stock.
-                    try:
+                    # Single capped pass per sheet (capped sweeps stop well
+                    # before stale, formatting-inflated sheet dims).
+
+                    # 1. Build self._vector_resistance_lookup and initial
+                    #    self._vector_length_map from 'Vector' sheet in ONE
+                    #    pass (the former second resistance block was duplicate
+                    #    dead work and is gone).
+                    if "Vector" in vector_db_wb.sheetnames:
                         vector_ws = vector_db_wb["Vector"]
                         self._log_threaded(
                             "  > Building resistance and standard length lookup from 'Vector' sheet..."
                         )
-                        for r_idx, row in enumerate(
-                            vector_ws.iter_rows(min_row=2, values_only=True), start=2
+                        for row in _iter_capped_rows(
+                            vector_ws, anchor_col=0, max_col=4
                         ):
                             # Columns: A=Vector Name, B=Size, C=Resistance, D=Sequence
                             raw_vname = row[0]
@@ -1295,7 +1441,7 @@ class LigationLayoutApp:
                             raw_resist = row[2]  # Column C
                             resistance = raw_resist.strip() if isinstance(raw_resist, str) else (str(raw_resist) if raw_resist is not None else "")
                             self._vector_resistance_lookup[vname] = resistance
-                            
+
                             # Base Length map (Column B)
                             raw_size = row[1]
                             try:
@@ -1308,7 +1454,7 @@ class LigationLayoutApp:
                             f"  > Resistance lookup: {len(self._vector_resistance_lookup)} entries. "
                             f"Base length map: {len(self._vector_length_map)} entries."
                         )
-                    except KeyError:
+                    else:
                         self._log_threaded(
                             "  > WARNING: 'Vector' sheet not found in database. "
                             "Antibiotic resistance and standard sizes will be missing."
@@ -1322,8 +1468,8 @@ class LigationLayoutApp:
                             "  > Building digested vectors lookup (and updating lengths) "
                             "from 'Digested_Vectors' sheet..."
                         )
-                        for r_idx, row in enumerate(
-                            vector_log_ws.iter_rows(min_row=2, values_only=True), start=2
+                        for row in _iter_capped_rows(
+                            vector_log_ws, anchor_col=1, max_col=8
                         ):
                             # Columns: A=Box Position, B=Vector, C=Digestion (v3.2 template headers),
                             #          D=Lot, E=Concentration, F=Vector length, G/H=misc
@@ -1376,36 +1522,6 @@ class LigationLayoutApp:
                             "Cannot calculate insert volumes or vector lot/volume info."
                         )
 
-                    # --- Build self._vector_resistance_lookup from Vector sheet ---
-                    try:
-                        vector_ws = vector_db_wb["Vector"]
-                        self._log_threaded(
-                            "  > Building resistance lookup from 'Vector' sheet..."
-                        )
-                        for r_idx, row in enumerate(
-                            vector_ws.iter_rows(min_row=2, values_only=True), start=2
-                        ):
-                            # Columns: A=Vector Name, B=Size, C=Resistance, D=Sequence
-                            raw_vname = row[0]
-                            vname = raw_vname.strip() if isinstance(raw_vname, str) else None
-
-                            if not vname:
-                                continue
-
-                            raw_resist = row[2]  # Column C
-                            resistance = raw_resist.strip() if isinstance(raw_resist, str) else (str(raw_resist) if raw_resist is not None else "")
-
-                            self._vector_resistance_lookup[vname] = resistance
-
-                        self._log_threaded(
-                            f"  > Vector resistance lookup: {len(self._vector_resistance_lookup)} entries."
-                        )
-                    except KeyError:
-                        self._log_threaded(
-                            "  > WARNING: 'Vector' sheet not found in database. "
-                            "Cannot fill antibiotic resistance column."
-                        )
-
                 finally:
                     vector_db_wb.close()
             except Exception as e:
@@ -1418,7 +1534,10 @@ class LigationLayoutApp:
                 "\nStep 1: Extracting Work No. information from Job Log..."
             )
             wb, final_layout_rows = self._extract_joblog_info(
-                work_nos, self._digested_vectors_lookup, self._vector_resistance_lookup
+                work_nos,
+                self._digested_vectors_lookup,
+                self._vector_resistance_lookup,
+                special_conditions,
             )
             self._log_threaded("Step 1 complete. Initial layout data prepared.")
 
@@ -1597,47 +1716,95 @@ class LigationLayoutApp:
                 self.button_generate.configure(state="normal", fg_color="#3C702D")
 
             self.master.after(0, do_save)
+            save_pending = True
 
             self._log_threaded("\n--- Processing Finished ---")
 
         except Exception as e:
             self._log_threaded(f"\nERROR: {traceback.format_exc()}")
-            self.master.after(0, lambda: messagebox.showerror("Error", str(e)))
-            self.master.after(
-                0,
-                lambda: self.button_generate.configure(
-                    state="normal", fg_color="#3C702D"
-                ),
-            )
+            # Args form: str(e) is evaluated NOW, while the exception is
+            # still bound (a lambda would hit NameError at callback time).
+            self.master.after(0, messagebox.showerror, "Error", str(e))
 
-    def _extract_joblog_info(self, work_nos, digested_vectors_lookup=None, vector_resistance_lookup=None):
+        finally:
+            if not save_pending:
+                # Every early/failed path: re-run the gate so the Generate
+                # button never stays stuck disabled after a stopped run.
+                self.master.after(0, self._check_all_validations)
+
+    def _extract_joblog_info(self, work_nos, digested_vectors_lookup=None, vector_resistance_lookup=None, special_conditions=None):
         """Extracts Work No. information from the Job Log and prepares the layout.
 
-        In v3.1 this method also handles:
+        - Columns resolve by name first (legacy spellings kept, historic
+            positions as fallback; the path that fired is logged).
+        - Blank cells become clean text "" - no NaN leaks into the layout.
         - Work No. not found in the Job Log (prompts for manual entry)
-        - Work No. with vector == "DNA Fragment - No Vector" (manual entry)
+        - Work No. with vector == "DNA Fragment - No Vector" or a blank
+            vector cell (manual entry)
         - Tracking manually-entered Work No. via the 'is_manual' flag
         """
         # Lazy import pandas (heavy module, ~0.6s startup)
         import pandas as pd
 
+        def _clean(value):
+            """Job Log cell -> clean text ("" for blank/NaN)."""
+            try:
+                if value is None or pd.isna(value):
+                    return ""
+            except (TypeError, ValueError):
+                pass  # exotic array-like cell: keep the text form
+            return str(value).strip()
+
+        def _clean_value(value):
+            """Like _clean but preserves usable numeric values (Length (bp))."""
+            if _clean(value) == "":
+                return ""
+            return value
+
         # Load Job Log (tab "Initiated")
         job_log = pd.read_excel(self._job_log_path, sheet_name="Initiated")
+        job_log.columns = [str(c).strip() for c in job_log.columns]
 
-        # Define column names
-        COL_WORK_NO = "Work No."
-        COL_BBI_ID = "BBI ID"
-        COL_VECTOR = "Vector"
-        COL_CLONING_SITE = "Cloning Site"
-        COL_RESISTANCE = "Resistance"
-        COL_LENGTH = "Length (bp)"
+        # Two-step column resolution (family standard): name first, historic
+        # position as fallback, provenance logged so header drift is visible.
+        col_paths = {}
+        column_specs = [
+            ("Work No.", ["Work No.", "JobID", "Job ID", "Job_ID"], 0),
+            ("BBI ID", ["BBI ID", "BBID", "BBI-ID"], 1),
+            ("Vector", ["Vector"], 5),
+            ("Cloning Site", ["Cloning Site"], 6),
+            ("Resistance", ["Resistance", "Antibiotic"], 7),
+            ("Length (bp)", ["Length (bp)", "Length"], 8),
+        ]
+        COLS = {}
+        for canonical, candidates, fallback_idx in column_specs:
+            col, path = _resolve_column(job_log, canonical, candidates, fallback_idx)
+            COLS[canonical] = col
+            col_paths[canonical] = path
+        by_name = [c for c, p in col_paths.items() if p == "resolved by name"]
+        by_fallback = [c for c, p in col_paths.items() if p == "resolved by fallback position"]
+        self._log_threaded(
+            f"  > Job Log columns resolved by name: {by_name} | "
+            f"fallback position: {by_fallback if by_fallback else 'none'}"
+        )
+
+        COL_WORK_NO = COLS["Work No."]
+        COL_BBI_ID = COLS["BBI ID"]
+        COL_VECTOR = COLS["Vector"]
+        COL_CLONING_SITE = COLS["Cloning Site"]
+        COL_RESISTANCE = COLS["Resistance"]
+        COL_LENGTH = COLS["Length (bp)"]
 
         # Default values for Host and Temperature
         DEFAULT_HOST = "TOP10"
         DEFAULT_TEMP = "37C"
 
-        # Get special conditions from UI (if any)
-        special_conditions = self.get_conditions()
+        # Special conditions arrive as the main-thread snapshot (the worker
+        # never reads tk variables)
+        special_conditions = special_conditions or {}
+
+        # Work No. comparison on stripped text (blank log cells -> "")
+        work_no_series = job_log[COL_WORK_NO].map(_clean)
 
         # Pre-collection of data and identification of jobs needing manual input
         ligation_rows_map = {}
@@ -1646,7 +1813,7 @@ class LigationLayoutApp:
         found_work_nos = set()
 
         for work_no in work_nos:
-            job_row_df = job_log[job_log[COL_WORK_NO] == work_no]
+            job_row_df = job_log[work_no_series == work_no]
 
             if job_row_df.empty:
                 # Work No. not found in the Job Log at all
@@ -1656,15 +1823,16 @@ class LigationLayoutApp:
             job_row = job_row_df.iloc[0]
             data = {
                 "work_no": work_no,
-                "bbi_id": job_row[COL_BBI_ID],
-                "vector": job_row[COL_VECTOR],
-                "cloning_site": job_row[COL_CLONING_SITE],
-                "length": job_row[COL_LENGTH],
-                "resistance": job_row[COL_RESISTANCE],
+                "bbi_id": _clean(job_row[COL_BBI_ID]),
+                "vector": _clean(job_row[COL_VECTOR]),
+                "cloning_site": _clean(job_row[COL_CLONING_SITE]),
+                "length": _clean_value(job_row[COL_LENGTH]),
+                "resistance": _clean(job_row[COL_RESISTANCE]),
             }
 
-            if str(data["vector"]).strip() == "DNA Fragment - No Vector":
-                # Job exists in log but vector info is placeholder — needs manual entry
+            if not data["vector"] or data["vector"] == "DNA Fragment - No Vector":
+                # No real vector info (placeholder text or a blank cell) —
+                # needs manual entry (blank cells used to leak NaN rows)
                 jobs_to_prompt.append(work_no)
                 ligation_rows_map[work_no] = data
             else:
@@ -1787,9 +1955,10 @@ class LigationLayoutApp:
             item["host"] = host
             item["temperature"] = temperature
 
-            # Write all columns
+            # Write all columns (NaN/inf guard: openpyxl 3.1.5 writes NaN as
+            # malformed numeric XML that Excel flags as unreadable)
             for key, col_letter in column_mapping.items():
-                ws[f"{col_letter}{row}"] = item.get(key, "")
+                ws[f"{col_letter}{row}"] = _excel_value(item.get(key, ""))
 
             # =================================================================
             # Direct value lookups (replaces external Excel formulas)
@@ -1822,9 +1991,9 @@ class LigationLayoutApp:
 
                 if dv_entry:
                     # F: Vector Lot
-                    ws[f"F{row}"] = dv_entry["lot"]
+                    ws[f"F{row}"] = _excel_value(dv_entry["lot"])
                     # G: Preparation Date / Box Position
-                    ws[f"G{row}"] = dv_entry["box_position"]
+                    ws[f"G{row}"] = _excel_value(dv_entry["box_position"])
                     # H: Vector Volume — CEILING(40 / concentration, 0.5)
                     conc = dv_entry["concentration"]
                     if conc and conc > 0:
@@ -1836,11 +2005,15 @@ class LigationLayoutApp:
                     ws[f"G{row}"] = ""
                     ws[f"H{row}"] = ""
 
-                # U: Antibiotic Resistance (VLOOKUP on Vector sheet)
+                # U: Antibiotic Resistance (VLOOKUP on Vector sheet). For
+                # manually entered jobs the resistance typed in the dialog
+                # wins when the database has no entry for the vector.
                 resistance = None
                 if vector_resistance_lookup:
                     resistance = vector_resistance_lookup.get(vector_name)
-                ws[f"U{row}"] = resistance if resistance else ""
+                if not resistance and item.get("is_manual"):
+                    resistance = item.get("resistance")
+                ws[f"U{row}"] = _excel_value(resistance if resistance else "")
 
             row += 1
 
@@ -1868,9 +2041,16 @@ class LigationLayoutApp:
 
         In v3.1 this also checks the special "PCR Fragments" sheet first, which
         takes priority over the monthly fragment sheets for matching.
+
+        Sheets are admitted ONLY with the required headers ('Position', 'Gene
+        Name', 'Purity Pass', 'Sequence'); anything else in the workbook that
+        merely starts with the month prefix is skipped and logged - a shape
+        drift can no longer crash the whole run.
         """
         # Lazy import pandas (heavy module, ~0.6s startup)
         import pandas as pd
+
+        REQUIRED_FRAGMENT_COLS = ["Position", "Gene Name", "Purity Pass", "Sequence"]
 
         prefixes_to_check = self._generate_sheet_prefixes()
         self._log_threaded(
@@ -1878,55 +2058,123 @@ class LigationLayoutApp:
         )
 
         xls = pd.ExcelFile(self._fragments_path)
-        all_sheet_names = xls.sheet_names
-
-        relevant_sheets = [
-            sheet
-            for sheet in all_sheet_names
-            if sheet.startswith(prefixes_to_check[0])
-            or sheet.startswith(prefixes_to_check[1])
-        ]
-
-        relevant_sheets.sort(reverse=True)
-
-        if not relevant_sheets:
-            self._log_threaded("  > No matching sheets found.")
-
         all_fragments_list = []
+        skipped_sheets = []
+        try:
+            all_sheet_names = xls.sheet_names
 
-        # --- Priority: Check "PCR Fragments" sheet first ---
-        pcr_sheet = "PCR Fragments"
-        if pcr_sheet in all_sheet_names:
-            self._log_threaded(f"    - Checking special sheet '{pcr_sheet}'...")
-            df_pcr = pd.read_excel(xls, sheet_name=pcr_sheet)
-            df_pcr_filtered = df_pcr.dropna(subset=["Gene Name"]).copy()
-            if not df_pcr_filtered.empty:
-                df_pcr_filtered["Sheet Name"] = pcr_sheet
-                # Extract concentration from column G (index 6) if available
-                if len(df_pcr_filtered.columns) > 6:
-                    df_pcr_filtered["Concentration"] = df_pcr_filtered.iloc[:, 6]
-                all_fragments_list.append(df_pcr_filtered)
+            relevant_sheets = [
+                sheet
+                for sheet in all_sheet_names
+                if sheet.startswith(prefixes_to_check[0])
+                or sheet.startswith(prefixes_to_check[1])
+            ]
+
+            relevant_sheets.sort(reverse=True)
+
+            if not relevant_sheets:
+                self._log_threaded("  > No matching sheets found.")
+
+            def _normalize_headers(df):
+                """Strips header whitespace; returns (df, normalized_headers)."""
+                df = df.rename(
+                    columns={c: str(c).strip() for c in df.columns}
+                )
+                return df, list(df.columns)
+
+            def _missing_required(df_cols, required):
+                by_key = {_col_key(c): c for c in df_cols}
+                return [c for c in required if _col_key(c) not in by_key]
+
+            # --- Priority: Check "PCR Fragments" sheet first ---
+            pcr_sheet = "PCR Fragments"
+            if pcr_sheet in all_sheet_names:
+                self._log_threaded(f"    - Checking special sheet '{pcr_sheet}'...")
+                try:
+                    df_pcr = pd.read_excel(xls, sheet_name=pcr_sheet)
+                    df_pcr, pcr_headers = _normalize_headers(df_pcr)
+                    missing_pcr = _missing_required(
+                        pcr_headers, REQUIRED_FRAGMENT_COLS
+                    )
+                    if missing_pcr:
+                        skipped_sheets.append(
+                            (pcr_sheet, f"missing required columns {missing_pcr}")
+                        )
+                    else:
+                        df_pcr_filtered = df_pcr.dropna(subset=["Gene Name"]).copy()
+                        if not df_pcr_filtered.empty:
+                            df_pcr_filtered["Sheet Name"] = pcr_sheet
+                            # Concentration resolves by column NAME first;
+                            # positional column G as the fallback (the name
+                            # attempt is logged).
+                            conc_col, conc_path = _resolve_column(
+                                df_pcr_filtered,
+                                "Concentration",
+                                ["Concentration"],
+                                fallback_idx=6
+                                if len(df_pcr_filtered.columns) > 6
+                                else None,
+                            )
+                            # Numeric coercion: the positional fallback can
+                            # point at a non-numeric column; unusable values
+                            # become NaN (no volume adjustment), never a
+                            # run-crashing float() on junk.
+                            df_pcr_filtered["Concentration"] = pd.to_numeric(
+                                df_pcr_filtered[conc_col], errors="coerce"
+                            )
+                            if not df_pcr_filtered["Concentration"].notna().any():
+                                self._log_threaded(
+                                    f"      > WARNING: concentration fallback "
+                                    f"'{conc_col}' yielded no numeric values."
+                                )
+                            self._log_threaded(
+                                f"      > PCR concentration column {conc_path}: "
+                                f"'{conc_col}'"
+                            )
+                            all_fragments_list.append(df_pcr_filtered)
+                        self._log_threaded(
+                            f"      > Found {len(df_pcr_filtered)} PCR fragments."
+                        )
+                except Exception as e:
+                    skipped_sheets.append((pcr_sheet, f"read failed: {e}"))
+
+            # --- Monthly sheets ---
+            if relevant_sheets:
+                self._log_threaded(
+                    f"  > Found {len(relevant_sheets)} matching monthly sheets "
+                    f"(sorted newest to oldest): {relevant_sheets}"
+                )
+
+            for sheet_name in relevant_sheets:
+                self._log_threaded(f"    - Processing sheet '{sheet_name}'...")
+                try:
+                    df = pd.read_excel(xls, sheet_name=sheet_name)
+                except Exception as e:
+                    skipped_sheets.append((sheet_name, f"read failed: {e}"))
+                    continue
+                self._log_threaded(f"      > Original rows: {len(df)}")
+                df, headers = _normalize_headers(df)
+                missing = _missing_required(headers, REQUIRED_FRAGMENT_COLS)
+                if missing:
+                    skipped_sheets.append(
+                        (sheet_name, f"missing required columns {missing}")
+                    )
+                    continue
+                # Use .copy() to avoid SettingWithCopyWarning
+                df_filtered = df.dropna(subset=["Gene Name"]).copy()
+                self._log_threaded(f"      > Rows with Gene Name: {len(df_filtered)}")
+                if not df_filtered.empty:
+                    df_filtered["Sheet Name"] = sheet_name
+                    all_fragments_list.append(df_filtered)
+        finally:
+            # Read-only ExcelFile: close it so the handle does not linger.
+            xls.close()
+
+        if skipped_sheets:
             self._log_threaded(
-                f"      > Found {len(df_pcr_filtered)} PCR fragments."
+                "  > Skipped sheets: "
+                + "; ".join(f"'{name}' ({reason})" for name, reason in skipped_sheets)
             )
-
-        # --- Monthly sheets ---
-        if relevant_sheets:
-            self._log_threaded(
-                f"  > Found {len(relevant_sheets)} matching monthly sheets "
-                f"(sorted newest to oldest): {relevant_sheets}"
-            )
-
-        for sheet_name in relevant_sheets:
-            self._log_threaded(f"    - Processing sheet '{sheet_name}'...")
-            df = pd.read_excel(xls, sheet_name=sheet_name)
-            self._log_threaded(f"      > Original rows: {len(df)}")
-            # Use .copy() to avoid SettingWithCopyWarning
-            df_filtered = df.dropna(subset=["Gene Name"]).copy()
-            self._log_threaded(f"      > Rows with Gene Name: {len(df_filtered)}")
-            if not df_filtered.empty:
-                df_filtered["Sheet Name"] = sheet_name
-                all_fragments_list.append(df_filtered)
 
         if not all_fragments_list:
             self._log_threaded(
@@ -1935,6 +2183,20 @@ class LigationLayoutApp:
             return pd.DataFrame()
 
         master_fragments_df = pd.concat(all_fragments_list, ignore_index=True)
+
+        # Normalize Gene Name to TEXT: pandas can type-infer an all-digit
+        # Gene Name column as integers (observed on pandas 3.0.6), which
+        # silently breaks the exact/prefix matching in Step 3.
+        def _to_gene_text(value):
+            if value is None:
+                return ""
+            if isinstance(value, float) and math.isnan(value):
+                return ""
+            return str(value).strip()
+
+        master_fragments_df["Gene Name"] = master_fragments_df["Gene Name"].map(
+            _to_gene_text
+        )
         self._log_threaded(
             f"  > Consolidated fragments DataFrame shape: {master_fragments_df.shape}"
         )
@@ -2048,6 +2310,13 @@ class LigationLayoutApp:
                         if vector_length and vector_length > 0:
                             try:
                                 insert_length = float(frag["length"])
+                                if insert_length <= 0:
+                                    self._log_threaded(
+                                        f"    > WARNING: no usable length for fragment "
+                                        f"'{frag['name']}' ({work_no_in_sheet}) - "
+                                        f"volume left blank."
+                                    )
+                                    continue
                                 volume = (insert_length / vector_length) * 12
 
                                 # PCR Fragments: adjust volume by concentration

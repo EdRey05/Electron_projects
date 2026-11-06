@@ -60,6 +60,15 @@ def batch_report(payload):
     from processors.batch_report import run
     return run(payload,ROOT,log)
 
+def discover_shipping(payload):
+    root=ROOT/'Code/Label_generator'
+    sys.path.insert(0,str(root))
+    module=load_module('gsh_label_discovery',root/'workflows/sg_relabeling.py')
+    parser=module.SgRelabeling(SimpleNamespace(log=log))
+    base=Path(payload.get('folder',''))
+    if not base.is_dir():raise ValueError('Shipping list folder is unavailable.')
+    return {'folders':[{'date':date,'files':files} for date,files in parser._scan_shipping_folders(str(base))]}
+
 def qc_design(payload,snapgene=False):
     from processors.qc_design import run
     return run(payload,ROOT,log,ask,snapgene)
@@ -68,9 +77,13 @@ def qc_file_prep(payload):
     from processors.qc_file_prep import run
     return run(payload,ROOT,log,ask)
 
+def qc_upload(payload):
+    from processors.upload_prep import run
+    return run(payload,ROOT,log,lambda fraction:emit('progress',fraction=fraction))
+
 def main():
     request=json.loads(sys.stdin.readline())
-    actions={'qc-file-prep':qc_file_prep,'labels':labels,'batch-report':batch_report,'qc-design-bio':qc_design,'qc-design-snapgene':lambda p:qc_design(p,True)}
+    actions={'qc-file-prep':qc_file_prep,'qc-upload':qc_upload,'labels':labels,'labels-discover':discover_shipping,'batch-report':batch_report,'qc-design-bio':qc_design,'qc-design-snapgene':lambda p:qc_design(p,True)}
     if request.get('action') not in actions:raise ValueError('Unknown processing action.')
     with contextlib.redirect_stdout(LogStream()):data=actions[request['action']](request.get('input') or {})
     emit('result',data=data)

@@ -1,6 +1,6 @@
-# Gene Synthesis Hub v2.1.0
+# Gene Synthesis Hub v2.2.0
 
-**Eleven gene-synthesis tools in one portable Windows application.** Prepare ligation and colony-PCR plates, find primers, export sequencing references and order forms, organize sequencing files, prepare QC deliverables, create vector maps and generate labels or liquid-handler worklists. The catalog follows the original Gene Synthesis Hub names and order, with two columns, larger text and a muted blue-green theme.
+**Eleven gene-synthesis tools in one portable Windows application.** Prepare ligation and colony-PCR plates, find primers, export sequencing references and order forms, organize sequencing files, prepare QC deliverables, create vector maps and generate labels or liquid-handler worklists. The catalog follows the original Gene Synthesis Hub names and order, with two columns, larger text and a muted blue-green theme. The window opens maximized, and each tool displays its reference version and date alongside clear input-validation feedback.
 
 All tool interfaces run inside Electron. Scientific, document and OCR processing uses a bundled headless Python worker where appropriate. The app starts no Streamlit server and opens no Tk windows. Extract the complete folder ZIP and double-click **Gene Synthesis Hub.exe**; users do not install Node, npm, Python or Tesseract.
 
@@ -10,7 +10,7 @@ All tool interfaces run inside Electron. Scientific, document and OCR processing
 
 1. Extract the whole ZIP to a writable folder. Keep its `resources/` directory beside the EXE.
 2. Open **Directories** to select local workbooks/folders or configure lab locations. Windows drive labels are discovered automatically; absolute paths also work.
-3. Open a tool, review its inputs and choose an output folder. Missing lab paths do not prevent opening a tool and choosing local files.
+3. Open a tool, check its reference version/date and green **Validated** inputs, review its inputs and choose an output folder. Missing lab paths do not prevent opening a tool and choosing local files.
 4. Review the output and log before using results in the lab. Preserve `data/` when updating; it contains your directory settings. Processing logs live in `logs/`.
 
 ## Tools
@@ -23,20 +23,21 @@ All tool interfaces run inside Electron. Scientific, document and OCR processing
 | **Sequencing Reference Files** | Primer Log `input addon` sheet | Insert/final-vector TXT references; conflicting duplicate filenames are rejected before writing |
 | **Sequencing Order Form** | Sequencing validation workbook, Primer Log and bundled form/layout templates | Filled order form plus companion layout linked to the new form |
 | **Sequencing File Organizer** | Raw reads, reference files, sorted folder and optional SG Check template | Organized AB1/FASTA files, distributed references and SG Check workbook; copies/moves are hash-verified |
-| **QC File Prep** | Choose one of seven workflows below | Prepared DOCX/ZIP deliverables in a separate run folder |
+| **QC File Prep** | Choose one of eight workflows below | Prepared DOCX/ZIP deliverables; checked shipment ZIPs staged for upload |
 | **BATCH QC Report** | Folder of BATCH ZIPs | QC report XLSX with identifiers, sequence lengths, OD readings and source images; review OCR warnings |
 | **Integra Worklist** | Paste/edit bulk rows or choose single-sample wells; pooling, sorting and validation options | Worklist and sequencing-validation CSVs |
 | **QC Digestion Design** | Primer Log, Work Nos and output folder | Circular GenBank maps with insert annotations, including origin-spanning inserts; optional installed-SnapGene automation |
-| **Label Generator** | One or more Sg shipping-list XLS/XLSX files | Selected, deduplicated label rows copied to clipboard or saved as CSV |
+| **Label Generator** | Add Sg shipping lists or discover dated shipping folders | Filter and check constructs in All/Selected tabs; copy ten label columns without headers or save CSV |
 
 Names, identifiers and workbook columns follow the reference hub. The former extra “QC Vector Map Prep” card is incorporated into **QC Digestion Design**, rather than appearing as a twelfth tool.
 
 ## QC File Prep workflows
 
-Choose a workflow from the dropdown. Source ZIPs remain unchanged; processing uses private temporary copies and publishes into a new run folder.
+Choose a workflow from the dropdown. The seven report-preparation workflows keep source ZIPs unchanged, process private temporary copies and publish into a new run folder. Upload Prep stages checked ZIPs and archives received originals only after successful verified copies.
 
 | Workflow | What it does |
 | --- | --- |
+| **Upload Prep** | Reviews the latest shipment dates, resolves all eight tube/plate scenarios, copies checked ZIPs into QC_to_upload and archives successful received-source originals by shipment year |
 | **In-House New Names** | Adjusts vendor reports, inserts matching gel images or removes the digestion block, and optionally renames from the Shipment and QC Log |
 | **In-House Old Names** | Applies the original WorkNo.PlasmidNo naming/report workflow |
 | **Internal Renaming** | Uses a tab-separated replacement map for filenames, folders and report identifiers; optionally removes the digestion table |

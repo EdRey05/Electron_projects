@@ -3,14 +3,19 @@ Bio Basic Inc. - Canada
 Made by: Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 4.2
-Date: Oct 13, 2026
-Notes: Fixed trailing dot bug in folder names on tab 3 output. Internal
-    variables and log strings follow the canonical job-log naming
-    (work_no).
+Version: 4.4
+Date: Nov 04, 2026
+Notes: Log fix pass on the Distribute References tab. Tab 2 still copies
+    every .txt variant it finds per Work No., but the standard pair —
+    insert reference "{Work No}.txt" + final vector reference
+    "{Work No}+{Vector}.txt" — now shares a work number by naming design
+    and is copied without a warning line. The duplicate-reference warning
+    fires only for an unexpected set (extra misnamed files, two insert
+    refs, or two vector variants) and lists exactly what will be copied.
 """
 
 import os
+import json
 import openpyxl
 import shutil
 import re
@@ -20,6 +25,11 @@ from tkinter import filedialog, messagebox
 from datetime import datetime
 
 import customtkinter as ctk
+
+SESSION_LOG_NAME = "last_session_log.json"
+SESSION_LOG_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), SESSION_LOG_NAME
+)
 
 
 class SequencingFileOrganizerApp:
@@ -211,6 +221,15 @@ class SequencingFileOrganizerApp:
             text_color="gray",
         ).pack(anchor="w", pady=(2, 0))
 
+        # Load Last Session (resume distribution after closing the app)
+        self.btn_load_session = ctk.CTkButton(
+            tab2_frame,
+            text="Load Last Session",
+            command=self._load_last_session,
+            height=30,
+        )
+        self.btn_load_session.pack(pady=(0, 10))
+
         # Distribute Button
         self.btn_distribute = ctk.CTkButton(
             tab2_frame,
@@ -325,7 +344,7 @@ class SequencingFileOrganizerApp:
         self.entry_add_folder = ctk.CTkEntry(
             add_entry_frame,
             border_width=1,
-            placeholder_text="Type folder name or drop a folder path here...",
+            placeholder_text="Type a folder name or paste its full path here...",
         )
         self.entry_add_folder.pack(side="left", fill="x", expand=True, padx=(0, 5))
 
@@ -593,13 +612,13 @@ class SequencingFileOrganizerApp:
         else:
             self.btn_organize.configure(state="disabled", fg_color="gray50")
 
-        if self.reference_dir_valid and self.organized_work_nos:
+        if self.reference_dir_valid and self.dest_dir_valid and self.organized_work_nos:
             self.btn_distribute.configure(state="normal", fg_color="#3C702D")
         else:
             self.btn_distribute.configure(state="disabled", fg_color="gray50")
 
         has_folders = len(self._get_combined_folders()) > 0
-        if self.template_file_valid and self.output_doc_dir_valid and has_folders:
+        if self.template_file_valid and self.dest_dir_valid and self.output_doc_dir_valid and has_folders:
             self.btn_generate_sg.configure(state="normal", fg_color="#3C702D")
         else:
             self.btn_generate_sg.configure(state="disabled", fg_color="gray50")
@@ -687,6 +706,81 @@ class SequencingFileOrganizerApp:
         ).pack(side="left", padx=5)
 
         dialog.wait_window()
+        return result["action"]
+
+    def _show_overwrite_dialog(self, filename):
+        """
+        Ask how to save when today's SG Check document already exists.
+        Returns: 'overwrite', 'save_v2', or None if the window is closed.
+        """
+        dialog = tk.Toplevel(self.master)
+        dialog.title("SG Check Document — File Exists")
+        dialog.geometry("420x190")
+        dialog.transient(self.master)
+        dialog.grab_set()
+        dialog.resizable(False, False)
+
+        result = {"action": None}
+
+        tk.Label(
+            dialog,
+            text=(
+                f"'{filename}' already exists in the destination folder.\n\n"
+                "Overwrite it, or save a versioned copy (the version suffix is"
+                " raised until a free name is found)?"
+            ),
+            font=("Arial", 11),
+            justify="left",
+            wraplength=380,
+        ).pack(padx=15, pady=(15, 10), anchor="w")
+
+        btn_frame = tk.Frame(dialog)
+        btn_frame.pack(pady=(0, 15))
+
+        tk.Button(
+            btn_frame,
+            text="Overwrite",
+            width=12,
+            bg="#eab308",
+            fg="black",
+            font=("Arial", 11, "bold"),
+            activebackground="#ca8a04",
+            command=lambda: (
+                result.__setitem__("action", "overwrite"),
+                dialog.destroy(),
+            ),
+        ).pack(side="left", padx=5)
+        tk.Button(
+            btn_frame,
+            text="Save as v2",
+            width=12,
+            bg="#3C702D",
+            fg="white",
+            font=("Arial", 11, "bold"),
+            activebackground="#2d5a22",
+            command=lambda: (
+                result.__setitem__("action", "save_v2"),
+                dialog.destroy(),
+            ),
+        ).pack(side="left", padx=5)
+
+        dialog.wait_window()
+        return result["action"]
+
+    def _ask_overwrite_blocking(self, filename):
+        """
+        Worker-thread bridge: display the overwrite dialog on the main
+        thread and block the worker until the user answers.
+        """
+        result = {"action": None}
+        done = threading.Event()
+
+        def show_on_main():
+            result["action"] = self._show_overwrite_dialog(filename)
+            done.set()
+
+        self.master.after(0, show_on_main)
+        done.wait()
         return result["action"]
 
     # ─── Manual Folder Management ───────────────────────────────
@@ -923,22 +1017,18 @@ class SequencingFileOrganizerApp:
         # Pre-scan
         unparseable = []
         parseable = []
-        seq_count = 0
-        pos_count = 0
 
         for filename in os.listdir(source_dir):
             file_path = os.path.join(source_dir, filename)
             if not os.path.isfile(file_path):
                 continue
             if filename.endswith(".seq"):
-                seq_count += 1
                 continue
             if (
                 filename.startswith("POS")
                 or filename.startswith("Pos")
                 or filename.startswith("pos")
             ):
-                pos_count += 1
                 continue
             if filename.endswith(".ab1") or filename.endswith(".fasta"):
                 work_no, plasmid_no = self._extract_info(filename)
@@ -1064,6 +1154,30 @@ class SequencingFileOrganizerApp:
             self._log_threaded(f"\nOrganized {organized_count} files.")
             self._log_threaded(f"Found {len(self.organized_work_nos)} unique Work No.")
 
+            # Save the batch so Distribute can resume after closing the app
+            # (a run that organized nothing leaves the previous session intact)
+            if not self.organized_work_nos and not self.created_folder_names:
+                self._log_threaded(
+                    "\nNothing organized - last_session_log.json left unchanged."
+                )
+            else:
+                session_record = {
+                    "date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                    "dest_dir": dest_dir,
+                    "created_folder_names": self.created_folder_names,
+                    "organized_work_nos": self.organized_work_nos,
+                }
+                try:
+                    with open(SESSION_LOG_PATH, "w", encoding="utf-8") as f:
+                        json.dump(session_record, f, indent=2)
+                    self._log_threaded(
+                        f"Session saved as {SESSION_LOG_NAME} for 'Load Last Session'."
+                    )
+                except Exception as write_err:
+                    self._log_threaded(
+                        f"  Warning: could not save session log: {write_err}"
+                    )
+
             self.master.after(
                 0,
                 lambda: self.organized_info_label.configure(
@@ -1082,12 +1196,64 @@ class SequencingFileOrganizerApp:
 
         except Exception as e:
             self._log_threaded(f"\nERROR: {e}")
-            self.master.after(0, lambda: messagebox.showerror("Error", str(e)))
+            self.master.after(0, messagebox.showerror, "Error", str(e))
         finally:
             self.master.after(
                 0,
                 lambda: self.btn_organize.configure(state="normal", fg_color="#3C702D"),
             )
+
+    def _load_last_session(self):
+        """
+        Restore the saved Tab 1 batch so Distribute can resume after the
+        app was closed between runs ("Load Last Session" button, Tab 2).
+        """
+        if not os.path.exists(SESSION_LOG_PATH):
+            self._log("No saved session found (last_session_log.json).")
+            return
+        try:
+            with open(SESSION_LOG_PATH, "r", encoding="utf-8") as f:
+                session_record = json.load(f)
+        except Exception as read_err:
+            self._log(f"Could not read {SESSION_LOG_NAME}: {read_err}")
+            return
+
+        restored_work_nos = list(session_record.get("organized_work_nos", []))
+        restored_folders = list(session_record.get("created_folder_names", []))
+        if not restored_work_nos or not restored_folders:
+            self._log(f"{SESSION_LOG_NAME} contains no batch data - nothing to load.")
+            return
+
+        self.organized_work_nos = restored_work_nos
+        self.created_folder_names = restored_folders
+
+        saved_dest = session_record.get("dest_dir", "")
+        if saved_dest and self.entry_dest_dir.get() != saved_dest:
+            self.entry_dest_dir.delete(0, "end")
+            self.entry_dest_dir.insert(0, saved_dest)
+            self._start_validation_thread(
+                self.entry_dest_dir,
+                self.dest_validation_label,
+                saved_dest,
+                "dest_dir_valid",
+                "Sorted Sequencing Folder",
+            )
+
+        self.check_use_organized.select()
+        self.organized_info_label.configure(
+            text=(
+                f"{len(restored_folders)} folders loaded from last session"
+                f" ({session_record.get('date', 'unknown date')})."
+            )
+        )
+        self._check_all_validations()
+
+        self._log(
+            f"Loaded session from {session_record.get('date', 'unknown date')}:"
+            f" {len(restored_work_nos)} Work No., {len(restored_folders)} folders."
+        )
+        if saved_dest:
+            self._log(f"  Destination: {saved_dest}")
 
     # ─── Tab 2: Distribute References ───────────────────────────
 
@@ -1099,6 +1265,9 @@ class SequencingFileOrganizerApp:
         # Pre-scan
         file_map = {}
         for filename in os.listdir(source_dir):
+            file_path = os.path.join(source_dir, filename)
+            if not os.path.isfile(file_path):
+                continue
             if filename.endswith(".txt"):
                 base_name = filename.split("+")[0].split(".")[0]
                 if base_name in self.organized_work_nos:
@@ -1115,6 +1284,8 @@ class SequencingFileOrganizerApp:
         for work_no in self.organized_work_nos:
             found = False
             for folder in os.listdir(dest_base_dir):
+                if not os.path.isdir(os.path.join(dest_base_dir, folder)):
+                    continue
                 if folder.split(".")[0] == work_no:
                     found = True
                     break
@@ -1181,6 +1352,8 @@ class SequencingFileOrganizerApp:
             distributed_count = 0
 
             for folder in os.listdir(dest_base_dir):
+                if not os.path.isdir(os.path.join(dest_base_dir, folder)):
+                    continue
                 folder_base_name = folder.split(".")[0]
                 if (
                     folder_base_name in self.organized_work_nos
@@ -1190,7 +1363,18 @@ class SequencingFileOrganizerApp:
                         self._log_threaded(f"  Skipped {folder} (missing files)")
                         continue
                     destination_dir = os.path.join(dest_base_dir, folder)
-                    for source_filename in file_map[folder_base_name]:
+                    matched_files = file_map[folder_base_name]
+                    insert_files, vector_files, extra_files = (
+                        self._classify_ref_files(folder_base_name, matched_files)
+                    )
+                    if extra_files or len(insert_files) > 1 or len(vector_files) > 1:
+                        # Anything beyond the standard insert + final vector
+                        # pair is a genuine duplicate set: warn, copy all.
+                        self._log_threaded(
+                            f"  ⚠ {folder_base_name}: unexpected reference"
+                            f" variants, copying all ({', '.join(matched_files)})"
+                        )
+                    for source_filename in matched_files:
                         source_file = os.path.join(source_dir, source_filename)
                         destination_file = os.path.join(
                             destination_dir, source_filename
@@ -1217,7 +1401,7 @@ class SequencingFileOrganizerApp:
 
         except Exception as e:
             self._log_threaded(f"\nERROR: {e}")
-            self.master.after(0, lambda: messagebox.showerror("Error", str(e)))
+            self.master.after(0, messagebox.showerror, "Error", str(e))
         finally:
             self.master.after(
                 0,
@@ -1225,6 +1409,27 @@ class SequencingFileOrganizerApp:
                     state="normal", fg_color="#3C702D"
                 ),
             )
+
+    @staticmethod
+    def _classify_ref_files(work_no, matched_files):
+        """
+        Sort one Work No's matched reference .txt files by the standard
+        naming scheme: insert = "{Work No}.txt", final vector =
+        "{Work No}+{Vector}.txt". The work number prefix is shared by
+        design, so a matched pair is not a duplicate. Anything else
+        (misnamed files, two inserts, two vector variants) is an
+        unexpected variant.
+
+        Returns (insert_files, vector_files, extra_files).
+        """
+        insert = f"{work_no}.txt"
+        vector_prefix = f"{work_no}+"
+        insert_files = [f for f in matched_files if f == insert]
+        vector_files = [f for f in matched_files if f.startswith(vector_prefix)]
+        extra_files = [
+            f for f in matched_files if f not in insert_files and f not in vector_files
+        ]
+        return insert_files, vector_files, extra_files
 
     # ─── Tab 3: SG Check Document ───────────────────────────────
 
@@ -1243,11 +1448,12 @@ class SequencingFileOrganizerApp:
                 invalid_folders.append((folder_name, "folder not found"))
                 continue
 
+            folder_contents = os.listdir(folder_path)
             has_ab1 = any(
                 fn.endswith(".ab1") or fn.endswith(".fasta")
-                for fn in os.listdir(folder_path)
+                for fn in folder_contents
             )
-            has_txt = any(fn.endswith(".txt") for fn in os.listdir(folder_path))
+            has_txt = any(fn.endswith(".txt") for fn in folder_contents)
 
             missing_types = []
             if not has_ab1:
@@ -1308,27 +1514,49 @@ class SequencingFileOrganizerApp:
                 ws.cell(row=i, column=1).value = name
 
             date_str = datetime.now().strftime("%y%m%d")
-            filename = f"{date_str} Gene Seq Log.xlsx"
-            save_path = os.path.join(output_dir, filename)
+            final_filename = f"{date_str} Gene Seq Log.xlsx"
+            save_path = os.path.join(output_dir, final_filename)
 
-            self._log_threaded(f"Saving file as: {filename}")
+            if os.path.exists(save_path):
+                action = self._ask_overwrite_blocking(final_filename)
+                if action is None:
+                    self._log_threaded(
+                        f"\nSave cancelled, existing file kept: {final_filename}"
+                    )
+                    return
+                if action == "save_v2":
+                    version = 2
+                    while os.path.exists(
+                        os.path.join(
+                            output_dir, f"{date_str} Gene Seq Log v{version}.xlsx"
+                        )
+                    ):
+                        version += 1
+                    final_filename = f"{date_str} Gene Seq Log v{version}.xlsx"
+                    save_path = os.path.join(output_dir, final_filename)
+                    self._log_threaded(f"Existing file found, saving as: {final_filename}")
+
+            self._log_threaded(f"Saving file as: {final_filename}")
             wb.save(save_path)
 
             self._log_threaded(f"File successfully saved to: {output_dir}")
             self.master.after(
-                0, lambda: self.status_label_3.configure(text=f"Generated: {filename}")
+                0,
+                lambda: self.status_label_3.configure(
+                    text=f"Generated: {final_filename}"
+                ),
             )
             self.master.after(
                 0,
                 lambda: messagebox.showinfo(
-                    "Success", f"Document created successfully:\n{filename}"
+                    "Success", f"Document created successfully:\n{final_filename}"
                 ),
             )
             self._log_threaded("\n--- SG Check Generation Complete ---")
 
         except Exception as e:
             self._log_threaded(f"\nERROR: {e}")
-            self.master.after(0, lambda: messagebox.showerror("Error", str(e)))
+            self.master.after(0, messagebox.showerror, "Error", str(e))
         finally:
             self.master.after(
                 0,

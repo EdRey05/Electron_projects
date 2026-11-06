@@ -1,3 +1,4 @@
+import {ValidatedPath} from '../../ui/ValidatedPath.jsx';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FolderOpen,
@@ -71,11 +72,23 @@ export default function SequencingFileOrganizer({ onBack, initialPaths }) {
   const [organizedWorkNos, setOrganizedWorkNos] = useState([]);
   const [createdFolderNames, setCreatedFolderNames] = useState([]);
 
-  const handleOrganized = useCallback((workNos, folderNames, destination) => {
+  const handleOrganized = useCallback(async(workNos, folderNames, destination) => {
+    if(!workNos.length || !folderNames.length)return;
     setSessionDest(destination);
     setOrganizedWorkNos(workNos);
     setCreatedFolderNames(folderNames);
+    const result=await window.api.organizerSession({record:{dest_dir:destination,organized_work_nos:workNos,created_folder_names:folderNames}});
+    if(!result.ok)throw new Error('Files organized, but session could not be saved: '+result.error);
   }, []);
+  const [sessionMessage,setSessionMessage]=useState('');
+  const loadLastSession=async()=>{
+    const result=await window.api.organizerSession();
+    if(!result.ok){setSessionMessage(result.error);return;}
+    setSessionDest(result.record.dest_dir);
+    setOrganizedWorkNos(result.record.organized_work_nos);
+    setCreatedFolderNames(result.record.created_folder_names);
+    setSessionMessage(`Loaded ${result.record.organized_work_nos.length} Work Nos from ${result.record.date}.`);
+  };
 
   return (
     <div className="h-full flex flex-col" style={{ background: C.paper, color: C.ink }}>
@@ -100,6 +113,7 @@ export default function SequencingFileOrganizer({ onBack, initialPaths }) {
 
       <main className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto">
+          {tab!==1&&<div className="flex items-center gap-3 mb-4"><Button onClick={loadLastSession}>Load Last Session</Button><span>{sessionMessage}</span></div>}
           {tab === 1 && (
             <OrganizeTab initialPaths={effectivePaths} onOrganized={handleOrganized} />
           )}
@@ -178,6 +192,7 @@ function OrganizeTab({ initialPaths, onOrganized }) {
       const filenames = allFiles.entries.map((e) => e.name);
 
       const destFolders = await window.api.listDirectory({ dirPath: destDir, filter: "dirs" });
+      if(!destFolders?.ok)throw new Error(destFolders?.error||"Cannot read destination folder.");
       const existingFolderNames = destFolders?.ok
         ? destFolders.entries.map((e) => e.name)
         : [];
@@ -289,7 +304,7 @@ function OrganizeTab({ initialPaths, onOrganized }) {
       appendLog(`\nOrganized ${organizedCount} files.`);
       appendLog(`Found ${organizedWorkNoList.length} unique Work No.`);
       appendLog("\n--- Organization Complete ---");
-      onOrganized?.(organizedWorkNoList, createdFolderList,destDir);
+      await onOrganized?.(organizedWorkNoList, createdFolderList,destDir);
       setStatus({ text: `Organized ${organizedCount} files.`+(failures?` ${failures} failed; see log.`:""), color: failures?"bad":"good" });
     } catch (err) {
       appendLog(`\nERROR: ${err.message}`);
@@ -463,7 +478,12 @@ function DistributeTab({ initialPaths, organizedWorkNos }) {
           continue;
         }
         const destFolder = joinPath(destDir, folderName);
-        for (const refFilename of fileMap[folderBase]) {
+        const variants=fileMap[folderBase];
+        const inserts=variants.filter(name=>name===folderBase+'.txt');
+        const vectors=variants.filter(name=>name.startsWith(folderBase+'+'));
+        if(inserts.length>1||vectors.length>1||inserts.length+vectors.length<variants.length)
+          appendLog(`  Unexpected reference variants for ${folderBase}, copying all (${variants.join(', ')})`);
+        for (const refFilename of variants) {
           const sourceFile = joinPath(refDir, refFilename);
           const destFile = joinPath(destFolder, refFilename);
           const r = await window.api.copyFile({ source: sourceFile, dest: destFile });
@@ -527,12 +547,12 @@ function DistributeTab({ initialPaths, organizedWorkNos }) {
 
       {organizedWorkNos.length > 0 ? (
         <Pill tone="info">
-          Using {organizedWorkNos.length} Work No. organized in Tab 1 (this session).
+          Using {organizedWorkNos.length} Work No. organized in Tab 1 (current batch).
         </Pill>
       ) : (
         <Pill tone="warn">
           No Work Nos organized yet. Run Tab 1 first — distribution only targets the
-          Work Nos organized in this session.
+          Work Nos organized in the current or loaded batch.
         </Pill>
       )}
 
@@ -716,7 +736,7 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
 
       const filename = suggestSgCheckFilename();
       const outPath = joinPath(outputDir, filename);
-      const writeResult = await window.api.writeBinaryFile({
+      const writeResult = await window.api.saveSgWorkbook({
         filePath: outPath,
         bytes: outBytes,
       });
@@ -726,10 +746,12 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
         setRunning(false);
         return;
       }
-      appendLog(`Saving file as: ${filename}`);
+      if(writeResult.canceled){setStatus({text:'Save canceled. Existing workbook kept.',color:'info'});return;}
+      const savedName=writeResult.filePath.split(/[\\/]/).pop();
+      appendLog(`Saving file as: ${savedName}`);
       appendLog(`File successfully saved to: ${outputDir}`);
       appendLog("\n--- SG Check Generation Complete ---");
-      setStatus({ text: `Done. Generated ${filename}.`, color: "good" });
+      setStatus({ text: `Done. Generated ${savedName}.`, color: "good" });
     } catch (err) {
       appendLog(`\nERROR: ${err.message}`);
       setStatus({ text: `Error: ${err.message}`, color: "bad" });
@@ -746,7 +768,7 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
         subtitle="Gene Seq Log template"
       >
         <div className="flex items-center gap-2">
-          <PathInput id="sfo-template-file" value={templateFile} style={{ flex: 1 }} />
+          <ValidatedPath id="sfo-template-file" value={templateFile} kind="file" style={{ flex: 1 }} />
           <input ref={fileInputRef} type="file" accept=".xlsx" className="hidden" onChange={onFileChange} />
           <Button id="sfo-template-browse" variant="primary" onClick={chooseFile}>
             Browse…
@@ -792,7 +814,7 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
 
       {createdFolderNames.length > 0 && (
         <Pill tone="info">
-          {createdFolderNames.length} folders organized in Tab 1 (this session).
+          {createdFolderNames.length} folders organized in Tab 1 (current batch).
         </Pill>
       )}
 
@@ -964,22 +986,9 @@ function Stat({ label, value, tone = "neutral" }) {
 }
 
 function FolderPicker({ id, value, onChange, onBrowse, placeholder }) {
-  return (
-    <div className="flex items-center gap-2">
-      <PathInput
-        id={id}
-        value={value}
-        readOnly={false}
-        // The shared TextInput hands onChange the string value.
-        onChange={onChange}
-        placeholder={placeholder || "Click 'Browse…' to choose the folder"}
-        style={{ flex: 1 }}
-      />
-      <Button variant="primary" onClick={onBrowse}>
-        Browse…
-      </Button>
-    </div>
-  );
+  return <ValidatedPath id={id} value={value} onChange={onChange} readOnly={false} placeholder={placeholder||"Choose a folder"} style={{flex:1}}>
+    <Button variant="primary" onClick={onBrowse}>Browse…</Button>
+  </ValidatedPath>;
 }
 
 // Join paths using the platform separator (Windows: \\, Mac/Linux: /).

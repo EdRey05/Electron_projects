@@ -64,22 +64,24 @@ class MeasurementTable(ctk.CTkFrame):
                 tags.append("missing")
             self.tree.insert("", "end", values=cells, tags=tags)
 
-    def copy_rows(self, event=None):
+    def copy_rows(self, event=None, include_header=True):
         """Copy selected rows (or all rows) with headings for pasting into Excel."""
         selected = set(self.tree.selection())
         items = [item for item in self.tree.get_children() if not selected or item in selected]
         buffer = io.StringIO()
         writer = csv.writer(buffer, delimiter="\t", lineterminator="\n")
-        writer.writerow([column[0] for column in self.columns])
+        if include_header:
+            writer.writerow([column[0] for column in self.columns])
         writer.writerows(self.tree.item(item, "values") for item in items)
         self.clipboard_clear()
         self.clipboard_append(buffer.getvalue())
         return "break"
 
-    def copy_all_rows(self, event=None):
-        """Copy every row (ignoring selection) with headings; used by the
-        app's 'Copy data' button."""
+    def copy_all_rows(self, event=None, include_header=True):
+        """Copy every row (ignoring selection); used by the app's copy
+        button. include_header=False drops the column headings - the
+        target workbook (Shipping_labels) already carries them."""
         previous_selection = self.tree.selection()
         if previous_selection:
             self.tree.selection_remove(*previous_selection)
-        return self.copy_rows(event)
+        return self.copy_rows(event, include_header=include_header)

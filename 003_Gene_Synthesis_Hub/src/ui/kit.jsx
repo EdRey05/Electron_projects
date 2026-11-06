@@ -14,7 +14,7 @@
  * Everything is plain React + inline styles driven by the palette below, so
  * the hub does not depend on a Tailwind colour scale to look right.
  */
-import React, { useEffect, useRef } from "react";
+import React, { createContext, useContext, useEffect, useRef } from "react";
 import { ChevronDown, ChevronRight, X, CheckCircle2, AlertCircle } from "lucide-react";
 
 export const C = {
@@ -30,6 +30,7 @@ export const C = {
   navyHover: "#2A4E7C",
   navySoft: "#E7EDF5",
   teal: "#0E7C7B",
+  validated: "#2E7D42",
   tealDeep: "#0A5F5E",
   tealSoft: "#E4F1EF",
   amber: "#B37C10",
@@ -52,6 +53,10 @@ export const TONE = {
 export const FONT_BODY = "'Segoe UI', system-ui, sans-serif";
 export const FONT_DISPLAY = "'Segoe UI', system-ui, sans-serif";
 export const FONT_MONO = "Consolas, ui-monospace, monospace";
+export const ToolReleaseContext = createContext(null);
+export function ValidationStatus({validation}) {
+  return <div role="status" style={{minHeight:24,fontSize:14,color:validation?.valid?C.validated:validation?.error?C.coral:C.inkMuted}}>{validation?.valid?'✓ Validated':validation?.error?`✕ ${validation.error}`:validation?.state==='checking'||validation?.checking?'Checking…':''}</div>;
+}
 
 // ---------------------------------------------------------------------------
 // Primitives
@@ -168,23 +173,25 @@ export function Field({ label, hint, children, style }) {
  * Handing the event through meant a consumer that did `setPath(e)` stored
  * the event object, and the field displayed "[object Object]".
  */
-export function TextInput({ value, onChange, readOnly, placeholder, mono, invalid, ...rest }) {
+export function TextInput({ value, onChange, readOnly, placeholder, mono, invalid, valid, style, ...rest }) {
   return (
     <input
       {...rest}
       value={value}
       readOnly={readOnly}
+      aria-invalid={!!invalid}
       placeholder={placeholder}
       onChange={(e) => onChange?.(e?.target?.value ?? "")}
       className="w-full px-3 py-2 text-sm outline-none"
       style={{
         background: readOnly ? C.subtle2 : C.surface,
-        border: `1px solid ${invalid ? C.coral : C.border}`,
+        border: `1px solid ${invalid ? C.coral : valid ? C.validated : C.border}`,
         borderRadius: 6,
         color: value ? C.ink : C.inkFaint,
         fontFamily: mono ? FONT_MONO : FONT_BODY,
         fontSize: mono ? 14 : 16,
         userSelect: "text",
+        ...style,
       }}
     />
   );
@@ -219,6 +226,7 @@ export function PathInput({ value, onChange, readOnly = true, placeholder = "No 
       value={value}
       onChange={onChange}
       readOnly={readOnly}
+      aria-invalid={!!invalid}
       placeholder={placeholder}
       mono
       invalid={invalid}
@@ -391,7 +399,7 @@ export function EmptyState({ icon, title, hint, action }) {
   );
 }
 
-export function DataTable({ columns, rows, empty = "No rows", maxHeight }) {
+export function DataTable({ columns, rows, empty = "No rows", maxHeight, rowStyle }) {
   return (
     <div className="gsh-scroll overflow-auto" style={{ maxHeight }}>
       <table className="w-full border-collapse" style={{ fontSize: 14 }}>
@@ -421,7 +429,7 @@ export function DataTable({ columns, rows, empty = "No rows", maxHeight }) {
             </tr>
           ) : (
             rows.map((r, i) => (
-              <tr key={r.key ?? i} style={{ borderBottom: "1px solid " + C.subtle }}>
+              <tr key={r.key ?? i} style={{ borderBottom: "1px solid " + C.subtle,...rowStyle?.(r,i) }}>
                 {columns.map((c) => (
                   <td key={c.key} className="px-3 py-2 align-top" style={{ color: C.ink }}>
                     {c.render ? c.render(r, i) : r[c.key]}
@@ -456,6 +464,7 @@ export function Modal({ open, title, subtitle, onCancel, children, footer, width
       }}
     >
       <div
+        role="dialog" aria-modal="true" aria-label={title}
         className="rounded-lg flex flex-col"
         style={{
           background: C.surface,
@@ -529,6 +538,7 @@ export function Toast({ toast, onClose }) {
 
 /** App shell header used by every hub screen and subapp. */
 export function AppHeader({ icon, title, subtitle, onBack, backLabel = "Hub", actions, meta }) {
+  const release = useContext(ToolReleaseContext);
   return (
     <header
       className="flex items-center justify-between gap-4 px-6 py-3.5"
@@ -555,6 +565,7 @@ export function AppHeader({ icon, title, subtitle, onBack, backLabel = "Hub", ac
           >
             {title}
           </h1>
+          {release?.version && <p style={{fontSize:12,color:C.inkMuted,marginTop:4}}>v{release.version}{release.date_released ? ` · ${release.date_released}` : ""}</p>}
           {(subtitle || meta) && (
             <p className="text-[11px] leading-tight truncate" style={{ color: C.inkFaint }}>
               {subtitle}
@@ -589,7 +600,7 @@ export function FilePickerRow({
   return (
     <div>
       <div className="flex items-center gap-2">
-        <TextInput value={value} readOnly mono placeholder={placeholder} style={{ flex: 1 }} />
+        <TextInput value={value} readOnly mono placeholder={placeholder} valid={valid && !error} invalid={!!error} aria-invalid={!!error} style={{ flex: 1 }} />
         <input
           ref={inputRef}
           type="file"
@@ -621,9 +632,9 @@ export function FilePickerRow({
       </div>
       {(valid || error) && (
         <div className="mt-2">
-          {valid ? (
+          {valid && !error ? (
             <Pill tone="good" icon={<CheckCircle2 size={11} />}>
-              {hint || "Validated"}
+              Validated{hint && hint !== "Validated" ? ` · ${hint.replace(/^Validated\s*/i, "")}` : ""}
             </Pill>
           ) : (
             <Pill tone="bad" icon={<AlertCircle size={11} />}>

@@ -3,14 +3,23 @@ Bio Basic Inc. - Canada
 Made by: Fabien Lonjon and Eduardo Reyes, Ph.D.
 contact: ed5reyes@outlook.com
 
-Version: 1.1
-Date: Oct 10, 2026
-Notes: Name/Sequence columns are resolved per sheet with a name-first
-    pass on row 34 ('Oligo Name' / "Sequence (5' to 3')"), so plate-order
-    sheets with a leading Wells column (e.g. U0910) read correctly; A:B
-    stays as fallback. The rows-35 start is kept as-is: sheets S01 and
-    earlier still lack the formatted header block and are expected to be
-    repaired in the workbook (see pre-deploy list).
+Version: 1.2
+Date: Oct 30, 2026
+Notes: Audit fixes. Only real order-form sheets (name = S/T/U/V + MMDD, e.g.
+    S0104, U0910) are scanned - non-order sheets that happen to start with
+    S/T/U/V (Summary, Sheet1, USHE198 ...) are no longer read. The primer log
+    entry fails validation closed on any hand edit and re-validates debounced;
+    completed validations from superseded threads are dropped (generation
+    counter); the verified file path is stored, not the entry text read at
+    completion. The target sequence is cleaned stepwise and every non-DNA
+    character removed is counted and reported in the completion dialog and
+    the status line. The analysis thread receives the target text as an
+    argument instead of reading the textbox from its own thread. Skipped
+    sheets (with reason) and A:B-fallback usage are reported at completion.
+    Readers (openpyxl workbook in validation, ExcelFile in analysis) are
+    closed after use. .xls was removed from the file dialog: the Primer Log
+    is xlsx-only (openpyxl cannot validate xls). Rows-35 start and the
+    name-first Oligo Name / Sequence (5' to 3') resolution are unchanged.
 Migrated and adapted to Gene Synthesis hub. Standalone app discontinued.
 """
 
@@ -51,6 +60,8 @@ class PrimerFinderApp:
 
         # --- Internal storage ---
         self._primer_log_path = ""
+        self._validation_generation = 0  # per-field counter: stale validation results are dropped
+        self._primer_log_after_id = None  # debounce handle for re-validation after entry edits
 
         # --- Build UI ---
         self._setup_ui()
@@ -99,6 +110,15 @@ class PrimerFinderApp:
 
         self.entry_primer_log = ctk.CTkEntry(entry_frame_pl, border_width=1)
         self.entry_primer_log.pack(side="left", fill="x", expand=True, padx=(0, 10))
+
+        # Any hand edit fails the validation closed (stored path + flag dropped)
+        # and schedules a debounced re-validation from the entry's current text.
+        self.entry_primer_log.bind(
+            "<KeyRelease>", self._on_primer_log_entry_changed, add="+"
+        )
+        self.entry_primer_log.bind(
+            "<<Paste>>", self._on_primer_log_entry_changed, add="+"
+        )
 
         self.button_primer_log = ctk.CTkButton(
             entry_frame_pl,
@@ -224,6 +244,12 @@ class PrimerFinderApp:
             entry_widget, validation_label_widget, None, "", validation_flag_name
         )
 
+        # Generation counter: a completion from a superseded thread (e.g. two
+        # quick re-browses, or the debounced re-validation) is dropped instead
+        # of overriding the newest validation result.
+        self._validation_generation += 1
+        generation = self._validation_generation
+
         thread = threading.Thread(
             target=self._validate_file,
             args=(
@@ -234,6 +260,7 @@ class PrimerFinderApp:
                 validation_flag_name,
                 file_display_name,
                 next_callback,
+                generation,
             ),
             daemon=True,
         )
@@ -248,6 +275,7 @@ class PrimerFinderApp:
         validation_flag_name,
         file_display_name,
         next_callback=None,
+        generation=None,
     ):
         """
         Checks if a file exists and contains the expected sheet.
@@ -271,9 +299,12 @@ class PrimerFinderApp:
                 validation_flag_name,
                 file_display_name,
                 next_callback,
+                file_path,
+                generation,
             )
             return
 
+        wb = None
         try:
             wb = openpyxl.load_workbook(file_path, read_only=True)
             if expected_sheet and expected_sheet not in wb.sheetnames:
@@ -288,6 +319,8 @@ class PrimerFinderApp:
                     validation_flag_name,
                     file_display_name,
                     next_callback,
+                    file_path,
+                    generation,
                 )
                 return
 
@@ -303,6 +336,8 @@ class PrimerFinderApp:
                 validation_flag_name,
                 file_display_name,
                 next_callback,
+                file_path,
+                generation,
             )
         except Exception as e:
             message = "Not a valid Excel file."
@@ -316,7 +351,15 @@ class PrimerFinderApp:
                 validation_flag_name,
                 file_display_name,
                 next_callback,
+                file_path,
+                generation,
             )
+        finally:
+            if wb is not None:
+                try:
+                    wb.close()
+                except Exception:
+                    pass
 
     def _update_validation_ui(
         self,
@@ -327,18 +370,27 @@ class PrimerFinderApp:
         validation_flag_name,
         file_display_name=None,
         next_callback=None,
+        validated_path=None,
+        generation=None,
     ):
         """
         Updates the UI to reflect the validation status of a file.
         This method is always run on the main UI thread.
         """
+        # A completion from a superseded validation thread is dropped entirely
+        # (its result corresponds to a file the user moved on from).
+        if generation is not None and generation != self._validation_generation:
+            return
+
         # Update the validation status flag
         setattr(self, validation_flag_name, is_valid)
 
-        # Store the path if valid
+        # Store the path if valid: the VERIFIED file path from the validation
+        # thread, never the entry text read at completion time (the user may
+        # have edited the entry while validation was in flight).
         if is_valid is True:
             if validation_flag_name == "primer_log_valid":
-                self._primer_log_path = entry_widget.get()
+                self._primer_log_path = validated_path or entry_widget.get()
 
             entry_widget.configure(border_color="dark green", border_width=2)
             validation_label_widget.configure(text=f"✔ {message}", text_color="green")
@@ -399,7 +451,7 @@ class PrimerFinderApp:
     def _browse_primer_log(self):
         filename = filedialog.askopenfilename(
             title="Select Primer Database File",
-            filetypes=[("Excel files", "*.xlsx *.xls"), ("All files", "*.*")],
+            filetypes=[("Excel files", "*.xlsx")],
         )
         if filename:
             self.entry_primer_log.delete(0, "end")
@@ -413,6 +465,46 @@ class PrimerFinderApp:
                 "Primer Database",
             )
 
+    # --- Entry edit reaction ---
+    def _on_primer_log_entry_changed(self, event=None):
+        """
+        Fail closed on any hand edit of the entry: drop the stored validated
+        path and flag, then re-validate (debounced) from the current text.
+        """
+        self.primer_log_valid = None
+        self._primer_log_path = ""
+        self._update_validation_ui(
+            self.entry_primer_log,
+            self.primer_log_validation_label,
+            None,
+            "",
+            "primer_log_valid",
+        )
+        self._check_all_validations()
+
+        # Debounced re-validation so typing a new path does not validate
+        # every keystroke.
+        if self._primer_log_after_id is not None:
+            self.master.after_cancel(self._primer_log_after_id)
+        self._primer_log_after_id = self.master.after(
+            500, self._run_debounced_primer_log_validation
+        )
+
+    def _run_debounced_primer_log_validation(self):
+        """Validates whatever the entry holds after the edit debounce window."""
+        self._primer_log_after_id = None
+        path = self.entry_primer_log.get().strip()
+        if not path:
+            return
+        self._start_validation_thread(
+            self.entry_primer_log,
+            self.primer_log_validation_label,
+            path,
+            None,  # No specific sheet required
+            "primer_log_valid",
+            "Primer Database",
+        )
+
     # --- Analysis methods ---
     def _start_analysis(self):
         """Starts the analysis in a background thread."""
@@ -421,26 +513,45 @@ class PrimerFinderApp:
         self.progress.set(0)
         self._log_status("Starting analysis...", "blue")
 
-        thread = threading.Thread(target=self._analysis_thread, daemon=True)
+        # Snapshot the target text on the calling thread: the worker thread
+        # must not touch tkinter widgets (tkinter is not thread-safe).
+        target_text = self.text_sequence.get("1.0", "end")
+
+        thread = threading.Thread(
+            target=self._analysis_thread, args=(target_text,), daemon=True
+        )
         thread.start()
 
-    def _analysis_thread(self):
-        """The main analysis logic that runs in a background thread."""
+    def _analysis_thread(self, target_text):
+        """
+        The main analysis logic that runs in a background thread.
+
+        Receives the target text snapshotted on the calling (main) thread and
+        must not touch any tkinter widget directly.
+        """
         # Lazy import pandas (heavy module)
         import pandas as pd
 
         try:
-            target_seq = self.text_sequence.get("1.0", "end").strip().upper()
+            # --- Target cleaning, step by step so every removal is counted ---
+            content = target_text.strip()
 
             # Basic Validation
-            if not target_seq:
+            if not content:
                 self.master.after(0, lambda: messagebox.showerror("Error", "Please enter a target DNA sequence."))
                 self.master.after(0, lambda: self._log_status("Error: No sequence entered", "red"))
                 self.master.after(0, lambda: self.button_analyze.configure(state="normal", fg_color="#3C702D"))
                 return
 
-            # Remove non-DNA characters
-            target_seq = re.sub(r'[^ATCGN]', '', target_seq)
+            # Step 1: drop whitespace inside the paste (newlines, spaces) -
+            # formatting only, never counted as a dropped character.
+            cleaned = re.sub(r"\s+", "", content).upper()
+
+            # Step 2: drop every character that is not A/T/C/G/N, e.g. letters
+            # or numbers from pasted text. The count of removed characters is
+            # reported when the run completes.
+            target_seq = re.sub(r"[^ATCGN]", "", cleaned)
+            dropped_chars = len(cleaned) - len(target_seq)
 
             if not target_seq:
                 self.master.after(0, lambda: messagebox.showerror("Error", "No valid DNA sequence found."))
@@ -459,12 +570,19 @@ class PrimerFinderApp:
             # Load Excel file
             xls = pd.ExcelFile(self._primer_log_path)
 
-            # Filter sheets starting with S, T, U, V (case insensitive)
-            valid_sheets = [sheet for sheet in xls.sheet_names if sheet.upper().startswith(('S', 'T', 'U', 'V'))]
+            # Order-sheet contract: the sheet name is a year-letter code
+            # S/T/U/V + MMDD (e.g. S0104, U0910). Anything else in the workbook
+            # (Summary, Sheet1, USHE198, ...) is NOT scanned - a full-column
+            # junk sheet there made every run walk a million empty rows.
+            valid_sheets = [
+                sheet
+                for sheet in xls.sheet_names
+                if re.fullmatch(r'[STUV]\d{4}', sheet.strip().upper())
+            ]
 
             if not valid_sheets:
-                self.master.after(0, lambda: messagebox.showwarning("No Sheets Found", "No sheets found starting with S, T, U, or V."))
-                self.master.after(0, lambda: self._log_status("No matching sheets found", "orange"))
+                self.master.after(0, lambda: messagebox.showwarning("No Sheets Found", "No order-form sheets found (S/T/U/V + MMDD, e.g. S0104 or U0910)."))
+                self.master.after(0, lambda: self._log_status("No order-form sheets found", "orange"))
                 self.master.after(0, lambda: self.button_analyze.configure(state="normal", fg_color="#3C702D"))
                 return
 
@@ -472,13 +590,15 @@ class PrimerFinderApp:
             self.master.after(0, lambda: self.progress.configure(mode="determinate"))
 
             matches_found = 0
+            skipped_sheets = []  # (sheet name, reason) for every unread sheet
+            fallback_sheets = 0  # sheets where row-34 header matching failed
             target_rc = get_reverse_complement(target_seq)
 
             for i, sheet_name in enumerate(valid_sheets):
                 self.master.after(0, lambda s=sheet_name, n=i+1, t=total_sheets: 
                     self._log_status(f"Processing sheet: {s} ({n}/{t})", "blue"))
 
-                # Read rows 35-104. Column positions are resolved per sheet
+                # Read rows 35+ (no end cap). Column positions are resolved per sheet
                 # with a name-first pass: row 34 (the formatted order form's
                 # header row) carries 'Oligo Name' (possibly with an embedded
                 # line break) and "Sequence (5' to 3')". A plate-order sheet
@@ -499,12 +619,14 @@ class PrimerFinderApp:
                         elif "sequence" in token and "(5" in token and seq_idx is None:
                             seq_idx = j
                     if name_idx is None or seq_idx is None:
+                        fallback_sheets += 1
                         name_idx, seq_idx = 0, 1
                     df = pd.read_excel(
                         xls, sheet_name=sheet_name, header=None,
                         usecols=[name_idx, seq_idx], skiprows=34,
                     )
-                except Exception:
+                except Exception as e:
+                    skipped_sheets.append((sheet_name, str(e)[:80]))
                     continue
 
                 # Iterate through rows (positional: pandas may drop
@@ -513,6 +635,7 @@ class PrimerFinderApp:
                 # selected column order intact)
                 values = df.to_numpy()
                 if values.ndim < 2 or values.shape[1] < 2:
+                    skipped_sheets.append((sheet_name, "no readable Name/Sequence columns"))
                     continue
                 for row_vals in values:
                     # Col 0 is Name, col 1 is Sequence (resolved above)
@@ -555,10 +678,52 @@ class PrimerFinderApp:
                 # Update progress
                 self.master.after(0, lambda v=(i+1)/total_sheets: self.progress.set(v))
 
-            self.master.after(0, lambda: self._log_status(f"Done! Found {matches_found} matching primers.", "green"))
-            self.master.after(0, lambda: messagebox.showinfo("Complete", f"Analysis complete.\nFound {matches_found} matching primers."))
+            xls.close()
+
+            # Run summary: sheets scanned/skipped, A:B fallback usage, and the
+            # count of non-DNA characters dropped from the pasted target.
+            summary = (
+                f"Found {matches_found} matching primers. "
+                f"Scanned {total_sheets} order sheet(s)."
+            )
+            notes = []
+            if skipped_sheets:
+                notes.append(
+                    f"{len(skipped_sheets)} sheet(s) skipped: "
+                    + ", ".join(name for name, _ in skipped_sheets)
+                )
+            if fallback_sheets:
+                notes.append(
+                    f"A:B fallback used on {fallback_sheets} sheet(s) "
+                    "(row-34 header not recognized)"
+                )
+            status_msg = f"Done! {summary}"
+            if dropped_chars:
+                status_msg += (
+                    f" ({dropped_chars} non-DNA char(s) dropped from target)"
+                )
+            if notes:
+                status_msg += " | " + "; ".join(notes)
+            status_color = "orange" if dropped_chars else "green"
+
+            dialog_msg = f"Analysis complete.\n{summary}"
+            for note in notes:
+                dialog_msg += f"\n{note}"
+            if dropped_chars:
+                dialog_msg += (
+                    f"\n\n{dropped_chars} non-DNA character(s) were dropped from the pasted "
+                    "target (only A, T, C, G, N are kept - other letters, digits and symbols "
+                    "are removed). Please verify the pasted text and re-run if needed."
+                )
+
+            self.master.after(0, lambda m=status_msg, c=status_color: self._log_status(m, c))
+            self.master.after(0, lambda m=dialog_msg: messagebox.showinfo("Complete", m))
 
         except Exception as e:
+            try:
+                xls.close()
+            except Exception:
+                pass
             self.master.after(0, lambda err=str(e): self._log_status(f"Error: {err}", "red"))
             self.master.after(0, lambda err=str(e): messagebox.showerror("Error", f"An error occurred:\n{err}"))
         finally:

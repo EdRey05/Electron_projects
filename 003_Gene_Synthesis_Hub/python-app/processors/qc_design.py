@@ -10,7 +10,7 @@ from processors.common import load_upstream
 
 def source(root, name):
     package='gsh_vector_workflows'
-    folder=root/'Code/QC_digestion_design/workflows'
+    folder=root/'Code/QC_digestion_design/qcd_workflows'
     if package not in sys.modules:
         module=ModuleType(package);module.__path__=[str(folder)];sys.modules[package]=module
     return load_upstream(package+'.'+name,folder/(name+'.py'))
@@ -25,8 +25,12 @@ def prepare(payload,root):
             raise ValueError('Invalid Work No. for a map filename: '+value)
     if len({v.casefold() for v in ids})!=len(ids):raise ValueError('Work Nos differ only by capitalization.')
     book=pd.ExcelFile(payload['primerLog'],engine='openpyxl')
-    frames=[pd.read_excel(book,sheet_name=n,dtype=object) for n in book.sheet_names if n.lower() in ('input addon','obsolete input addon(completed)')]
-    if not frames:raise ValueError('No input addon sheet found.')
+    try:
+        names={n.lower():n for n in book.sheet_names}
+        if 'input addon' not in names:raise ValueError('No input addon sheet found.')
+        frames=[pd.read_excel(book,sheet_name=names[key],dtype=object) for key in ('input addon','obsolete input addon(completed)') if key in names]
+    finally:
+        book.close()
     records=[];failures=[]
     for value in ids:
         row=None

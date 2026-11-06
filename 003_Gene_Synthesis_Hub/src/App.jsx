@@ -34,6 +34,7 @@ import {
   Modal,
   FONT_DISPLAY,
   FONT_MONO,
+  ToolReleaseContext,
 } from "./ui/kit.jsx";
 import BatchQCReport from "./subapps/BatchQCReport/BatchQCReport.jsx";
 import LabelGenerator from "./subapps/LabelGenerator/LabelGenerator.jsx";
@@ -125,7 +126,7 @@ function DriveStrip({ driveMappings }) {
 }
 
 function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange }) {
-  const { raw, resolved, exists } = info;
+  const { raw, resolved, exists, edited } = info;
   const { label } = parseRawValue(raw);
   const mappedDrive = label ? driveMappings[label] : null;
 
@@ -133,19 +134,19 @@ function DirRow({ entryKey, info, driveMappings, onBrowse, onReveal, onChange })
     <div
       className="rounded-md border px-3 py-2.5 mb-2"
       style={{
-        background: exists ? C.surface : C.coralSoft,
-        borderColor: exists ? C.border : "rgba(193,85,61,0.40)",
+        background: edited ? C.surface : exists ? C.surface : C.coralSoft,
+        borderColor: edited ? C.border : exists ? C.validated : "rgba(193,85,61,0.40)",
       }}
     >
       <div className="flex items-center justify-between gap-2 mb-1.5">
         <div className="flex items-center gap-2 min-w-0">
-          {exists ? (
+          {exists && !edited ? (
             <CheckCircle2 size={14} style={{ color: C.teal }} className="shrink-0" />
           ) : (
             <AlertCircle size={14} style={{ color: C.coral }} className="shrink-0" />
           )}
           <span className="font-medium text-sm truncate" style={{ color: C.ink }}>
-            {displayKey(entryKey)}
+            {displayKey(entryKey)} — {edited ? "Not validated · Save and rescan" : exists ? "✓ Validated" : "✕ Not found"}
           </span>
           {label && (
             <span className="text-[11px] truncate" style={{ fontFamily: FONT_MONO, color: C.inkFaint }}>
@@ -402,12 +403,12 @@ export default function App() {
     const Component = REACT_SUBAPPS[activeSubapp.entry];
     if (Component) {
       return (
-        <Component
+        <ToolReleaseContext.Provider value={apps.find(app => app.entry === activeSubapp.entry)}><Component
           onBack={() => setActiveSubapp(null)}
           initialPaths={activeSubapp.initialPaths}
           templatePatterns={activeSubapp.templatePatterns}
           dbPatterns={activeSubapp.dbPatterns}
-        />
+        /></ToolReleaseContext.Provider>
       );
     }
   }
@@ -550,7 +551,7 @@ export default function App() {
                 <DirRow
                   key={k}
                   entryKey={k}
-                  info={{ ...info, raw: draftValues[k] ?? info.raw }}
+                  info={{ ...info, raw: draftValues[k] ?? info.raw, edited: draftValues[k] !== undefined && draftValues[k] !== info.raw }}
                   driveMappings={driveMappings}
                   onBrowse={handleBrowse}
                   onReveal={handleReveal}
@@ -566,7 +567,7 @@ export default function App() {
                 <DirRow
                   key={k}
                   entryKey={k}
-                  info={{ ...info, raw: draftValues[k] ?? info.raw }}
+                  info={{ ...info, raw: draftValues[k] ?? info.raw, edited: draftValues[k] !== undefined && draftValues[k] !== info.raw }}
                   driveMappings={driveMappings}
                   onBrowse={handleBrowse}
                   onReveal={handleReveal}

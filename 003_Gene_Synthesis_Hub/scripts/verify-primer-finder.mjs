@@ -10,11 +10,11 @@ XLSX.utils.sheet_add_aoa(sheet,[['Wells','Oligo\nName',"Sequence (5' to 3')"]],{
 XLSX.utils.sheet_add_aoa(sheet,[['A1','First',sequence]],{origin:'A35'});
 XLSX.utils.sheet_add_aoa(sheet,[['B1','Late-row-150',reverseComplement(sequence)]],{origin:'A150'});
 XLSX.utils.sheet_add_aoa(sheet,[['B2','Invalid','AAAAA?AAAAA']],{origin:'A151'});
-XLSX.utils.book_append_sheet(wb,sheet,'S-order');
+XLSX.utils.book_append_sheet(wb,sheet,'S0104');
 const fallback=XLSX.utils.aoa_to_sheet([]);
 XLSX.utils.sheet_add_aoa(fallback,[['Legacy',sequence]],{origin:'A35'});
-XLSX.utils.book_append_sheet(wb,fallback,'v-legacy');
-XLSX.utils.book_append_sheet(wb,sheet,'Ignored');
+XLSX.utils.book_append_sheet(wb,fallback,'v0910');
+for(const name of ['Ignored','Summary','Sheet1','USHE198'])XLSX.utils.book_append_sheet(wb,sheet,name);
 const bytes=XLSX.write(wb,{type:'array',bookType:'xlsx'});
 const result=await loadPrimerCandidatesFromFile({arrayBuffer:async()=>bytes});
 assert.deepEqual(result.candidates.map(p=>p.name),['First','Late-row-150','Legacy']);
