@@ -1,8 +1,6 @@
 {
-  "schema": 1,
-  "hashPolicy": "SHA256; normalize CRLF to LF for source/config text",
   "files": {
-    "Code/BATCH_QC_report/batch_qc_report_app.py": "e98beab6903f6c2cc2253188348315bd12d6def4db54c988119c71760ee0b82d",
+    "Code/BATCH_QC_report/batch_qc_report_app.py": "78136c69f13c1d8cddb442df5a04f53168a246d469438eae4908efeb1645bdab",
     "Code/ColonyPCR_layout/ColonyPCR_layout_app.py": "26bd6d17aac5de8ab9d2c30b40379c1b052cd5f326733aee8da7f6565c64757b",
     "Code/Integra_worklist/integra_worklist_app.py": "e8f9c7aae67c776b75c58850cc12247adc78750966479749a47563984469d997",
     "Code/Label_generator/label_generator_app.py": "859f4de27a2ed8ffa4af8a28d9a105a80363f757ad071dc8c564e528c45612a6",
@@ -11,22 +9,21 @@
     "Code/Label_generator/workflows/sg_relabeling.py": "59884c6929be2bda9de6e62e8f1db7400da96f79ce0f4e5f1b91a0d439e832b5",
     "Code/Ligation_layout/ligation_layout_app.py": "e6818a3806a1e29f080f942701e981af63c6476a62c625bf8ce82a06be36797a",
     "Code/Primer_finder/primer_finder_app.py": "b82d04bb6aca6bd183417df350f14cd165c803b912a7a15065c2b85e270d2a08",
+    "Code/QC_digestion_design/QC_digestion_design_app.py": "5ed686123b9092937341862842b8fed554fea7672fa46b50223f439ddcb49f5c",
     "Code/QC_digestion_design/qcd_workflows/helpers.py": "a1706f2410203a0a0a300791642284d113a272cc5e7482698013e6dc62485951",
     "Code/QC_digestion_design/qcd_workflows/vector_map_prep_biopython.py": "138dd574220ae4b5057c4ab038cd213aadcf7c1b29f775e2117244b43b2dab0c",
     "Code/QC_digestion_design/qcd_workflows/vector_map_prep_snapgene.py": "2b607265c61c22263f8783893a66029a2dc48e7c19e69fdbfe5f39a8d8171539",
-    "Code/QC_digestion_design/QC_digestion_design_app.py": "5ed686123b9092937341862842b8fed554fea7672fa46b50223f439ddcb49f5c",
-    "Code/QC_file_prep/QC_file_prep_app.py": "2aec28195e4090a58337c3e9e02b61611abc8b669af39c24ba4c3709c537767a",
-    "Code/QC_file_prep/workflows/batch_post_processing.py": "7862bfa09b5648caac7543742f2167bc44b53d18305bf54f81c7a69959541cf5",
-    "Code/QC_file_prep/workflows/inhouse_newnames.py": "4222868944f3e3de784024f140150ad1dc1113e297c887b595b5173d9d9959f9",
-    "Code/QC_file_prep/workflows/inhouse_oldnames.py": "5b6fa8e70f8882d2e50f3734d690bb9ea65fb925711251914b7f7108fa9f80d0",
-    "Code/QC_file_prep/workflows/inhouse_qc_new.py": "0affbc540506ace4c53769b0b4ec75727e86798e15633612bf7d83e21094c2da",
-    "Code/QC_file_prep/workflows/internal_renaming.py": "f49a9e4ab374b4d4c5007576a0e5cb53021486462f187fdbde656e21b6ad8fdb",
-    "Code/QC_file_prep/workflows/resuspension_prep.py": "7b02b3a396e5c44812427139324e8a92666d674c03b3180dfdef11289ee5d5c3",
-    "Code/QC_file_prep/workflows/upload_prep.py": "f474a10a84460a68e0f12a540119475eb1bda075cf13f270b2c6e82d453b5efb",
-    "Code/QC_file_prep/workflows/wgk_correction.py": "555f949b4b3dbaed84bb0d6470ec08f8317d46712f40a40512a473cb713ffc06",
+    "Code/QC_file_prep/QC_file_prep_app.py": "ffdbdb140d28a4363be93c554008364b87e47d19ec31ee460df3938fe2d8f262",
+    "Code/QC_file_prep/workflows/batch_post_processing.py": "2d6418894bf77d9491cf2694f0e692016778a303fc160d4c67b2bc1d6478c0ad",
+    "Code/QC_file_prep/workflows/inhouse_newnames.py": "0a638fcf246c9e98814b1439d3f3e0cc4354431b2e1eca71352ede5ace698336",
+    "Code/QC_file_prep/workflows/inhouse_oldnames.py": "7a54aa0a01d6521650da1643ec6df1e1acd5bc1dca536a4380ba3277526fcf22",
+    "Code/QC_file_prep/workflows/inhouse_qc_new.py": "c36c3cad3b3ef9118076b876615dfa007418de870b369f9c6f8aa5577b700c5c",
+    "Code/QC_file_prep/workflows/internal_renaming.py": "cdade054963104ff25b58439daffcd8def5cb54c0bba4b998b0ae36691ee21db",
+    "Code/QC_file_prep/workflows/upload_prep.py": "6c3da77d5c0fd2e6d3cced42c917d211ebab2d34edd0484a262004c1efa57cb3",
     "Code/Sequencing_file_organizer/sequencing_file_organizer_app.py": "38c667cdd3bd35a097f96b7c0cc01f52f60643af13d52bad5d63d76e74de0594",
     "Code/Sequencing_order_form/sequencing_order_form_app.py": "c4cd3dce80a915ec7df9a119583eb96e527c5578e980fed5c6052f5f0163e02c",
     "Code/Sequencing_reference_files/Sequencing_reference_files_app.py": "3a9ae27fb32e66e10650653c2214e6f53dc5c5547252c8ff1df602fc9718191b",
+    "Databases/Vector_database.xlsx": "be988ca9a2fa0caa4fd768597810b4751b12ce2821e48caa44c93576c9b97b05",
     "Templates/ColonyPCR_layout_v3.xlsx": "268f8a228137eedb263ca54a3b7901d4a03932d09c621b825277004b0158ef70",
     "Templates/Gene_Seq_Log_v2.xlsx": "af2caa3c295daf8ac60ef0ac2ed59a1042f0431a7da2a7350bb53bc1a593c7bb",
     "Templates/Ligation_Template_v6.xlsx": "3cc6321d7da91776c16ae7f2ceff9eaa03cfd8ebbe4af481a9dc87bf930eafe6",
@@ -35,7 +32,8 @@
     "Templates/QC_zip_template/Special Growth Protocol.pdf": "45cf506e02843439480dcbd6902fc6fbe4988ffa0ae71bdf6f9ede40590b30e2",
     "Templates/Sequencing_layout_v6.xlsx": "d0f09244fc1626579206bfcd878a394f90d838a8c4e4706d4019367f5d0233be",
     "Templates/Sequencing_order_form_v5.xlsx": "3aaa424a08277a0bbc369fee493d8b8ba72e51cd6eeb4d7362b9ba868a094c20",
-    "Templates/Sequencing_validation_v6.xlsx": "391c8f6f90df38a48deea4cdd3163a0de6b0e180db2b205c7b6f76c9180cecc8",
-    "Databases/Vector_database.xlsx": "be988ca9a2fa0caa4fd768597810b4751b12ce2821e48caa44c93576c9b97b05"
-  }
+    "Templates/Sequencing_validation_v6.xlsx": "391c8f6f90df38a48deea4cdd3163a0de6b0e180db2b205c7b6f76c9180cecc8"
+  },
+  "hashPolicy": "SHA256; normalize CRLF to LF for source/config text",
+  "schema": 1
 }

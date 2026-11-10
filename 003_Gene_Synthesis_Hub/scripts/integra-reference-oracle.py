@@ -1,3 +1,4 @@
+import csv,io
 """Execute the bundled reference's processing with inert Streamlit widgets.
 
 No Streamlit server, GUI, downloads or instrument access. The actual reference
@@ -39,4 +40,4 @@ widgets=Widgets();sys.modules['streamlit']=widgets
 source=Path(__file__).resolve().parent.parent/'python-app/Code/Integra_worklist/integra_worklist_app.py'
 exec(compile(source.read_text(encoding='utf-8-sig'),str(source),'exec'),{'__name__':'__reference_oracle__'})
 print(json.dumps({'automation':widgets.session_state['bm_df']['Automation_string'].tolist(),
-                  'validation':json.loads(widgets.session_state['validation_df'].to_json(orient='values'))}))
+                  'validation':list(csv.reader(io.StringIO(widgets.session_state['validation_df'].to_csv(index=False))))[1:]}))

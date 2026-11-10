@@ -16,7 +16,7 @@
  */
 
 import * as XLSX from "xlsx";
-import { buildHeaderMap, columnLetter } from "../../ui/columns.js";
+import { columnLetter, normHeader } from "../../ui/columns.js";
 
 /**
  * Pulls every primer from the Primer Log's `input addon` sheet for the given
@@ -42,10 +42,18 @@ export async function getPrimerInfo(primerLogFile, workNos) {
   const aoa = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     blankrows: false,
-    raw: false,
+    raw: true,
   });
   const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
-  const headerMap = buildHeaderMap(headers);
+  // The order-form app builds its header index with a dict comprehension —
+  // duplicate normalized headers keep the LAST column (the shared helper
+  // keeps the first; other apps differ upstream).
+  const headerMap = {};
+  headers.forEach((h, i) => {
+    if (h === null || h === undefined || h === "") return;
+    const key = normHeader(h);
+    if (key) headerMap[key] = i;
+  });
 
   // Work No. column: canonical first, legacy spellings tolerated.
   let workIdx = null;
@@ -70,14 +78,14 @@ export async function getPrimerInfo(primerLogFile, workNos) {
   if (workIdx !== null && ampIdx !== null) {
     primerStart = ampIdx + 1; // individual primers follow the group header
     log =
-      `'input addon': columns resolved by name (Work No.=${columnLetter(workIdx + 1)}, ` +
-      `primer block from ${columnLetter(primerStart + 1)} after 'Amplification primers')`;
+      `'input addon': columns resolved by name (Work No.=${columnLetter(workIdx)}, ` +
+      `primer block from ${columnLetter(primerStart)} after 'Amplification primers')`;
   } else {
     workIdx = 0;
     primerStart = 16; // historic: Work No.=A, primers from col Q
     log =
       "'input addon': header row not recognized; falling back to fixed columns " +
-      `(Work No.=A, primers from ${columnLetter(primerStart + 1)})`;
+      `(Work No.=A, primers from ${columnLetter(primerStart)})`;
   }
 
   // Skip header (row 0). Start from row 1.
@@ -89,8 +97,10 @@ export async function getPrimerInfo(primerLogFile, workNos) {
     if (!workNoSet.has(workNo)) continue;
     for (let c = primerStart; c < row.length; c++) {
       const val = row[c];
-      if (val != null && val !== "") {
-        primers[workNo].push(String(val));
+      // Python truthiness (0/False/blank cells are skipped) and raw values
+      // are appended verbatim — the order form writes them as-is.
+      if (val) {
+        primers[workNo].push(val);
       }
     }
   }
@@ -136,7 +146,7 @@ export async function getSequenceSampleId(seqValidationFile, workNos) {
   const aoa = XLSX.utils.sheet_to_json(sheet, {
     header: 1,
     blankrows: true,
-    raw: false,
+    raw: true,
   });
   const ordered = [];
   // Excel rows 2..98 inclusive. xlsx is 0-indexed, so Excel row 2 is index
@@ -148,7 +158,9 @@ export async function getSequenceSampleId(seqValidationFile, workNos) {
     if (!cell) continue;
     const workNo = String(cell).trim();
     if (workNoSet && !workNoSet.has(workNo)) continue;
-    const sampleId = row[3] != null ? String(row[3]).trim() : "";
+    // The Python appends the RAW Column D cell (a number stays a number, a
+    // blank stays None); the builder writes it into column C verbatim.
+    const sampleId = row[3] != null ? row[3] : "";
     // No dedupe: one tuple per matching row, exactly like the Python.
     ordered.push([workNo, sampleId]);
   }

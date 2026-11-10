@@ -95,8 +95,9 @@ export default function PrimerFinder({ onBack, initialPaths }) {
   }, [initialPaths]);
 
   const cleanedLen = cleanedSeq.length;
-  const rawLen = (targetSeq || "").length;
-  const invalidChars = rawLen - cleanedLen;
+  const rawNoSpaceLen = (targetSeq || "").replace(/\s+/g, "").length;
+  // The Tk count excludes whitespace (formatting), only non-ATCGN characters.
+  const invalidChars = rawNoSpaceLen - cleanedLen;
 
   const canAnalyze = cleanedLen > 0 && primerFileValid && !running;
 

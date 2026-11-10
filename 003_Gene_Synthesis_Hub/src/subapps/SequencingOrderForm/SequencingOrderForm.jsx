@@ -348,7 +348,13 @@ export default function SequencingOrderForm({ onBack, initialPaths }) {
         const linked=relinkSequencingLayout(template.bytes,`Sequencing_order_form_${dateId}.xlsx`);
         const written=await window.api.writeBinaryFile({filePath:destPath,bytes:linked.bytes});
         if(!written.ok)throw new Error(written.error||"Layout could not be saved.");
-        appendLog(`Layout saved with ${linked.linksUpdated} link(s) to the new order form.`);
+        if(linked.linksUpdated>0){
+          appendLog("  > Updated to: "+`Sequencing_order_form_${dateId}.xlsx`);
+          appendLog(`Layout saved with ${linked.linksUpdated} link(s) to the new order form.`);
+        } else {
+          appendLog("  > No matching links found.");
+          appendLog(`Layout saved unchanged next to the order form.`);
+        }
       } else {
         appendLog("NOTE: no Sequencing layout template was configured — nothing to copy.");
       }

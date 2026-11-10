@@ -32,14 +32,17 @@
 - Integra corrects numeric reaction sorting and retains separate validation rows for blank clone IDs; reference parity is tested for normal combinations.
 - QC GenBank supports BioPython 1.86's circular compound feature API, rejects invalid filename/DNA input and protects existing outputs by default.
 - QC File Prep works on private copies and exports unique run folders; native dialogs replace Tk state. Native DOCX header adjustment preserves geometry rather than requiring Word.
-- BATCH source's dependency-install guard is replaced while loading the worker module, and OCR resolves only the bundled executable. Raw upstream source remains unchanged.
+- BATCH source's dependency-install guard is replaced while loading the worker module, so RapidOCR (PP-OCRv6-small models ride in the wheel) reads the OD images in-process without runtime installs. Raw upstream source remains unchanged.
 
 Do not turn missing optional packages into runtime downloads, start a background web server, or detach untracked Python GUI processes as a shortcut.
 
 
-## Reference refresh: November 2026
+## Reference refresh: November 2026 (r2)
 
-The source snapshot tracks the eleven Gene Synthesis tools at BBI reference commit 319bec8. Native ports now include Ligation3.3, Colony1.6, Primer1.2, Reference Files1.4, Order Form4.7, Organizer4.4, Integra4.6 and Label Generator1.4 behaviors. BATCH1.2, QC Design1.5 and QC File Prep2.6 continue to call the refreshed bundled processing code through their headless adapters.
+The source snapshot tracks the eleven Gene Synthesis tools at BBI reference commit 6880788. Native ports now include Ligation3.3, Colony1.6, Primer1.2, Reference Files1.4, Order Form4.7, Organizer4.4, Integra4.6 and Label Generator1.4 behaviors. BATCH1.5, QC Design1.5 and QC File Prep2.6 continue to call the refreshed bundled processing code through their headless adapters.
+
+- This r2 pass carries upstream's November 9 rounds: BATCH Report v1.3–v1.5 (RapidOCR in-process OCR, stem-based zip-name parsing with exact-name-first sequence classification, Status column removed from the XLSX), Upload Prep v1.1 (sources retargeted to the "3.6.6 QC files uploaded" folder, originals move into their shipment-year subfolder — the native adapter passes QC_uploaded), In-House New Names v3.5 and In-House QC New v1.2. The retired WGK Correction and Resuspension Prep workflows are gone from the mirror, the native workflow list, the adapters and the manifest.
+- Requirements swap pytesseract for `rapidocr==3.10.0` + `onnxruntime==1.31.1` (the OCR models ship inside the rapidocr wheel; no bundled tessdata or executable is needed).
 
 - `ToolReleaseContext` reads per-tool version/date from the staged catalog. It describes upstream behavior, independently of the Electron hub release version.
 - Workbook validation fails closed on changed inputs and ignores stale async completions. Colony templates use their active sheet; do not require a pre-existing "Plate 1" title.
@@ -47,6 +50,7 @@ The source snapshot tracks the eleven Gene Synthesis tools at BBI reference comm
 - Reference Files checks only current/prior-year archive locations, avoiding large recursive walks. Conflicting duplicate sequence rows fail preflight rather than silently overwriting each other.
 - Upload Prep uses the upstream scenario resolver and executor with checksum-verified exclusive copy/move primitives. Its table is a preview; execution revalidates the workbook stamp and source availability. Existing target/archive collisions preserve originals. This workflow intentionally moves received originals after a successful upload-stage copy; it differs from the other seven preparation workflows.
 - Labels use the reference SO/BBI ID/Plasmid key. Add reparses automatically; checked selections drive the Selected tab and headerless ten-column clipboard output. Dated-folder discovery uses the configured Shipping_List root.
-- QC Design adapters import `qcd_workflows`, the renamed upstream package. Bundled OCR config targets the lazy-loaded pytesseract module without changing source mirrors.
+- QC Design adapters import `qcd_workflows`, the renamed upstream package. SnapGene outputs land in the Electron-chosen output folder through a pasted full path instead of SnapGene's own save target, and Work Nos differing only by case are rejected.
+- BATCH's OD review queue is a native modal over the OCR table images: fully-typed rows are MANUAL, rows left (partially) empty stay PENDING in their flagged fields, "Leave all pending" marks the readable rows PENDING before the write, and a non-numeric entry is rejected naming the record.
 
 Run `verify:quick` and compile in the development Sandbox. `scripts/rework-check.cjs` exercises every tool through real Electron IPC and renderer controls; `scripts/verify-refresh-ui.cjs` adds discovery, filtering, clipboard, one-of-eight Upload execution and session reload. These UI harnesses expect the documented isolated guest mappings and private test fixtures; they are not production launchers. Keep real sample inputs and test results outside Git. No dependency installation or release package is needed for a development UI check.

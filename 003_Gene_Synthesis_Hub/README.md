@@ -2,7 +2,7 @@
 
 **Eleven gene-synthesis tools in one portable Windows application.** Prepare ligation and colony-PCR plates, find primers, export sequencing references and order forms, organize sequencing files, prepare QC deliverables, create vector maps and generate labels or liquid-handler worklists. The catalog follows the original Gene Synthesis Hub names and order, with two columns, larger text and a muted blue-green theme. The window opens maximized, and each tool displays its reference version and date alongside clear input-validation feedback.
 
-All tool interfaces run inside Electron. Scientific, document and OCR processing uses a bundled headless Python worker where appropriate. The app starts no Streamlit server and opens no Tk windows. Extract the complete folder ZIP and double-click **Gene Synthesis Hub.exe**; users do not install Node, npm, Python or Tesseract.
+All tool interfaces run inside Electron. Scientific, document and OCR processing uses a bundled headless Python worker where appropriate. The app starts no Streamlit server and opens no Tk windows. Extract the complete folder ZIP and double-click **Gene Synthesis Hub.exe**; users do not install Node, npm or Python.
 
 ![Gene Synthesis Hub](../Images_GIFs_Videos/003_Gene_Synthesis_Hub.png)
 
@@ -33,16 +33,14 @@ Names, identifiers and workbook columns follow the reference hub. The former ext
 
 ## QC File Prep workflows
 
-Choose a workflow from the dropdown. The seven report-preparation workflows keep source ZIPs unchanged, process private temporary copies and publish into a new run folder. Upload Prep stages checked ZIPs and archives received originals only after successful verified copies.
+Choose a workflow from the dropdown. The five report-preparation workflows keep source ZIPs unchanged, process private temporary copies and publish into a new run folder. Upload Prep stages checked ZIPs and moves processed originals into their shipment-year subfolder only after successful verified copies.
 
 | Workflow | What it does |
 | --- | --- |
-| **Upload Prep** | Reviews the latest shipment dates, resolves all eight tube/plate scenarios, copies checked ZIPs into QC_to_upload and archives successful received-source originals by shipment year |
+| **Upload Prep** | Reviews the latest shipment dates, resolves all eight tube/plate scenarios, copies checked ZIPs from the “3.6.6 QC files uploaded” folder into QC_to_upload and moves the processed originals into that folder’s shipment-year subfolder |
 | **In-House New Names** | Adjusts vendor reports, inserts matching gel images or removes the digestion block, and optionally renames from the Shipment and QC Log |
 | **In-House Old Names** | Applies the original WorkNo.PlasmidNo naming/report workflow |
 | **Internal Renaming** | Uses a tab-separated replacement map for filenames, folders and report identifiers; optionally removes the digestion table |
-| **WGK Correction** | Replaces plasmid quantity using one value or per-ID values from a tab-separated file |
-| **Resuspension Prep** | Extracts identifiers, quantity and OD ratios into a DOCX table |
 | **BATCH Post-Processing** | Preflights reports, asks for vector FASTA and four OD measurements, prepares customer sequence files and insert flanks, and re-zips the delivery |
 | **In-House QC New (from scratch)** | Builds delivery ZIPs from Job Log rows, sorted references/reads, bundled report/PDF templates and user-provided PDF/SQD alignments |
 

@@ -132,7 +132,7 @@ class BatchPostProcessing:
         return True
 
     def setup_default_paths(self):
-        default_path = self.app.make_path_from_config('Paths', 'QC_Input_Folder')
+        default_path = self.app.make_path_from_config('Paths', 'QC_received')
         if default_path and os.path.isdir(default_path):
             self.app.input_folder.set(default_path)
             self.log(f"[OK] \t Default input folder found and set to: {default_path}")

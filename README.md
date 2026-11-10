@@ -122,7 +122,7 @@ Process 68 paired reads from Sample 5, plate 2. Choose the input and a separate 
 
 The maximized workspace shows each tool’s reference version and date, with green validation checks for ready inputs. Eight QC File Prep workflows cover report preparation and checked shipment uploads; Upload Prep previews matching ZIPs and archives received originals after verified copying. Organizer can reload the last batch, Labels supports filtering and dated-folder discovery, and Integra provides sample-number, reaction-count or paste-order sorting.
 
-Extract the complete folder ZIP and run the application without installing Node, npm, Python or Tesseract. Configure local files or lab paths through **Directories**, review results and logs, and preserve the portable data folder between updates. GenBank and DOCX processing work independently; optional legacy DOC and SnapGene automation require those installed applications. Lab-network access and physical instrument operation remain separate acceptance checks.
+Extract the complete folder ZIP and run the application without installing Node, npm, or Python. Configure local files or lab paths through **Directories**, review results and logs, and preserve the portable data folder between updates. GenBank and DOCX processing work independently; optional legacy DOC and SnapGene automation require those installed applications. Lab-network access and physical instrument operation remain separate acceptance checks.
 
 </div>
 <div class="right-column-65" markdown="1">

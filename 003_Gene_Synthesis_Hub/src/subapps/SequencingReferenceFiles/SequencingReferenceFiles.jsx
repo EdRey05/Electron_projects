@@ -171,14 +171,24 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
       appendLog("");
 
       const planned = planWorkbookOutputs(extracted.rows); // Validate every name/collision before any write.
-      const total = planned.length;
+      const total = extracted.rows.length;
       let filesWritten = 0;
       let failures = 0;
-      let overwritten = 0, completed = 0;
+      let overwritten = 0, completed = 0, emptyVectorSkipped = 0;
+      const seenWorkNos = new Set();
       for (let i = 0; i < total; i++) {
-        const outputs = [planned[i]];
+        const row = extracted.rows[i];
+        if (seenWorkNos.has(row.jobId)) {
+          appendLog(`  ⚠ Duplicate Work No. row: ${row.jobId} — later rows overwrite earlier files`);
+        }
+        seenWorkNos.add(row.jobId);
+        const outputs = planOutputs(row); // Same plan the preflight validated, per row, in file order.
         for (const o of outputs) {
-          const filePath = `${outputDir}/${o.name}`.replace(/\\/g, "/");
+          if (o.skipped) {
+            emptyVectorSkipped++;
+            appendLog(`  ⚠ Skipped ${o.name} — Vector cell is empty; the combined name needs a vector`);
+            continue;
+          }
           const result = await window.api.writeReferenceFile({
             directory:outputDir,name:o.name,
             text: o.contents,
@@ -187,8 +197,9 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
             failures++;
             appendLog(`  ✗ ${o.name}: ${result?.error || "write failed"}`);
           } else {
-            if(result.outcome==='completed'){completed++;appendLog(`  ⏭ Completed in ${result.year}: ${o.name} · skipped`);}
-            else {filesWritten++;if(result.outcome==='overwritten')overwritten++;appendLog(`  ✓ ${result.outcome==='overwritten'?'Overwritten':'Created'}: ${o.name}`);}
+            if(result.outcome==='completed'){completed++;appendLog(`  ⏭ Skipped ${o.name} - completed copy already in \\${result.year}\\ (project finished, not remade)`);}
+            else if(result.outcome==='overwritten'){filesWritten++;overwritten++;appendLog(`  ⚠ Overwrote existing: ${o.name}`);}
+            else {filesWritten++;appendLog(`  ✓ Created: ${o.name}`);}
           }
         }
         setProgress((i + 1) / total);
@@ -198,7 +209,7 @@ export default function SequencingReferenceFiles({ onBack, initialPaths }) {
 
       setResults({ filesWritten, rowsProcessed: extracted.rows.length });
       setProgress(1);
-      const summary = `--- Processing Finished ---\nRows processed: ${extracted.rows.length}\nCreated: ${filesWritten-overwritten} · Overwritten: ${overwritten} · Completed/skipped: ${completed}`;
+      const summary = `--- Processing Finished ---\nRows processed: ${extracted.rows.length}\nFiles created: ${filesWritten-overwritten}\nFiles overwritten: ${overwritten}\nFiles skipped (completed in year folder): ${completed}\nFiles skipped (empty Vector): ${emptyVectorSkipped}`;
       appendLog("");
       appendLog(summary);
       setStatus({

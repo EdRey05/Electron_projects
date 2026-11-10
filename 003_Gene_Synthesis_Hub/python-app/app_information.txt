@@ -92,7 +92,7 @@ date_released = 2026-11-03
 status = success
 message = QC file utilities: Fix from Sg, create new, organize them for upload
 requires =
-pass_dir_as_kwarg = QC_Output_Folder:output_folder; QC_Gel_Ladder:gel_ladder_path; Job_Log:job_log_path; Shipping_List:shipping_list_path; QC_Gel_Images:gel_images_path; Shipment_and_QC_Log:shipment_qc_log_path; Sorted_Sequencing_Files:sorted_sequencing_files_path
+pass_dir_as_kwarg = QC_uploaded:output_folder; QC_Gel_Ladder:gel_ladder_path; Job_Log:job_log_path; Shipping_List:shipping_list_path; QC_Gel_Images:gel_images_path; Shipment_and_QC_Log:shipment_qc_log_path; Sorted_Sequencing_Files:sorted_sequencing_files_path
 
 [BATCH QC Report]
 category = react_route
@@ -100,8 +100,8 @@ path = Code/BATCH_QC_report
 entry = BatchQCReport.jsx
 class_name = BatchQCReportApp
 icon = 📊
-version = 1.2
-date_released = 2026-10-31
+version = 1.5
+date_released = 2026-11-09
 status = success
 message = Generates QC report from BATCH QC zip files: BBI ID, Plasmid No., sequences, OD values.
 requires =

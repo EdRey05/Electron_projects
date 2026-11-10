@@ -503,10 +503,10 @@ class InHouseQcNew:
             f"{work_no} {bbi_id} in {vector} {prep_date} {tube_serial}"
         )
         # Prefer the hub-passed path (drive letter resolved by the hub at launch);
-        # fall back to resolving QC_Output_Folder from default_directories.ini.
-        output_dir = self.app.hub_paths.get("QC_Output_Folder")
+        # fall back to resolving QC_uploaded from default_directories.ini.
+        output_dir = self.app.hub_paths.get("QC_uploaded")
         if not output_dir or not os.path.isdir(output_dir):
-            output_dir = self.app.make_path_from_config("Paths", "QC_Output_Folder")
+            output_dir = self.app.make_path_from_config("Paths", "QC_uploaded")
         if not output_dir or not os.path.isdir(output_dir):
             return False, "QC output folder unavailable."
         # Staging: single temp folder whose name equals the zip name; files live
@@ -1090,33 +1090,41 @@ class InHouseQcNew:
 
         try:
             recent_prefixes, recent_years = self._recent_folder_info()
-            all_year_folders = [
+            top_entries = [
                 f
                 for f in os.listdir(gel_images_folder)
                 if os.path.isdir(os.path.join(gel_images_folder, f))
             ]
-            year_folders_to_search = sorted(
-                [f for f in all_year_folders if f in recent_years], reverse=True
-            )
         except FileNotFoundError:
             self.log(f"[ERROR] \t Gel images folder does not exist: {gel_images_folder}")
             return False
 
-        for year_folder in year_folders_to_search:
-            year_path = os.path.join(gel_images_folder, year_folder)
+        # The date-coded folders (U1030, ...) sit at the main level of the
+        # gel images folder; the year folders (2026, ...) are only a
+        # fallback for batches that were moved there already or for older
+        # things being re-processed.
+        search_paths = [gel_images_folder]
+        search_paths += [
+            os.path.join(gel_images_folder, year_folder)
+            for year_folder in sorted(
+                [f for f in top_entries if f in recent_years], reverse=True
+            )
+        ]
+
+        for search_path in search_paths:
             # Filter subfolders to only include those matching the recent prefixes.
             subfolders = sorted(
                 [
                     f
-                    for f in os.listdir(year_path)
-                    if os.path.isdir(os.path.join(year_path, f))
+                    for f in os.listdir(search_path)
+                    if os.path.isdir(os.path.join(search_path, f))
                     and len(f) >= 5
                     and f[:3] in recent_prefixes
                 ],
                 reverse=True,
             )
             for subfolder in subfolders:
-                subfolder_path = os.path.join(year_path, subfolder)
+                subfolder_path = os.path.join(search_path, subfolder)
                 for fname in os.listdir(subfolder_path):
                     if not fname.lower().endswith((".jpg", ".jpeg", ".png")):
                         continue
@@ -1133,7 +1141,7 @@ class InHouseQcNew:
                         return True
 
         self.log(
-            f"[ERROR] \t No gel image for Work No. '{work_no}' & Plasmid No. '{plasmid_no}' (searched last 6 months)."
+            f"[ERROR] \t No gel image for Work No. '{work_no}' & Plasmid No. '{plasmid_no}' (searched 3.6.7 main level and year folders, last 6 months)."
         )
         return False
 

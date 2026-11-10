@@ -12,5 +12,5 @@ for(const sortMode of ['sample','none','reactions'])for(const autoWells of [true
  if(!autoWells)assert.deepEqual(actual.map(row=>row.work_no),rows.map(row=>row.work_no));
 }
 assert.throws(()=>buildBulk([{...rows[0],work_no:'BAD'}],{source:'B',target:'C',volume:85,sortMode:'sample'}),/readable digits/);
-assert.throws(()=>buildBulk(rows.map(row=>({...row,Seq_well:'A1'})),{source:'B',target:'C',volume:85,pool:false,autoWells:false}),/Duplicate manual/);
+assert.throws(()=>buildBulk(rows.map(row=>({...row,Seq_well:'A1'})),{source:'B',target:'C',volume:85,pool:false,autoWells:false}),/multiple rows share the same Seq well: A1/);
 console.log('Integra 4.6: all three sort modes × pooling × generated/manual wells match the actual reference; suffixes, stable ties, invalid keys and duplicate manual targets passed.');

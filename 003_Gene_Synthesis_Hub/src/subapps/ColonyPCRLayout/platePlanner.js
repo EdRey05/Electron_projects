@@ -133,9 +133,12 @@ export function planPlates(summaryData, cloneCounts) {
     }
   }
 
-  // Place controls in the final plate
+  // Place controls in the final plate. The Python starts a NEW bordered run
+  // whenever the column changes between consecutive control cells, so a
+  // CK+/CK- pair that straddles the right edge gets one thick outline each.
   let controlStartRow = currentRow;
   let controlStartCol = currentCol;
+  let lastControlCol = currentCol;
   for (const ctrl of ["CK+", "CK-"]) {
     if (currentRow >= PLATE_ROWS) {
       currentCol += 1;
@@ -148,7 +151,14 @@ export function planPlates(summaryData, cloneCounts) {
       currentCol = 0;
       controlStartRow = 0;
       controlStartCol = 0;
+      lastControlCol = currentCol;
     }
+    if (currentCol !== lastControlCol) {
+      // Column changed: this control opens its own bordered run.
+      controlStartRow = currentRow;
+      controlStartCol = currentCol;
+    }
+    lastControlCol = currentCol;
     current.controls.push({
       label: ctrl,
       row: currentRow,

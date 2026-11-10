@@ -50,13 +50,13 @@ export function folderNameFor(jobId, plasmidNumber) {
  *   { type: "other" }    - skipped
  */
 export function classifyFile(filename) {
-  if (filename.toLowerCase().endsWith(".seq")) return { type: "seq" };
-  if (
-    /^pos/i.test(filename)
-  ) {
+  // Case-sensitive, like os.listdir + str.endswith upstream: ".SEQ", ".AB1"
+  // and ".FASTA" variants fall through to "other" and are simply skipped.
+  if (filename.endsWith(".seq")) return { type: "seq" };
+  else if (/^(POS|Pos|pos)/.test(filename)) {
     return { type: "pos" };
   }
-  if (!(filename.toLowerCase().endsWith(".ab1") || filename.toLowerCase().endsWith(".fasta"))) {
+  if (!(filename.endsWith(".ab1") || filename.endsWith(".fasta"))) {
     return { type: "other" };
   }
   const { jobId, plasmidNumber } = extractInfo(filename);

@@ -31,6 +31,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not record Python dependency resolution.
 $locked = @(Get-Content $requirementsToInstall | Where-Object { $_.Trim() -and !$_.StartsWith('#') } | ForEach-Object { $_.Trim().ToLowerInvariant().Replace('_','-') } | Sort-Object)
 $resolved = @(Get-Content (Join-Path $export 'python-resolved-requirements.txt') | Where-Object { $_.Trim() } | ForEach-Object { $_.Trim().ToLowerInvariant().Replace('_','-') } | Sort-Object)
 if (Compare-Object $locked $resolved) { throw 'Installed Python packages differ from the committed complete lock.' }
+if ($profile.msvcRuntime) {
+    Step 'Staging checksum-pinned Microsoft C++ DLLs beside bundled Python'
+    & C:\Runner\Stage-MsvcRuntime.ps1 -Runtime $runtime -ExportDirectory $export
+}
 $probe = "import importlib,tkinter; [importlib.import_module(n) for n in '" + ($profile.pythonImports -join ',') + "'.split(',') if n]; print(tkinter.Tcl().eval('info patchlevel'))"
 Run $python @('-I','-c',$probe)
 if ($profile.tesseract) {

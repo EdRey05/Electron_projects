@@ -47,14 +47,28 @@ def labels(payload):
     parser=module.SgRelabeling(SimpleNamespace(log=log))
     files=payload.get('files',[])
     if not files:raise ValueError('Choose at least one shipping list.')
-    records=[]
+    # Upstream auto-parse tolerates per-file failures: a list that cannot be
+    # read is logged and skipped, and the remaining files still parse.
+    all_rows=[];failed=[]
     for file in files:
-        if Path(file).suffix.lower() not in ('.xlsx','.xls'):raise ValueError('Shipping lists must be XLS or XLSX files.')
-        log('Reading '+Path(file).name)
-        records.extend(parser._read_shipping_list(file))
-    records=parser._dedupe_rows(records)
+        name=Path(file).name
+        try:
+            rows=parser._read_shipping_list(file)
+            if not rows:
+                failed.append(name);log(f"[WARNING] \t '{name}': no data rows could be parsed.");continue
+            log(f"[OK] \t '{name}': {len(rows)} construct row(s) identified.")
+            all_rows.extend(rows)
+        except Exception as exc:
+            failed.append(name);log(f"[ERROR] \t Failed to read '{name}': {exc}")
+    records=[]
+    if all_rows:
+        records=parser._dedupe_rows(all_rows)
+        log(f"[SUMMARY] \t {len(all_rows)} raw construct row(s) -> {len(records)} unique row(s) after replicate/charge collapse.")
+    else:
+        log("[FINISHED] \t No construct rows identified. Nothing to do.")
+    if failed:
+        log(f"[WARNING] \t Files with no usable data: {', '.join(failed)}")
     columns=[entry[0] for entry in module.TABLE_COLUMNS]
-    log(f'{len(records)} constructs loaded.')
     return {'columns':columns,'records':records}
 def batch_report(payload):
     from processors.batch_report import run

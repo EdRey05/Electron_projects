@@ -7,7 +7,8 @@ async function writeReference({directory,name,text},year=new Date().getFullYear(
  // Exact probes only: never enumerate the potentially huge reference/archive folder.
  for(const archiveYear of [year,year-1])if(await exists(path.join(directory,String(archiveYear),name)))return {ok:true,outcome:'completed',year:archiveYear};
  const target=path.join(directory,name),existed=await exists(target);
- await fs.writeFile(target,text,'utf8');
+ // The Tk app writes in text mode on Windows: line breaks come out CRLF.
+ await fs.writeFile(target,text.replace(/\r?\n/g,'\r\n'),'utf8');
  return {ok:true,outcome:existed?'overwritten':'created'};
 }
 module.exports={writeReference};

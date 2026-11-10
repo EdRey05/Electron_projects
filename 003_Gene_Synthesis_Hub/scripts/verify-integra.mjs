@@ -23,13 +23,13 @@ for(const pool of [false,true])for(const autoWells of [false,true])for(const aut
 }
 const options={source:'B',target:'C',volume:85,pool:true,autoWells:true,autoSort:true};
 assert.equal(buildBulk(rows,options)[0].Source_well,'A5');
-assert.equal(validationRows(buildBulk(rows,options),true)[0][5],30);
+assert.equal(validationRows(buildBulk(rows,options),true)[0][5],'30.0');
 assert.equal(parsePaste(FIELDS.map((_,i)=>'v'+i).join('\t'))[0].work_no,'v0');
 assert.throws(()=>buildBulk([{...rows[0],Seq_reactions:'bad'}],options),/numeric/);
-assert.throws(()=>buildBulk([{...rows[0],Seq_well:'A99'}],{...options,autoWells:false}),/Invalid Seq well/);
-assert.throws(()=>buildBulk([rows[0],{...rows[1],Seq_well:'B2'}],{...options,autoWells:false}),/conflicting/);
+assert.equal(buildBulk([{...rows[0],Seq_well:'A99'}],{...options,autoWells:false})[0].Target_well,'A99','Reference accepts nonblank manual target labels');
+assert.throws(()=>buildBulk([rows[0],{...rows[1],Seq_well:'B2'}],{...options,autoWells:false}),/inconsistencies in manual well assignments/);
 assert.equal(buildBulk([{...rows[0],Seq_reactions:'2'},{...rows[2],Seq_reactions:'10'}],options)[0].work_no,'WORK02','Reactions sort numerically, including 10 versus 2');
-assert.equal(validationRows(buildBulk(rows.map(r=>({...r,Concentration:'1.2345'})),options),true)[0][5],1.234,'Validation uses NumPy-style ties-to-even rounding');
+assert.equal(validationRows(buildBulk(rows.map(r=>({...r,Concentration:'1.2345'})),options),true)[0][5],'1.234','Validation uses NumPy-style ties-to-even rounding');
 const single=transfer({work_no:'SINGLE',Source_well:'A1',Target_well:'H6'},options);
 assert.equal(single.Automation_string,'SINGLE;B;A1;C;H6;85');
 assert(worklistCsv([single]).startsWith(WORKLIST_HEADER+'\n'));

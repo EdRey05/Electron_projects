@@ -8,13 +8,13 @@ export default function IntegraWorklist({onBack}) {
   const setRows=value=>setOutputs(previous=>({...previous,[mode]:typeof value==='function'?value(previous[mode]):value}));
   const [options,setOptions]=useState({source:'B',target:'C',volume:85,pool:true,autoWells:true,sortMode:'sample'});
   const [workNo,setWorkNo]=useState(''),[sourceWell,setSourceWell]=useState(''),[targetWell,setTargetWell]=useState('');
-  const [name,setName]=useState('integra_worklist'),[error,setError]=useState(''),[status,setStatus]=useState('');
+  const [worklistName,setWorklistName]=useState(''),[validationName,setValidationName]=useState(''),[error,setError]=useState(''),[status,setStatus]=useState('');
   const change=(key,value)=>{setOptions(o=>({...o,[key]:value}));if(mode==='bulk')setRows([]);setError('');};
-  const save=async(text,suffix)=>{
-    try {const ok=await window.api.saveResultsCsv((name.trim()||'integra_worklist')+suffix+'.csv',new TextEncoder().encode(text).buffer);setStatus(ok?'Saved.':'Save canceled.');}
+  const save=async(text,filename)=>{
+    try {const ok=await window.api.saveResultsCsv(filename+'.csv',new TextEncoder().encode(text).buffer);setStatus(ok?'Saved.':'Save canceled.');}
     catch(e){setError(e.message);}
   };
-  const generate=()=>{try{setRows(buildBulk(input,options));setError('');setStatus('Worklist ready.');}catch(e){setRows([]);setError(e.message);}};
+  const generate=()=>{let warned='';try{setRows(buildBulk(input,{...options,onWarning:m=>{warned+=(warned?'\n':'')+m;}}));setError('');setStatus('Worklist ready.'+(warned?` ⚠ ${warned}`:''));}catch(e){setRows([]);setError(e.message);}};
   const add=()=>{try{const row=transfer({work_no:workNo,Source_well:sourceWell,Target_well:targetWell},options);setRows(old=>[...old,row]);setSourceWell('');setTargetWell('');setError('');setStatus('Sample added.');}catch(e){setError(e.message);}};
   const wellGrid=(columns,selected,onSelect,label)=><Panel title={label}><div style={{display:'grid',gridTemplateColumns:`repeat(${columns},minmax(0,1fr))`,gap:4}}>{'ABCDEFGH'.split('').flatMap(r=>Array.from({length:columns},(_,c)=>r+(c+1))).map(w=><button key={w} aria-label={`${label} ${w}`} aria-pressed={selected===w} onClick={()=>onSelect(w)} style={{padding:'8px 2px',border:'1px solid '+C.border,borderRadius:4,background:selected===w?C.navy:C.subtle,color:selected===w?'white':C.ink,fontSize:14}}>{w}</button>)}</div></Panel>;
   return <div className="h-full flex flex-col" style={{background:C.paper,color:C.ink}}>
@@ -40,7 +40,7 @@ export default function IntegraWorklist({onBack}) {
       <div style={{minHeight:30}} role={error?'alert':'status'}><span style={{color:error?C.coral:C.inkMuted}}>{error||status}</span></div>
       <Panel title="Worklist" actions={<Button disabled={!rows.length} onClick={()=>setRows([])}>Clear</Button>}>
         <DataTable rows={rows} columns={[{key:'work_no',label:'Work No.'},{key:'Source_spot',label:'Source spot'},{key:'Source_well',label:'Source well'},{key:'Target_spot',label:'Target spot'},{key:'Target_well',label:'Target well'},{key:'Transfer_volume',label:'µL'}]}/>
-        <div className="flex gap-3 items-center mt-4 flex-wrap"><label>File name <input aria-label="File name" value={name} onChange={e=>setName(e.target.value)} style={{padding:8,background:C.surface,border:'1px solid '+C.border,borderRadius:5}}/></label><Button variant="primary" disabled={!rows.length} onClick={()=>save(worklistCsv(rows),'')}>Save worklist</Button>{mode==='bulk'&&<Button variant="primary" disabled={!rows.length} onClick={()=>save(validationCsv(rows,options.pool),'_validation')}>Save validation</Button>}</div>
+        <div className="flex gap-3 items-center mt-4 flex-wrap"><label>Worklist name <input aria-label="Worklist name" value={worklistName} placeholder="worklist" onChange={e=>setWorklistName(e.target.value)} style={{padding:8,background:C.surface,border:'1px solid '+C.border,borderRadius:5}}/></label><Button variant="primary" disabled={!rows.length} onClick={()=>save(worklistCsv(rows),worklistName.trim()||'worklist')}>Save worklist</Button>{mode==='bulk'&&<><label>Validation name <input aria-label="Validation file name" value={validationName} placeholder="validation" onChange={e=>setValidationName(e.target.value)} style={{padding:8,background:C.surface,border:'1px solid '+C.border,borderRadius:5}}/></label><Button variant="primary" disabled={!rows.length} onClick={()=>save(validationCsv(rows,options.pool),validationName.trim()||'validation')}>Save validation</Button></>}</div>
       </Panel>
       {mode==='bulk'&&!!rows.length&&<Panel title="Validation preview"><DataTable rows={validationRows(rows,options.pool).map(values=>Object.fromEntries(values.map((v,i)=>[FIELDS[i],v])))} columns={FIELDS.slice(0,8).map((key,i)=>({key,label:LABELS[i]}))}/></Panel>}
     </div></main>

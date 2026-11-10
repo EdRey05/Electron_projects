@@ -17,6 +17,13 @@ Notes: Added the Upload Prep workflow (workflows/upload_prep.py v1.0): reads
     checked rows and organizes QC zips into Desktop\\QC_to_upload (email
     folders + shipment-date folders). v2.5 also accepts a Shipping_List hub
     path kwarg (4.6 Shipping list).
+Notes: dev-round layout: workflow selector sits above the folder row,
+    centered on a 5-column grid with a fixed-width dropdown; the order is
+    In-House New Names, BATCH Post-Processing, Upload Prep, Internal
+    Renaming, In-House QC New, In-House Old Names; a workflow that hides
+    the folder row restores its captured pack options so the grey row
+    keeps its height on return. WGK Correction (v1.1) and Resuspension
+    Prep (v1.2) are retired and removed.
 """
 
 import configparser
@@ -39,8 +46,6 @@ if SCRIPT_DIR not in sys.path:
 from workflows.inhouse_newnames import InHouseNewNames
 from workflows.inhouse_oldnames import InHouseOldNames
 from workflows.internal_renaming import InternalRenaming
-from workflows.wgk_correction import WgkCorrection
-from workflows.resuspension_prep import ResuspensionPrep
 from workflows.batch_post_processing import BatchPostProcessing
 from workflows.inhouse_qc_new import InHouseQcNew
 from workflows.upload_prep import UploadPrep
@@ -48,13 +53,11 @@ from workflows.upload_prep import UploadPrep
 # 2. Add a tuple to this list: (Display Name, ClassName)
 WORKFLOWS_TO_LOAD = [
     ("In-House New Names", InHouseNewNames),
-    ("In-House Old Names", InHouseOldNames),
-    ("Internal Renaming", InternalRenaming),
-    ("WGK Correction", WgkCorrection),
-    ("Resuspension Prep", ResuspensionPrep),
     ("BATCH Post-Processing", BatchPostProcessing),
-    ("In-House QC New (from scratch)", InHouseQcNew),
     ("Upload Prep", UploadPrep),
+    ("Internal Renaming", InternalRenaming),
+    ("In-House QC New (from scratch)", InHouseQcNew),
+    ("In-House Old Names", InHouseOldNames),
 ]
 
 # Workflow container height for workflows that do not declare PANEL_HEIGHT
@@ -104,7 +107,7 @@ class QCFilePrepApp(ctk.CTkFrame):
             'Gene_Invoicing_Db': gene_invoicing_db_path,
             'Gel_Ladder': gel_ladder_path,
             'Job_Log': job_log_path,
-            'QC_Output_Folder': output_folder,
+            'QC_uploaded': output_folder,
             'Shipping_List': shipping_list_path,
         }
 
@@ -112,14 +115,46 @@ class QCFilePrepApp(ctk.CTkFrame):
         if initial_input_folder:
             self.input_folder.set(initial_input_folder)
 
-        # --- 2. Create Common UI Elements ---
+        # --- 2. Workflow Selector (Dropdown) ---
+        # Dropdown replaces tabs for better scalability with many workflows.
+        # Sits ABOVE the folder row and centers on a 5-column grid: the two
+        # left spacer columns and the right spacer share the leftover width,
+        # so the label + fixed-width dropdown pair reads centered.
+        workflow_names = [name for name, _ in WORKFLOWS_TO_LOAD]
+        self.selected_workflow = ctk.StringVar(value=workflow_names[0] if workflow_names else "")
+
+        selector_frame = ctk.CTkFrame(self)
+        selector_frame.pack(fill="x", padx=12, pady=(8, 0))
+        selector_frame.grid_columnconfigure(0, weight=1)
+        selector_frame.grid_columnconfigure(1, weight=1)
+        selector_frame.grid_columnconfigure(4, weight=2)
+
+        ctk.CTkLabel(
+            selector_frame,
+            text="Select Workflow:",
+            font=ctk.CTkFont(size=13, weight="bold")
+        ).grid(row=0, column=2, padx=(0, 8))
+        self.workflow_dropdown = ctk.CTkOptionMenu(
+            selector_frame,
+            variable=self.selected_workflow,
+            values=workflow_names,
+            command=self.on_workflow_change,
+            width=320,
+            dynamic_resizing=False,
+        )
+        self.workflow_dropdown.grid(row=0, column=3)
+
+        # --- 3. Create Common UI Elements ---
         top_panel = ctk.CTkFrame(self)
-        top_panel.pack(fill="x", padx=12, pady=12)
+        top_panel.pack(fill="x", padx=12, pady=(4, 12))
 
         folder_frame = ctk.CTkFrame(top_panel)
         folder_frame.pack(pady=8)
         self.folder_frame = folder_frame
         self.top_panel = top_panel
+        # Layout options captured so pack_forget/pack_configure round trips
+        # (NEEDS_INPUT_FOLDER=False workflows) restore the exact geometry.
+        self.folder_pack_info = self.folder_frame.pack_info()
         ctk.CTkLabel(
             folder_frame,
             text="Folder with Zips:",
@@ -141,27 +176,6 @@ class QCFilePrepApp(ctk.CTkFrame):
 
         # Add a single, centralized trace to the input folder
         self.input_folder.trace_add("write", self.on_input_folder_change)
-
-        # --- 3. Create the Workflow Selector (Dropdown) ---
-        # Dropdown replaces tabs for better scalability with many workflows
-        workflow_names = [name for name, _ in WORKFLOWS_TO_LOAD]
-        self.selected_workflow = ctk.StringVar(value=workflow_names[0] if workflow_names else "")
-
-        selector_frame = ctk.CTkFrame(self)
-        selector_frame.pack(fill="x", padx=12, pady=(8, 4))
-
-        ctk.CTkLabel(
-            selector_frame,
-            text="Select Workflow:",
-            font=ctk.CTkFont(size=13, weight="bold")
-        ).pack(side="left", padx=(0, 8))
-        self.workflow_dropdown = ctk.CTkOptionMenu(
-            selector_frame,
-            variable=self.selected_workflow,
-            values=workflow_names,
-            command=self.on_workflow_change
-        )
-        self.workflow_dropdown.pack(side="left", fill="x", expand=True)
 
         # --- 4. Create Container for Workflow UI ---
         self.workflow_container = ctk.CTkFrame(self, height=180)
@@ -248,10 +262,15 @@ class QCFilePrepApp(ctk.CTkFrame):
         self._set_workflow_height(active_workflow)
 
         # 'Folder with Zips' is only used by zip-input workflows; hide it for
-        # workflows that declare NEEDS_INPUT_FOLDER = False.
+        # workflows that declare NEEDS_INPUT_FOLDER = False. pack_forget
+        # drops the row's layout options, so they are restored verbatim —
+        # otherwise the grey folder row comes back smaller (no pady) after a
+        # round trip through a workflow that hid it.
         needs_folder = getattr(active_workflow, "NEEDS_INPUT_FOLDER", True)
         if needs_folder:
-            self.folder_frame.pack_configure(in_=self.top_panel)
+            row_opts = dict(self.folder_pack_info)
+            row_opts.pop("in", None)
+            self.folder_frame.pack_configure(in_=self.top_panel, **row_opts)
             try:
                 self.folder_frame.lift()
             except Exception:

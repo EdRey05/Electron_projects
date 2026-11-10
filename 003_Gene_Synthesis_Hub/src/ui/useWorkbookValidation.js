@@ -2,7 +2,7 @@ import {useEffect,useState} from 'react';
 import {validateWorkbookSheets} from './workbookValidation.js';
 
 // A changed path fails closed immediately; late reads cannot validate a newer selection.
-export function useWorkbookValidation(filePath, requiredSheets = []) {
+export function useWorkbookValidation(filePath, requiredSheets = [], extraCheck = null) {
   const [result,setResult] = useState({path:'',state:'empty',error:''});
   const signature = JSON.stringify(requiredSheets);
   useEffect(() => {
@@ -14,6 +14,7 @@ export function useWorkbookValidation(filePath, requiredSheets = []) {
         const data = await window.api.readBinaryFile({filePath});
         if (!data?.ok) throw new Error(data?.error || 'Cannot read this file.');
         validateWorkbookSheets(data.bytes, JSON.parse(signature));
+        if (extraCheck) extraCheck(data.bytes);
         if (!stale) setResult({path:filePath,state:'valid',error:''});
       } catch (error) {
         if (!stale) setResult({path:filePath,state:'invalid',error:error.message});

@@ -44,6 +44,11 @@ contextBridge.exposeInMainWorld("api", {
   saveResultsXlsx: (defaultName, bytes) =>
     ipcRenderer.invoke("hub:saveResultsXlsx", { defaultName, bytes }),
 
+  // Native save dialog that only asks for the path; the renderer writes
+  // afterwards with writeBinaryFile. Returns the chosen path or null.
+  chooseSavePath: (defaultPath, defaultName) =>
+    ipcRenderer.invoke("hub:chooseSavePath", { defaultPath, defaultName }),
+
   // Choose an output folder via the OS dialog.
   chooseOutputDir: (initial) => ipcRenderer.invoke("hub:chooseOutputDir", initial),
 

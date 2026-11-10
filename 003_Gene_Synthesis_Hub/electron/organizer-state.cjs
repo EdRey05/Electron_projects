@@ -11,7 +11,10 @@ async function saveSession(file,record){
   validateSession(record);
   await fs.mkdir(path.dirname(file),{recursive:true});
   const temp=file+'.'+randomUUID()+'.tmp';
-  try{await fs.writeFile(temp,JSON.stringify({...record,date:new Date().toISOString()},null,2),{flag:'wx'});await fs.rename(temp,file);}
+  // The Tk record stamps '%Y-%m-%d %H:%M:%S' — keep that shape.
+  const now=new Date(),p=n=>String(n).padStart(2,'0');
+  const stamp=`${now.getFullYear()}-${p(now.getMonth()+1)}-${p(now.getDate())} ${p(now.getHours())}:${p(now.getMinutes())}:${p(now.getSeconds())}`;
+  try{await fs.writeFile(temp,JSON.stringify({...record,date:stamp},null,2),{flag:'wx'});await fs.rename(temp,file);}
   finally{await fs.unlink(temp).catch(()=>{});}
 }
 async function loadSession(file){return validateSession(JSON.parse(await fs.readFile(file,'utf8')));}

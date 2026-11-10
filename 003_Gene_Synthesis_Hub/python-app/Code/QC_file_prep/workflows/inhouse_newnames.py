@@ -86,8 +86,8 @@ class InHouseNewNames:
                                                             'Max_Img_Height_Inches', 
                                                             fallback=self.DEFAULT_MAX_IMG_HEIGHT)
                                                             )
-        self.copy_output_var = ctk.BooleanVar(value=False)
-        self.delete_intermediate_var = ctk.BooleanVar(value=False)
+        self.copy_output_var = ctk.BooleanVar(value=True)
+        self.delete_intermediate_var = ctk.BooleanVar(value=True)
         self.rename_from_excel_var = ctk.BooleanVar(value=True)
         
         self.shipment_qc_df = None
@@ -120,7 +120,7 @@ class InHouseNewNames:
 
         # Optional step checkboxes
         ctk.CTkLabel(right_panel, text="Optional Steps:").pack(anchor="w", pady=(0, 4))
-        ctk.CTkCheckBox(right_panel, text="Copy output to 'Received by BBI'", variable=self.copy_output_var).pack(anchor="w", pady=2)
+        ctk.CTkCheckBox(right_panel, text="Copy output to 'QC files uploaded'", variable=self.copy_output_var).pack(anchor="w", pady=2)
         ctk.CTkCheckBox(right_panel, text="Delete intermediate files when finished", variable=self.delete_intermediate_var).pack(anchor="w", pady=2)
         ctk.CTkCheckBox(right_panel, text="Replace Plasmid No. with Tube ID", variable=self.rename_from_excel_var).pack(anchor="w", pady=2)
 
@@ -136,7 +136,7 @@ class InHouseNewNames:
             return False
 
         if self.copy_output_var.get():
-            default_output_path = self.app.make_path_from_config('Paths', 'QC_Output_Folder')
+            default_output_path = self.app.make_path_from_config('Paths', 'QC_uploaded')
             if not default_output_path or not os.path.isdir(default_output_path):
                 messagebox.showerror("Error", "The destination folder for copying output files ('Received by BBI') does not exist.")
                 return False
@@ -217,7 +217,7 @@ class InHouseNewNames:
 
         # Copy and Delete steps should use the final (renamed) folder names
         if self.copy_output_var.get() and processed_folder_names:
-            default_output_path = self.app.make_path_from_config('Paths', 'QC_Output_Folder')
+            default_output_path = self.app.make_path_from_config('Paths', 'QC_uploaded')
             self.log("[OK] \t Copying output files to default location...")
             for zip_name in processed_folder_names:
                 source_zip_path = os.path.join(zip_output_dir, f"{zip_name}.zip")
@@ -354,7 +354,7 @@ class InHouseNewNames:
         return renamed_folders
 
     def setup_default_paths(self):
-        default_path = self.app.make_path_from_config('Paths', 'QC_Input_Folder')
+        default_path = self.app.make_path_from_config('Paths', 'QC_received')
         if default_path and os.path.isdir(default_path):
             self.app.input_folder.set(default_path)
             self.log(f"[OK] \t Default input folder found and set to: {default_path}")
@@ -690,22 +690,29 @@ class InHouseNewNames:
             # To improve performance, only search in folders from the last 6 months.
             recent_folder_prefixes, recent_years = self.get_recent_folder_info()
 
-            all_year_folders = [f for f in os.listdir(gel_images_folder) if os.path.isdir(os.path.join(gel_images_folder, f))]
-            year_folders_to_search = sorted([f for f in all_year_folders if f in recent_years], reverse=True)
+            top_entries = [f for f in os.listdir(gel_images_folder) if os.path.isdir(os.path.join(gel_images_folder, f))]
 
         except FileNotFoundError:
             self.log(f"[ERROR] \t Gel images folder does not exist: {gel_images_folder}")
             return False
 
-        for year_folder in year_folders_to_search:
-            year_path = os.path.join(gel_images_folder, year_folder)
+        # The date-coded folders (U1030, ...) sit at the main level of the
+        # gel images folder; the year folders (2026, ...) are only a
+        # fallback for batches that were moved there already or for older
+        # things being re-processed.
+        search_paths = [gel_images_folder]
+        search_paths += [os.path.join(gel_images_folder, year_folder)
+                         for year_folder in sorted([f for f in top_entries
+                                                    if f in recent_years], reverse=True)]
+
+        for search_path in search_paths:
             # Filter subfolders to only include those matching the recent prefixes.
-            subfolders = sorted([f for f in os.listdir(year_path)
-                                if os.path.isdir(os.path.join(year_path, f))
+            subfolders = sorted([f for f in os.listdir(search_path)
+                                if os.path.isdir(os.path.join(search_path, f))
                                 and len(f) >= 5 and f[:3] in recent_folder_prefixes],
                                 reverse=True)
             for subfolder in subfolders:
-                subfolder_path = os.path.join(year_path, subfolder)
+                subfolder_path = os.path.join(search_path, subfolder)
                 for fname in os.listdir(subfolder_path):
                     if not fname.lower().endswith(('.jpg', '.jpeg', '.png')): continue
                     img_name_no_ext = os.path.splitext(fname)[0]
@@ -723,7 +730,7 @@ class InHouseNewNames:
                         self.insert_image_into_doc(doc, image_path, enzymes, expected_size)
                         return True
 
-        self.log(f"[ERROR] \t No matching gel image found for Work No. '{work_no}' and Plasmid No. '{plasmid_no}' (searched last 6 months).")
+        self.log(f"[ERROR] \t No matching gel image found for Work No. '{work_no}' and Plasmid No. '{plasmid_no}' (searched 3.6.7 main level and year folders, last 6 months).")
         return False
 
     def insert_image_into_doc(self, doc: Document, image_path: str, enzymes: str, expected_size: str):

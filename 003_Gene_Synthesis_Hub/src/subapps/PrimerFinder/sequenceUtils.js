@@ -23,7 +23,9 @@ export function reverseComplement(seq) {
  * Returns "" if nothing valid remains.
  */
 export function cleanSequence(raw) {
-  return (raw || "").toUpperCase().replace(/[^ATCGN]/g, "");
+  // Two steps like the Tk app: whitespace is formatting (never counted as a
+  // dropped character), then everything outside A/T/C/G/N is dropped.
+  return (raw || "").toUpperCase().replace(/\s+/g, "").replace(/[^ATCGN]/g, "");
 }
 
 /**
@@ -44,7 +46,8 @@ export function findBinding(primer, target, targetRc) {
  * Same predicate the Python app uses.
  */
 export function isRelevantSheet(name) {
-  return /^[STUV]\d{4}$/i.test(name || '');
+  // Python: re.fullmatch(r'[STUV]\d{4}', sheet.strip().upper())
+  return /^[STUV]\d{4}$/.test(String(name || '').trim().toUpperCase());
 }
 
 /**

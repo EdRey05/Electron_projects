@@ -87,8 +87,14 @@ export function writeLayoutRows(wb, layoutRows, lookups) {
         sheet[`G${row}`] = { t: "s", v: "" };
         sheet[`H${row}`] = { t: "s", v: "" };
       }
-      const resistance = lookups?.resistance?.[vectorName];
-      sheet[`U${row}`] = { t: "s", v: resistance || item.resistance || "" };
+      // U: Antibiotic Resistance — the database lookup wins; the manual
+      // dialog value only fills in for is_manual rows (never leaks the
+      // Job Log Resistance column for log-resolved rows).
+      let resistance = lookups?.resistance?.[vectorName] || "";
+      if (!resistance && item.is_manual) {
+        resistance = item.resistance || "";
+      }
+      sheet[`U${row}`] = { t: "s", v: resistance };
     }
     rowIdx += 1;
   }

@@ -82,24 +82,38 @@ export function deriveOrderFormId(dateId) {
   const formNumber = dashIdx >= 0 ? raw.slice(dashIdx + 1).trim() : "";
 
   const codeDigits = (dateCode.match(/\d/g) || []).join("");
-  const yearCode = (dateCode.match(/[A-Za-z]/g) || []).join("");
+  const yearCode = dateCode.replace(/[^A-Za-z]/g, "");
 
+  // Reversed from the inhouse-app year-letter scheme: base year 2024 = 'S'.
+  // The code must be exactly ONE letter (a longer run would derive a bogus
+  // year) — the Tk app refuses otherwise and leaves the template value.
   let year = null;
-  if (yearCode) {
-    // Reversed from the inhouse-app year-letter scheme: base year 2024 = 'S'.
+  if (yearCode.length === 1) {
     year = 2024 + (yearCode.toUpperCase().charCodeAt(0) - "S".charCodeAt(0));
   }
 
-  if (!codeDigits || !year) {
-    return {
-      id: null,
-      warning:
-        `Could not derive the order form ID (B18) from Sequencing_ID '${raw}'. ` +
-        `Template value left in place.`,
-    };
+  const identifierRaw = formNumber;
+  const identifierIsNumeric = identifierRaw === "" || /^\d+$/.test(identifierRaw);
+  const identifier = identifierRaw === "" ? "1" : identifierRaw;
+
+  if (codeDigits && year !== null && year >= 2020 && year <= 2050 && identifierIsNumeric) {
+    return { id: `Q${year}${codeDigits}${identifier}`, warning: null };
   }
-  const identifier = formNumber || "1";
-  return { id: `Q${year}${codeDigits}${identifier}`, warning: null };
+
+  let warning;
+  if (!codeDigits || year === null) {
+    warning = "the year code must be a single letter followed by digits";
+  } else if (!(year >= 2020 && year <= 2050)) {
+    warning = `year code '${yearCode}' maps to an implausible year (${year})`;
+  } else {
+    warning = `order form number '${identifierRaw}' is not a number`;
+  }
+  return {
+    id: null,
+    warning:
+      `Could not derive the order form ID (B18) from Sequencing_ID '${raw}': ` +
+      `${warning}. Template value left in place.`,
+  };
 }
 
 /**

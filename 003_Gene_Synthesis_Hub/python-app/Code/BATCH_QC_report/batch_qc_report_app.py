@@ -3,26 +3,49 @@ Bio Basic Inc. - Canada
 Made by: Fabien Lonjon and Eduardo Reyes, Ph.D.
 Contact: ed5reyes@outlook.com
 
-Version: 1.2
-Date: Oct 31, 2026
+Version: 1.5
+Date: Nov 09, 2026
 Notes: Batch QC report generator adapted to the Gene Synthesis hub.
-    Simplified interface: folder browser + log area only. The processing
-    logic follows the standalone QC Report Extractor: BBI ID / Plasmid
-    No. / sequence extraction, OD table OCR (multi-scale voting with a
-    majority-rule retry) and the Excel report with embedded OD images.
-    Field names and report labels follow the canonical job-log naming
-    (Plasmid No., Final Vector Sequence, ng/uL).
-    v1.2: plasmid_no_from_docx reads real <w:tc> cells (a merged label
-    cell no longer repeats itself as the value); Word conversion uses
-    DispatchEx + DisplayAlerts=0 with word.Quit() in a finally (no
-    orphaned WINWORD.EXE processes, and the user's open Word is never
-    attached to); pytesseract is imported lazily - a missing OCR package
-    no longer blocks importing the module or launching the hub; stale
-    folder-validation results are dropped via a generation counter;
-    skipped sequence candidates and the picked OD image size are logged;
-    the report save cleans its image staging dir on every failure path;
-    *.zip scans ignore directories; the Tesseract popup guards grab_set
-    and wires the Run-anyways button.
+    Simplified interface: folder browser + log area only. BBI ID /
+    Plasmid No. / sequence extraction and the Excel report with
+    embedded OD images. Field names and report labels follow the
+    canonical job-log naming (Plasmid No., Final Vector Sequence,
+    ng/uL).
+    v1.3: Tesseract replaced by RapidOCR PP-OCRv6-small (in-process,
+    onnxruntime; the ONNX det/rec models ship inside the wheel - the
+    install stays `pip install rapidocr onnxruntime`, CPU-only, and
+    works on the hub's Python 3.14). The reading pipeline feeds
+    candidate crops (v1.2 table-geometry data-row strip, bench bottom
+    band, per-cell repair) to one engine and one parser; wide junk
+    gates protect candidate selection, and a plausibility-rule layer
+    (OD260/OD280/ratio ranges; ng/uL deliberately unbounded - elution
+    volumes vary) sets each record's status: AUTO, FLAGGED, PARSE-FAIL
+    or NO-IMAGE. Flagged records surface in a modal review queue
+    before the report is written: the dialog shows the cropped table
+    image (whole-image fallback) with four entry fields, and entered
+    values land directly in the final report while skipped fields stay
+    PENDING placeholders. Every row's disposition was recorded in a
+    Status column (Auto / Entered in review / PENDING review; dropped
+    in v1.5).
+    v1.4: one review dialog for all flagged records - a red section
+    title lists the no-OD-table records (read-only), the second section
+    is a regular table (one header row in black bold; BBI ID, the exact
+    OCR crop, four centered value columns) for the measurements to
+    check. Save applies each row independently; skipping leaves the
+    flagged fields pending.
+    v1.5: sequence extraction standardized on the QC_file_prep naming
+    definitions (In-House New Names + BATCH Post Processing): the zip
+    name '{Work No.} {BBI ID} in {Vector} {Date} {stripped Tube ID}' is
+    parsed once and the two needed .seq files are expected under their
+    exact derived names - '{Work No.} {BBI ID}.seq' (insert) and
+    '{Work No.}_{Vector}.seq' (final vector; letter-suffixed Work Nos.
+    included), so no name shape guessing decides the classification.
+    The legacy anchors stay as fallback only, and every classification
+    logs which path fired. The Status column was dropped from the
+    report; the review-dialog flow and the PENDING placeholders are
+    unchanged. The RapidOCR engine is built with the library's
+    Global.log_level=WARNING knob so its green "[INFO]" model-load lines
+    no longer flood the hub console.
 """
 
 import io
@@ -37,7 +60,7 @@ import threading
 import traceback
 import zipfile
 from pathlib import Path
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, ttk
 
 import customtkinter as ctk
 
@@ -214,12 +237,55 @@ def clean_seq_text(raw: bytes) -> str:
     return re.sub(r"[^ACGTRYSWKMBDHVN]", "", text)
 
 
-def extract_sequence_files(zip_ref: zipfile.ZipFile, bbi_id: str, log=print) -> tuple[str | None, str | None]:
+def normalize_ws_name(text: str) -> str:
+    """Whitespace-collapsed, uppercase form of a name for exact-name matching."""
+    return " ".join(str(text).split()).upper()
+
+
+def parse_batch_zip_name(zip_stem: str) -> dict | None:
+    """Parse the BATCH zip-name template (defined in QC_file_prep's In-House
+    New Names + BATCH Post Processing workflows):
+
+        '{Work No.} {BBI ID} in {Vector} {Date} {stripped Tube ID}'
+
+    Only the pieces the sequence extraction needs are returned (Work No.,
+    BBI ID, Vector; the Date and stripped Tube ID are unused here and the
+    Gene Name lives inside the Word document, not the zip name).
+    Returns None when the template does not match.
+    """
+    tokens = zip_stem.split()
+    in_indices = [i for i, tok in enumerate(tokens) if tok.lower() == "in"]
+    if not in_indices:
+        return None
+    in_idx = in_indices[0]
+    left, right = tokens[:in_idx], tokens[in_idx + 1:]
+    if len(left) < 2 or len(right) < 1:
+        return None
+    return {"work_no": left[0], "bbi_id": " ".join(left[1:]), "vector": right[0]}
+
+
+def extract_sequence_files(zip_ref: zipfile.ZipFile, bbi_id: str, log=print, zip_stem: str | None = None) -> tuple[str | None, str | None]:
+    """Read the two .seq files the report needs - EXACT derived names first.
+
+    File naming is defined by the QC_file_prep BATCH Post Processing
+    workflow: '{Work No.} {BBI ID}.seq' carries the insert sequence and
+    '{Work No.}_{Vector}.seq' the final vector sequence. Both names are
+    derived from the zip name itself, so letter-suffixed Work Nos.
+    (LA18985G) resolve exactly like digit-only ones (LA17758). When the
+    zip name does not match the template - or a zip deviates from the
+    defined file names - the legacy anchors stay as fallback (BBI-ID/
+    BATCH-token anchor for the insert, shape regexes for the vector,
+    widened to accept the letter suffix). Every classification path is
+    logged.
+    """
     insert_seq = None
     final_vector_seq = None
 
     normalized_bbi = re.sub(r"\s+", " ", bbi_id).strip().upper()
 
+    # Read every .seq member once, then classify: exact derived names
+    # first, legacy anchors second, first match wins per slot.
+    candidates = []
     for entry in zip_ref.namelist():
         basename = Path(entry).name
         if not basename.lower().endswith(".seq"):
@@ -239,10 +305,33 @@ def extract_sequence_files(zip_ref: zipfile.ZipFile, bbi_id: str, log=print) -> 
             log(f"      ⚠  Empty/invalid sequence: {basename}")
             continue
 
-        if re.search(rf"\b{re.escape(normalized_bbi)}\b", upper_name, re.IGNORECASE):
+        candidates.append((basename, upper_name, seq))
+
+    parsed = parse_batch_zip_name(zip_stem) if zip_stem else None
+    insert_exact = normalize_ws_name(f"{parsed['work_no']} {parsed['bbi_id']}") if parsed else None
+    vector_exact = normalize_ws_name(f"{parsed['work_no']}_{parsed['vector']}") if parsed else None
+    if parsed:
+        log(
+            f"      i  ZIP name parsed - Work No.: {parsed['work_no']}, "
+            f"BBI ID: {parsed['bbi_id']}, Vector: {parsed['vector']}"
+        )
+        if not normalize_ws_name(parsed["bbi_id"]).startswith(normalized_bbi):
+            log(
+                f"      ⚠  BBI ID parsed from the zip name ({parsed['bbi_id']!r}) "
+                f"does not start with the extracted one ({bbi_id!r}) - check the zip name."
+            )
+
+    for basename, upper_name, seq in candidates:
+        # --- Insert sequence: exact derived name first, legacy anchor next
+        how = None
+        if insert_exact is not None and upper_name == insert_exact:
+            how = "exact derived name"
+        elif re.search(rf"\b{re.escape(normalized_bbi)}\b", upper_name, re.IGNORECASE):
+            how = "BBI-ID anchor (fallback)"
+        if how:
             if insert_seq is None:
                 insert_seq = seq
-                log(f"      ✓  Insert sequence: {basename} ({len(seq):,} bp)")
+                log(f"      ✓  Insert sequence: {basename} ({len(seq):,} bp) [{how}]")
             else:
                 log(
                     f"      ⚠  Skipped extra file matching {bbi_id} "
@@ -250,104 +339,178 @@ def extract_sequence_files(zip_ref: zipfile.ZipFile, bbi_id: str, log=print) -> 
                 )
             continue
 
-        if re.match(r"^LA\d+_.+\.seq$", basename, re.IGNORECASE):
+        # --- Final vector sequence: exact derived name first, shape regexes next
+        how = None
+        if vector_exact is not None and upper_name == vector_exact:
+            how = "exact derived name"
+        elif re.match(r"^LA\d+_.+\.seq$", basename, re.IGNORECASE):
+            how = "shape regex (fallback)"
+        elif re.match(r"^LA\d+[A-Z]*_.+\.seq$", basename, re.IGNORECASE):
+            how = "shape regex, letter-suffixed Work No. (fallback)"
+        if how:
             if final_vector_seq is None:
                 final_vector_seq = seq
-                log(f"      ✓  Final vector sequence: {basename} ({len(seq):,} bp)")
+                log(f"      ✓  Final vector sequence: {basename} ({len(seq):,} bp) [{how}]")
             else:
-                log(f"      ⚠  Skipped extra vector-candidate file (vector already read): {basename}")
+                log(f"      ⚠  Skipped extra vector-candidate file (vector already read): {basename} [{how}]")
 
     return insert_seq, final_vector_seq
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Read the OD measurement table from the extracted image
+# OD reading: RapidOCR PP-OCRv6-small (in-process, onnxruntime) + rules
 # ─────────────────────────────────────────────────────────────────────────────
-_TESSERACT_RESOLVED = _UNSET = object()
+# The Tesseract voting stack was retired in this rework. RapidOCR v6-small
+# runs fully in-process (no model server; the ONNX det/rec models are bundled
+# inside the rapidocr wheel - no first-run downloads), is CPU-only and works
+# on the hub's Python 3.14. Bench on the 2026-11 validated set: ~84% ->
+# ~97% complete-record agreement, with every residual error caught by the
+# plausibility rules below.
+#
+# Reading strategy per record - candidate inputs tried in order, first
+# gate-passing 4-tuple wins:
+#   1. the data-row strip located by the v1.2 table geometry (horizontal
+#      rules, split_table_cells),
+#   2. the bottom-band crop of the 2026-11 bench (last two full-width rules
+#      under the table; fallback: the last 34 px),
+#   3. the four individual cells (vertical rules) read one at a time -
+#      the repair pass for rows whose strip read produced junk.
+# One engine and one parser apply to every candidate.
+
+# Plausibility rules (v1.1): a field outside its range FLAGS the record for
+# user review; flagged values are shown in the review dialog, never
+# overwritten. Ranges are physical bounds for NanoDrop-style OD tables.
+#   od260 / od280 calibrated on the 2026-11 validated batch (OD260 readings
+#   on real batches reach ~5.6, OD280 ~2.9).
+#   OD260/OD280 ratio: Ed's domain ruling - this is DNA, so the printed
+#   ratio is always 1.8-2.0.
+# ng/uL is deliberately UNRANGED (concentration varies with prep type, the
+# vector's expression level and the amount requested). A printed-value
+# cross-check like ng/uL == 50 x OD260 was considered and REJECTED for the
+# same reason - do not reintroduce it as a flag.
+_OD_RULE_RANGES = {
+    "od260":    (0.3, 6.5),
+    "od280":    (0.4, 3.6),
+    "od_ratio": (1.8, 2.0),
+}
+# Wide parser gates (junk protection only, not plausibility): a mis-parsed
+# junk token is rejected as a READ so the next candidate input is tried,
+# while in-gate-but-implausible values flow to the flag layer instead of
+# being dropped.
+_OD_PARSE_GATES = {
+    "od260":    (0.0, 20.0),
+    "od280":    (0.0, 20.0),
+    "od_ratio": (0.1, 5.0),
+    "ng_ul":    (0.0, 10000.0),
+}
+
+_OD_FIELDS = ("od260", "od280", "od_ratio", "ng_ul")
+
+_OCR_ENGINE = None
 
 
-def find_tesseract() -> "str | None":
-    """
-    Locate tesseract.exe without side effects on the log; returns the path
-    or None. Checks PATH, the standard install locations, and the Windows
-    registry entries written by the UB Mannheim installer (both
-    machine-wide and per-user installs, including the 32-bit-installer
-    view). The result is memoized: the search runs once per app session.
-    """
-    global _TESSERACT_RESOLVED
-    if _TESSERACT_RESOLVED is not _UNSET:
-        return _TESSERACT_RESOLVED
+def _load_ocr_engine(log=print):
+    """Import and build the RapidOCR engine once per app session. Lazy like
+    pytesseract was: a missing package must not block importing this module
+    or launching the hub."""
+    global _OCR_ENGINE
+    if _OCR_ENGINE is not None:
+        return _OCR_ENGINE
+    require("onnxruntime")
+    require("rapidocr")
+    from rapidocr import RapidOCR
 
-    # pytesseract is lazy-imported (OD OCR is an optional feature): a
-    # missing package must not block importing this module or launching
-    # the hub.
-    try:
-        import pytesseract
-    except ImportError:
-        _TESSERACT_RESOLVED = None
+    # The engine's own INFO logging (green "[INFO]" model-load lines from its
+    # colorlog handler) floods the hub's console; the library's Global.log_level
+    # config knob silences it while warnings/errors still print.
+    _OCR_ENGINE = RapidOCR(params={"Global.log_level": "WARNING"})
+    return _OCR_ENGINE
+
+
+def _strip_tokens_from_txts(txts) -> list:
+    """Numeric tokens from a RapidOCR reading. Fragments containing letters
+    (column headers, border junk like 'VUV') are dropped; single-char digit
+    tokens are border misreads and are dropped ONLY when more than four
+    numeric tokens remain (a value cell can legitimately read as a bare
+    integer, e.g. ng/uL '173')."""
+    tokens = []
+    for tok in txts or ():
+        tok = str(tok).strip()
+        if not tok or re.search(r"[A-Za-z]", tok):
+            continue
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)", tok)
+        if m:
+            tokens.append(float(m.group(1).replace(",", ".")))
+    if len(tokens) > 4:
+        trimmed = [t for t in tokens if not (t == int(t) and 0 <= t <= 9)]
+        tokens = trimmed or tokens
+    return tokens
+
+
+def _values_from_tokens(tokens) -> "dict | None":
+    """Map the printed column order OD260, OD280, OD260/OD280, ng/uL onto the
+    field names, applying the wide parser gates. None = this candidate read
+    failed (caller tries the next input)."""
+    if len(tokens) < 4:
         return None
+    vals = tokens[-4:]  # the data row is the last row in reading order
+    mapped = dict(zip(_OD_FIELDS, vals))
+    for field, value in mapped.items():
+        lo, hi = _OD_PARSE_GATES[field]
+        if not (lo < value < hi):
+            return None
+    return mapped
 
-    candidates = [
-        shutil.which("tesseract"),
-        os.path.join(os.environ.get("ProgramFiles", ""), "Tesseract-OCR", "tesseract.exe"),
-        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Tesseract-OCR", "tesseract.exe"),
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Tesseract-OCR", "tesseract.exe"),
-        os.path.join(os.environ.get("ProgramFiles", ""), "Tesseract OCR", "tesseract.exe"),
-    ]
 
-    # The UB Mannheim installer records its InstallLocation in the registry.
+def _data_row_strip_from_table(table_img):
+    """Crop the printed data row using the v1.2 table geometry (the same
+    horizontal-rule detection split_table_cells uses, including the
+    implicit-edge handling for cropped-away borders)."""
+    arr = np.array(table_img)
+    h, w = arr.shape
+    row_dark_frac = (arr < 140).mean(axis=1)
+    h_lines = []
+    for y, f in enumerate(row_dark_frac):
+        if f > 0.5 and (not h_lines or y - h_lines[-1] > 2):
+            h_lines.append(y)
+    h_lines = _add_implicit_edges(h_lines, h)
+    if len(h_lines) < 2:
+        return None
+    y0, y1 = h_lines[-2], h_lines[-1]  # the data row is the last segment
+    if y1 - y0 < 10:
+        return None
+    return table_img.crop((0, max(0, y0), w, min(h, y1)))
+
+
+def _bench_bottom_band(img):
+    """The 2026-11 bench band: between the last two full-width dark rules in
+    the bottom 140 px; fallback band = the last 34 px (minus the margin)."""
+    arr = np.array(img)
+    h, w = arr.shape
+    ys = [y for y in range(max(0, h - 140), h) if (arr[y] < 100).sum() > w * 0.7]
+    groups = []
+    for y in ys:
+        if not groups or y > groups[-1][-1] + 1:
+            groups.append([y])
+        else:
+            groups[-1].append(y)
+    if len(groups) >= 2 and groups[-1][-1] >= h - 8:
+        top, bottom = groups[-2][-1] + 2, groups[-1][0] - 1
+    else:
+        top, bottom = h - 34, h - 2
+    if bottom <= top:
+        return None
+    return img.crop((0, top, w, bottom))
+
+
+def _png_bytes(pil_img) -> "bytes | None":
+    """PNG bytes of a PIL image, for the review dialog (None-safe)."""
     try:
-        import winreg
-        uninstall_keys = [
-            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Tesseract-OCR",
-            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Tesseract-OCR",
-        ]
-        for root in (winreg.HKEY_LOCAL_MACHINE, winreg.HKEY_CURRENT_USER):
-            for key_path in uninstall_keys:
-                try:
-                    with winreg.OpenKey(root, key_path) as key:
-                        install_dir, _ = winreg.QueryValueEx(key, "InstallLocation")
-                        if install_dir:
-                            candidates.append(
-                                os.path.join(install_dir, "tesseract.exe"))
-                except OSError:
-                    pass
+        buf = io.BytesIO()
+        pil_img.convert("RGB").save(buf, format="PNG")
+        return buf.getvalue()
     except Exception:
-        pass
-
-    checked = [c for c in candidates if c]
-    for path in checked:
-        if path and os.path.exists(path):
-            pytesseract.pytesseract.tesseract_cmd = path
-            _TESSERACT_RESOLVED = path
-            return path
-
-    _TESSERACT_RESOLVED = None
-    return None
-
-
-def configure_tesseract(log=print) -> bool:
-    """
-    Resolve tesseract.exe (see find_tesseract) and report failure to the
-    log, listing every path tried so a failed install can be diagnosed
-    from the app log alone.
-    """
-    found = find_tesseract()
-    if found:
-        return True
-
-    log("      ⚠  Tesseract not found - OD values could not be read.")
-    log("      ⚠  Paths checked:")
-    for path in [
-        shutil.which("tesseract"),
-        os.path.join(os.environ.get("ProgramFiles", ""), "Tesseract-OCR", "tesseract.exe"),
-        os.path.join(os.environ.get("ProgramFiles(x86)", ""), "Tesseract-OCR", "tesseract.exe"),
-        os.path.join(os.environ.get("LOCALAPPDATA", ""), "Tesseract-OCR", "tesseract.exe"),
-        os.path.join(os.environ.get("ProgramFiles", ""), "Tesseract OCR", "tesseract.exe"),
-    ]:
-        if path:
-            log(f"           - {path}")
-    return False
+        return None
 
 
 def locate_table_top(img_gray: "PILImage.Image") -> int:
@@ -469,148 +632,123 @@ def split_table_cells(table_img_gray: "PILImage.Image"):
     return cells
 
 
-def build_cell_votes(cell_img: "PILImage.Image") -> dict[str, int]:
-    """
-    Run the full multi-scale/multi-psm OCR grid on a single table cell and
-    return the raw vote pool (reading -> number of supporting attempts).
-    The caller applies the selection rule(s) to this pool - see
-    pick_cell_reading - so the expensive OCR grid runs only ONCE per cell
-    even when several selection strategies are tried.
-    """
-    votes: dict[str, int] = {}
-    import pytesseract
-
-    for scale in (3, 4, 5, 6, 7, 8):
-        big = cell_img.resize((cell_img.width * scale, cell_img.height * scale), PILImage.NEAREST)
-        big = ImageOps.autocontrast(big)
-        for psm in (7, 8):
-            text = pytesseract.image_to_string(
-                big, config=f"--psm {psm} -c tessedit_char_whitelist=0123456789."
-            ).strip()
-            if re.fullmatch(r"\d+(\.\d+)?", text):
-                votes[text] = votes.get(text, 0) + 1
-
-    for scale in (3, 4, 5, 6):
-        big = cell_img.resize((cell_img.width * scale, cell_img.height * scale), PILImage.Resampling.LANCZOS)
-        big = ImageOps.autocontrast(big)
-        for psm in (6, 7, 11):
-            text = pytesseract.image_to_string(
-                big, config=f"--psm {psm} -c tessedit_char_whitelist=0123456789."
-            ).strip()
-            if re.fullmatch(r"\d+(\.\d+)?", text):
-                votes[text] = votes.get(text, 0) + 1
-
-    for scale in (2, 3, 4, 5, 6):
-        big = cell_img.resize(
-            (int(cell_img.width * scale), int(cell_img.height * scale)), PILImage.BILINEAR
-        )
-        big = ImageOps.autocontrast(big)
-        for psm in (6, 7, 11):
-            text = pytesseract.image_to_string(
-                big, config=f"--psm {psm} -c tessedit_char_whitelist=0123456789."
-            ).strip()
-            if re.fullmatch(r"\d+(\.\d+)?", text):
-                votes[text] = votes.get(text, 0) + 1
-
-    return votes
+def _engine_read_strip(strip_img, engine, log=print) -> list:
+    """Upscale a data-row strip (Lanczos 4x + white padding, the bench-
+    validated input class) and run RapidOCR; returns the text tokens in
+    left-to-right reading order."""
+    big = strip_img.resize(
+        (strip_img.width * 4, strip_img.height * 4), PILImage.LANCZOS
+    )
+    big = ImageOps.expand(big, border=20, fill="white")
+    arr = np.array(big)
+    if arr.ndim == 2:
+        arr = np.dstack([arr] * 3)
+    try:
+        out = engine(arr)
+    except Exception as e:
+        log(f"      ⚠  OCR engine error: {e}")
+        return []
+    txts = list(getattr(out, "txts", None) or ())
+    boxes = getattr(out, "boxes", None)
+    items = []
+    for i, tok in enumerate(txts):
+        xc = float(i)
+        if boxes is not None and i < len(boxes) and boxes[i] is not None:
+            try:
+                xc = float(np.mean([p[0] for p in boxes[i]]))
+            except Exception:
+                pass
+        items.append((xc, str(tok)))
+    items.sort(key=lambda it: it[0])
+    return [tok for _, tok in items]
 
 
-def pick_cell_reading(votes: dict[str, int], prefer_longest: bool = True) -> str | None:
-    """
-    Apply a selection rule to a vote pool built by build_cell_votes and
-    return the chosen reading (or None if the pool is empty).
-
-    prefer_longest=True (first pass): OCR mistakes on this font are
-    overwhelmingly DROPPED or SUBSTITUTED digits, not extra/hallucinated
-    ones - so a reading with more digits is normally more
-    complete/trustworthy. Candidates are grouped by digit count, checked
-    from the longest group down, and the most frequent reading in the
-    first group with at least `min_votes` (3) supporting reads is
-    returned. Requiring 3 rather than just 2 matters: a single stray
-    misread with an extra hallucinated digit (e.g. a lone "92.181" for
-    "2.161") can otherwise pass the bar and be wrongly preferred just for
-    being longer, even while the correct shorter-tier reading is supported
-    by a large majority of attempts.
-
-    prefer_longest=False (retry, only after a first-pass read failed its
-    plausibility checks): majority rule - return the single most-voted
-    reading when it holds at least half of all votes (and clears
-    min_votes). This covers the opposite failure mode: a small
-    hallucination (e.g. "1.91" captured as "1981", decimal point eaten and
-    a digit doubled) that clears min_votes and wins the longest tier,
-    while the correct shorter reading dominates the vote pool by a wide
-    margin (e.g. 32 votes vs 5). With no dominant reading, falls through
-    to the longest-tier logic above.
-    """
-    if not votes:
+def _read_single_cell(cell_img, engine, allowed_range=None, log=print):
+    """Read one cropped value cell with the same engine; returns the float or
+    None. When the cell yields several numeric tokens (border junk), a
+    candidate inside that column's physical range wins; otherwise the longest
+    digit run is the best repair bet (row-reading mistakes on this layout
+    mostly DROP digits). The winning value still flows through the flag
+    layer, so a junk repair never hides behind this helper."""
+    arr = np.array(cell_img.resize(
+        (cell_img.width * 4, cell_img.height * 4), PILImage.LANCZOS
+    ))
+    arr = ImageOps.expand(PILImage.fromarray(arr), border=20, fill="white")
+    arr = np.array(arr)
+    if arr.ndim == 2:
+        arr = np.dstack([arr] * 3)
+    try:
+        out = engine(arr)
+    except Exception as e:
+        log(f"      ⚠  OCR engine error on cell crop: {e}")
         return None
-
-    min_votes = 3
-    total_votes = sum(votes.values())
-    top_text, top_count = max(votes.items(), key=lambda kv: kv[1])
-
-    if not prefer_longest:
-        # Majority rule (retry path): a dominant consensus reading - at
-        # least half of all votes and above the min_votes bar - is taken
-        # as-is, even if it is shorter than a rival hallucination.
-        if top_count >= min_votes and top_count >= 0.5 * total_votes:
-            return top_text
-        # No clear majority: fall through to the longest-tier logic.
-
-    by_len: dict[int, list[tuple[str, int]]] = {}
-    for text, count in votes.items():
-        digit_count = len(re.sub(r"\D", "", text))
-        by_len.setdefault(digit_count, []).append((text, count))
-
-    for digit_count in sorted(by_len.keys(), reverse=prefer_longest):
-        tier = [(text, count) for text, count in by_len[digit_count] if count >= min_votes]
-        if tier:
-            return max(tier, key=lambda tc: tc[1])[0]
-
-    # Nothing reached the vote threshold at any digit-length: fall back to
-    # the single most frequent reading overall rather than returning nothing.
-    return max(votes.items(), key=lambda kv: kv[1])[0]
+    toks = []
+    for tok in getattr(out, "txts", None) or ():
+        tok = str(tok).strip()
+        if not tok or re.search(r"[A-Za-z]", tok):
+            continue
+        m = re.fullmatch(r"(\d+(?:[.,]\d+)?)", tok)
+        if m:
+            toks.append(float(m.group(1).replace(",", ".")))
+    if not toks:
+        return None
+    if allowed_range:
+        lo, hi = allowed_range
+        in_range = [t for t in toks if lo <= t <= hi]
+        if in_range:
+            return in_range[0]
+    return max(toks, key=lambda t: len(re.sub(r"\D", "", str(t))))
 
 
-def _decimal_values_from_ocr(text: str) -> list[str]:
-    text = text.replace(",", ".")
-    text = re.sub(r"(?<=\d)[fF](?=\s|$)", "7", text)
-    text = re.sub(r"(\d+)\.\s+(\d)", r"\1.\2", text)
-    # Accept plain integers too (e.g. a ng/uL reading of "97" with no
-    # decimal part) - not just x.y decimals. The header labels (OD260,
-    # OD280, ...) also contain bare digits and will match here, but since
-    # only the LAST 4 matches are ever used (the data row always comes
-    # after the header in reading order), that header noise is harmless.
-    return re.findall(r"\b\d+(?:\.\d+)?\b", text)
+def _read_cells_individually(cells, engine, log=print):
+    """Repair pass: read each of the four split cells on its own and reapply
+    the parser gates to the tuple. Returns the gate-passing dict or None."""
+    read = {}
+    for field, cell in zip(_OD_FIELDS, cells):
+        read[field] = _read_single_cell(cell, engine,
+                                        allowed_range=_OD_PARSE_GATES[field],
+                                        log=log)
+    if not all(read.get(f) is not None for f in _OD_FIELDS):
+        return None
+    mapped = {f: read[f] for f in _OD_FIELDS}
+    for field, value in mapped.items():
+        lo, hi = _OD_PARSE_GATES[field]
+        if not (lo < value < hi):
+            return None
+    log("      ✓  OD (per-cell repair): "
+        f"OD260={mapped['od260']} / OD280={mapped['od280']} / "
+        f"Ratio={mapped['od_ratio']} / ng/uL={mapped['ng_ul']}")
+    return mapped
 
 
 def od_values_from_blob(blob: bytes, log=print) -> dict:
     """
-    Read the four values from the OD measurement table:
-      OD260 | OD280 | OD260/OD280 | ng/uL
+    Read the four values from the OD measurement table with RapidOCR v6-small
+    and determine the record's reading status:
 
-    Primary method: locate the table, split its data row into 4 individual
-    cells, and OCR each cell separately (see build_cell_votes /
-    pick_cell_reading) - reading one short number at a time is much more
-    reliable than reading the whole row at once, where cell borders and
-    column spacing often confuse the OCR engine into dropping or altering
-    a digit. The vote pool is built once per cell; if the first-pass
-    selection fails the plausibility check, the retry re-picks from the
-    same pool by majority rule (no extra OCR runs).
+      AUTO       values read, every OD/ratio inside its plausibility range
+      FLAGGED    values read, at least one OD/ratio outside its range
+      PARSE_NO   no candidate input produced a gate-passing 4-tuple
 
-    Fallback: if the table/cell structure can't be located (unusual image
-    layout), fall back to a whole-row, multi-scale/psm OCR pass.
+    ng/uL has no plausibility range by design (elution volume varies, so
+    concentrations span several orders of magnitude across real batches).
+
+    Returns dict: the four values (floats or None), od_status, od_flags
+    (human-readable reasons for the review dialog), and od_crop (PNG bytes of
+    the cropped table region - the review dialog falls back to the whole
+    image when the crop could not be produced).
     """
-    result = {"od260": None, "od280": None, "od_ratio": None, "ng_ul": None}
+    result = {"od260": None, "od280": None, "od_ratio": None, "ng_ul": None,
+              "od_status": "PARSE_NO", "od_flags": [], "od_flag_fields": [],
+              "od_crop": None}
 
     try:
-        import pytesseract  # bound here for the whole-row fallback below
-    except ImportError:
-        log("      ⚠  OCR package pytesseract not installed - OD values could not be read.")
-        return result
-
-    if not configure_tesseract(log=log):
-        log("      ⚠  Tesseract not found - OD values could not be read.")
+        engine = _load_ocr_engine(log=log)
+    except ImportError as e:
+        log("      ⚠  OCR engine not installed (rapidocr / onnxruntime) - "
+            "OD values could not be read.")
+        result["od_status"] = "NO_OCR"
+        result["od_flags"] = [f"OCR engine not available: {e}"]
         return result
 
     try:
@@ -619,107 +757,64 @@ def od_values_from_blob(blob: bytes, log=print) -> dict:
 
         table_top = max(0, locate_table_top(img) - 2)
         table_img = img.crop((0, table_top, w, h))
+        result["od_crop"] = _png_bytes(table_img)
 
-        # ── Primary: per-cell OCR ───────────────────────────────────────
-        cells = split_table_cells(table_img)
-        if cells:
-            # Run the expensive OCR grid ONCE per cell, then apply the
-            # selection rule(s) to the pooled votes. The retry pass
-            # re-picks from the SAME pool, so it adds no new OCR calls.
-            vote_pools = [build_cell_votes(c) for c in cells]
-            if all(pool for pool in vote_pools):
-                first_texts = [pick_cell_reading(v) for v in vote_pools]
-                if all(t is not None for t in first_texts):
-                    floats = None
-                    try:
-                        floats = [float(t) for t in first_texts]
-                    except ValueError:
-                        floats = None
-                    if floats and (0 < floats[0] < 20 and 0 < floats[1] < 20
-                                   and 0.1 < floats[2] < 5 and 0 < floats[3] < 10000):
-                        result["od260"], result["od280"], result["od_ratio"], result["ng_ul"] = floats
-                        log(
-                            f"      ✓  OD (per-cell): OD260={floats[0]} / OD280={floats[1]} / "
-                            f"Ratio={floats[2]} / ng/uL={floats[3]}"
-                        )
-                        return result
+        values = None
 
-                # Retry: majority rule on the same vote pool. The
-                # longest-digit-tier preference above exists because OCR on
-                # this font mostly DROPS digits; but a few cells read the
-                # other way: a small hallucination (e.g. "1.91" captured as
-                # "1981") clears the vote threshold while the correct,
-                # shorter reading dominates the pool (e.g. 32 votes vs 5).
-                # The first pass picked the hallucination, the 4-value
-                # plausibility check rejected it, and the whole row was
-                # lost. Re-picking by majority recovers it at zero extra
-                # OCR cost.
-                retry_texts = [pick_cell_reading(v, prefer_longest=False) for v in vote_pools]
-                if all(t is not None for t in retry_texts):
-                    floats = None
-                    try:
-                        floats = [float(t) for t in retry_texts]
-                    except ValueError:
-                        floats = None
-                    if floats and (0 < floats[0] < 20 and 0 < floats[1] < 20
-                                   and 0.1 < floats[2] < 5 and 0 < floats[3] < 10000):
-                        result["od260"], result["od280"], result["od_ratio"], result["ng_ul"] = floats
-                        log(
-                            f"      ✓  OD (per-cell, retry): OD260={floats[0]} / OD280={floats[1]} / "
-                            f"Ratio={floats[2]} / ng/uL={floats[3]}"
-                        )
-                        return result
+        strip = _data_row_strip_from_table(table_img)
+        if strip is not None:
+            toks = _strip_tokens_from_txts(_engine_read_strip(strip, engine, log=log))
+            values = _values_from_tokens(toks)
+            if values:
+                log("      ✓  OD (data row): "
+                    f"OD260={values['od260']} / OD280={values['od280']} / "
+                    f"Ratio={values['od_ratio']} / ng/uL={values['ng_ul']}")
 
-        # ── Fallback: whole-row OCR ─────────────────────────────────────
-        candidates = []
+        if values is None:
+            band = _bench_bottom_band(img)
+            if band is not None and band.height >= 6:
+                toks = _strip_tokens_from_txts(_engine_read_strip(band, engine, log=log))
+                values = _values_from_tokens(toks)
+                if values:
+                    log("      ✓  OD (bottom band): "
+                        f"OD260={values['od260']} / OD280={values['od280']} / "
+                        f"Ratio={values['od_ratio']} / ng/uL={values['ng_ul']}")
 
-        for scale in (4, 5, 6, 8):
-            crop = table_img.resize(
-                (table_img.width * scale, table_img.height * scale),
-                PILImage.Resampling.LANCZOS
-            )
-            crop = ImageOps.autocontrast(crop).filter(ImageFilter.SHARPEN)
+        if values is None:
+            cells = split_table_cells(table_img)
+            if cells:
+                values = _read_cells_individually(cells, engine, log=log)
 
-            for psm in (6, 11):
-                ocr_text = pytesseract.image_to_string(crop, config=f"--psm {psm}")
-                nums = _decimal_values_from_ocr(ocr_text)
+        if values is None:
+            log(f"      ⚠  Could not reliably read all four OD values "
+                f"(table region detected at y={table_top} px of {h} px).")
+            result["od_status"] = "PARSE_NO"
+            result["od_flags"] = ["The four OD values could not be read reliably."]
+            return result
 
-                if len(nums) >= 4:
-                    vals = nums[-4:]
-                    try:
-                        floats = [float(x) for x in vals]
-                    except ValueError:
-                        continue
+        flags = []
+        flag_fields = []
+        for field in _OD_FIELDS[:3]:
+            lo, hi = _OD_RULE_RANGES[field]
+            v = values[field]
+            if not (lo <= v <= hi):
+                label = {"od260": "OD260", "od280": "OD280",
+                         "od_ratio": "OD260/OD280"}[field]
+                flags.append(f"{label} = {v} - outside its expected range {lo}-{hi}")
+                flag_fields.append(field)
 
-                    if not (0 < floats[0] < 20 and 0 < floats[1] < 20):
-                        continue
-                    if not (0.1 < floats[2] < 5):
-                        continue
-                    if not (0 < floats[3] < 10000):
-                        continue
-
-                    decimal_lengths = [len(x.split(".")[1]) if "." in x else 0 for x in vals]
-                    score = 0
-                    score += 3 if decimal_lengths[0] == 3 else 0
-                    score += 3 if decimal_lengths[1] == 3 else 0
-                    score += 3 if decimal_lengths[2] == 2 else 0
-                    score += 3 if decimal_lengths[3] == 1 else 0
-                    candidates.append((score, floats))
-
-        if candidates:
-            candidates.sort(key=lambda x: x[0], reverse=True)
-            vals = candidates[0][1]
-            result["od260"], result["od280"], result["od_ratio"], result["ng_ul"] = vals
-            log(
-                f"      ✓  OD (fallback): OD260={vals[0]} / OD280={vals[1]} / "
-                f"Ratio={vals[2]} / ng/uL={vals[3]}"
-            )
-        else:
-            log("      ⚠  Could not reliably read all four OD values "
-                f"(table region detected at y={table_top}px of {h}px).")
+        result.update(values)
+        result["od_status"] = "FLAGGED" if flags else "AUTO"
+        result["od_flags"] = flags
+        result["od_flag_fields"] = flag_fields
+        if flags:
+            for flag in flags:
+                log(f"      ⚠  {flag} - flagged for review.")
 
     except Exception as e:
         log(f"      ⚠  OD OCR error: {e}")
+        result["od_status"] = "PARSE_NO"
+        result["od_flags"] = [f"Reading error: {e}"]
 
     return result
 
@@ -733,11 +828,14 @@ def process_zip(zip_path: str, tmp_dir: str, log=print) -> dict:
     insert_seq      = None
     final_vector_seq = None
     od_blob         = None
-    od_values       = {"od260": None, "od280": None, "od_ratio": None, "ng_ul": None}
+    od_values = {"od260": None, "od280": None, "od_ratio": None, "ng_ul": None,
+                 "od_status": "NO_IMAGE",
+                 "od_flags": ["No OD measurement image could be extracted from the ZIP."],
+                 "od_crop": None}
 
     try:
         with zipfile.ZipFile(zip_path, 'r') as zf:
-            insert_seq, final_vector_seq = extract_sequence_files(zf, bbi_id, log=log)
+            insert_seq, final_vector_seq = extract_sequence_files(zf, bbi_id, log=log, zip_stem=Path(zip_path).stem)
 
             doc_entry, plasmid_no_from_filename = find_doc_entry(zf)
 
@@ -767,19 +865,26 @@ def process_zip(zip_path: str, tmp_dir: str, log=print) -> dict:
                         except Exception:
                             pass
                         log(f"      ✓  OD image found{dims}")
+                        od_values = od_values_from_blob(od_blob, log=log)
                     else:
                         log("      ⚠  OD image not found")
-                    if od_blob:
-                        od_values = od_values_from_blob(od_blob, log=log)
+                        od_values = {"od260": None, "od280": None, "od_ratio": None, "ng_ul": None,
+                                     "od_status": "NO_IMAGE",
+                                     "od_flags": ["No OD measurement image found in the document."],
+                                     "od_crop": None}
                 else:
                     plasmid_no = plasmid_no_from_filename or "NOT FOUND"
+                    od_values["od_flags"] = ["The document could not be converted/read."]
             else:
                 log(f"      ⚠  No BATCH*.doc found inside ZIP")
+                od_values["od_flags"] = ["No BATCH*.doc document found inside the ZIP."]
 
     except zipfile.BadZipFile:
         log(f"      ✗  Not a valid ZIP file")
+        od_values["od_flags"] = ["Not a valid ZIP file."]
     except Exception as e:
         log(f"      ✗  Error: {e}")
+        od_values["od_flags"] = [f"ZIP processing error: {e}"]
 
     return {
         "bbi_id":          bbi_id,
@@ -790,6 +895,9 @@ def process_zip(zip_path: str, tmp_dir: str, log=print) -> dict:
         "od280":           od_values["od280"],
         "od_ratio":        od_values["od_ratio"],
         "ng_ul":           od_values["ng_ul"],
+        "od_status":       od_values["od_status"],
+        "od_flags":        od_values.get("od_flags", []),
+        "od_crop":         od_values.get("od_crop"),
         "od_blob":         od_blob,
         "zip_name":        Path(zip_path).stem
     }
@@ -819,15 +927,30 @@ def write_excel_report(records: list[dict], output_path: str, log=print):
         cell.font = header_font
         cell.alignment = Alignment(horizontal="center")
 
+    pending_placeholders = {"ng_ul": "PENDING", "od260": "PENDING", "od280": "PENDING", "od_ratio": "PENDING"}
+
     for rec in records:
+        pending = rec.get("od_status") == "PENDING"
+        # A skipped review record keeps placeholders ONLY in the fields the
+        # user was asked about (flagged/out-of-range or unreadable); values
+        # that were read inside every gate stay in the table.
+        pending_fields = rec.get("od_pending_fields")
+        if pending and pending_fields is None:
+            pending_fields = set(pending_placeholders)
+        od_cells = {}
+        for field in pending_placeholders:
+            value = rec[field]
+            if pending and field in pending_fields:
+                value = None
+            od_cells[field] = value
         ws.append([
             rec["zip_name"],
             rec["bbi_id"],
             rec["plasmid_no"],
-            rec["ng_ul"] if rec["ng_ul"] is not None else "NOT FOUND",
-            rec["od260"] if rec["od260"] is not None else "NOT FOUND",
-            rec["od280"] if rec["od280"] is not None else "NOT FOUND",
-            rec["od_ratio"] if rec["od_ratio"] is not None else "NOT FOUND",
+            od_cells["ng_ul"] if od_cells["ng_ul"] is not None else "PENDING" if pending else "NOT FOUND",
+            od_cells["od260"] if od_cells["od260"] is not None else "PENDING" if pending else "NOT FOUND",
+            od_cells["od280"] if od_cells["od280"] is not None else "PENDING" if pending else "NOT FOUND",
+            od_cells["od_ratio"] if od_cells["od_ratio"] is not None else "PENDING" if pending else "NOT FOUND",
             rec["insert_seq"] or "NOT FOUND",
             rec["final_vector_seq"] or "NOT FOUND",
         ])
@@ -906,6 +1029,231 @@ def write_excel_report(records: list[dict], output_path: str, log=print):
     log(f"\n✅  Excel report saved → {output_path}")
 
 
+def _short_od_reason(rec: dict) -> str:
+    """One short phrase per no-OD-table record: 'No Word document found' or
+    'No OD table image found', for the summary list dialog."""
+    joined = " | ".join(rec.get("od_flags") or [])
+    if "doc" in joined.lower() and ("BATCH" in joined or "inside the ZIP" in joined):
+        return "No Word document found"
+    if "image" in joined.lower():
+        return "No OD table image found"
+    return joined[:60] or "No OD table"
+
+
+class OdReviewDialog(ctk.CTkToplevel):
+    """
+    One dialog for ALL readable flagged records (suspicious values or read
+    failures): a ROW per record, BBI ID + short reason on the left, the exact
+    table image the OCR read in the middle, and the four labeled entry
+    columns to the right. More flagged records just add rows (the rows area
+    scrolls).
+
+    On save, each row is applied independently: all four numbers typed ->
+    the record is MANUAL; rows left (partially) empty stay PENDING with the
+    typed values kept in place and only the blank flagged fields listed as
+    pending. Non-numeric text in a row is rejected with the record named.
+    "Leave all pending" closes without writing anything.
+
+    self.result = True when rows were applied (the record dicts are updated
+    in place); None when skipped entirely.
+    """
+
+    _IMG_W, _IMG_H = 330, 62
+
+    def __init__(self, master, no_input: list, readable: list):
+        super().__init__(master)
+        self.recs = readable
+        self.no_input = no_input
+        self.result = None
+        self._rows = []  # (rec, [(label, field, entry), ...])
+
+        total = len(no_input) + len(readable)
+        self.title(f"OD value review - {total} record(s)")
+        scr_h = max(master.winfo_screenheight(), 600)
+        body_h = (70 + len(readable) * 96
+                  + (60 + min(len(no_input), 12) * 26 if no_input else 0))
+        # Ed: ~20% taller than the bare rows need, so the rows breathe.
+        win_h = min(int(scr_h * 0.8), int(max(body_h, 320) * 1.2))
+        self.geometry(f"1130x{win_h}")
+        self.transient(master)
+        try:
+            self.grab_set()
+        except Exception:
+            pass
+        self.protocol("WM_DELETE_WINDOW", self._skip_all)
+
+        # Buttons pinned at the bottom: packed BEFORE the rows area.
+        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
+        btn_frame.pack(side="bottom", pady=(4, 10), fill="x")
+        ctk.CTkButton(
+            btn_frame,
+            text="Save & close",
+            command=self._save,
+            fg_color="#3C702D",
+            hover_color="#4CAF50",
+            width=170,
+            height=34,
+        ).pack(side="left", padx=10)
+        ctk.CTkButton(
+            btn_frame,
+            text="Leave all pending",
+            command=self._skip_all,
+            fg_color="gray40",
+            hover_color="gray30",
+            width=180,
+            height=34,
+        ).pack(side="left", padx=10)
+
+        if no_input:
+            ctk.CTkLabel(
+                self,
+                text=f"These {len(no_input)} record(s) have no OD table - "
+                     f"nothing to check or type:",
+                font=ctk.CTkFont(size=16, weight="bold"),
+                text_color="#D32F2F",
+            ).pack(padx=22, pady=(8, 4), anchor="w")
+            tree_frame = ctk.CTkFrame(self, fg_color="transparent")
+            tree_frame.pack(fill="x", padx=16)
+            tree = ttk.Treeview(tree_frame, columns=("zip", "reason"),
+                                show="headings", height=min(len(no_input), 8))
+            tree.heading("zip", text="ZIP")
+            tree.heading("reason", text="Reason")
+            tree.column("zip", width=470, anchor="w")
+            tree.column("reason", width=240, anchor="w")
+            for rec in no_input:
+                tree.insert("", "end",
+                            values=(rec["zip_name"], _short_od_reason(rec)))
+            tree.pack(fill="x")
+            sb = ttk.Scrollbar(tree_frame, orient="vertical", command=tree.yview)
+            tree.configure(yscrollcommand=sb.set)
+            sb.pack(side="right", fill="y")
+
+        if readable:
+            ctk.CTkLabel(
+                self,
+                text=f"Check these {len(readable)} measurements and enter "
+                     f"the values:",
+                font=ctk.CTkFont(size=16, weight="bold"),
+                text_color="#D32F2F",
+            ).pack(padx=22, pady=(10, 4), anchor="w")
+
+        # Shared column geometry: the header frame and every data row use
+        # the SAME minsizes/weights, regular-table style - ONE header row on
+        # top, no labels repeated per row, cells vertically centered.
+        def _grid_columns(grid):
+            grid.grid_columnconfigure(0, weight=0, minsize=160)
+            grid.grid_columnconfigure(1, weight=0, minsize=350)
+            for col in range(2, 6):
+                grid.grid_columnconfigure(col, weight=1, minsize=128, uniform="val")
+
+        header = ctk.CTkFrame(self, fg_color="transparent")
+        header.pack(fill="x", padx=22, pady=(6, 0))
+        _grid_columns(header)
+        hdr_labels = ["BBI ID", "Table image", "OD260", "OD280",
+                      "OD260/OD280", "ng/uL"]
+        for col, text in enumerate(hdr_labels):
+            ctk.CTkLabel(header, text=text,
+                         font=ctk.CTkFont(size=13, weight="bold"),
+                         text_color="black").grid(row=0, column=col,
+                                                  sticky="nsew")
+
+        rows_area = ctk.CTkScrollableFrame(self)
+        rows_area.pack(fill="both", expand=True, padx=16, pady=(4, 0))
+
+        labeled = [("OD260", "od260"), ("OD280", "od280"),
+                   ("OD260/OD280", "od_ratio"), ("ng/uL", "ng_ul")]
+
+        for rec in self.recs:
+            row = ctk.CTkFrame(rows_area, fg_color="transparent")
+            row.pack(fill="x", padx=4, pady=(4, 4))
+            _grid_columns(row)
+            row.grid_rowconfigure(0, weight=1, minsize=76)
+
+            # col 0: BBI ID (vertical center)
+            ctk.CTkLabel(row, text=rec["bbi_id"],
+                         font=ctk.CTkFont(size=14, weight="bold")).grid(
+                row=0, column=0, padx=(2, 6), sticky="nsew")
+
+            # col 1: the table image exactly as fed to the OCR
+            try:
+                pil_img = PILImage.open(
+                    io.BytesIO(rec.get("od_crop") or rec.get("od_blob"))
+                ).convert("RGB")
+                scale = min(self._IMG_W / max(pil_img.width, 1),
+                            self._IMG_H / max(pil_img.height, 1), 1.0)
+                disp = (max(1, int(pil_img.width * scale)),
+                        max(1, int(pil_img.height * scale)))
+                tk_img = ctk.CTkImage(light_image=pil_img, size=disp)
+                ctk.CTkLabel(row, image=tk_img, text="").grid(
+                    row=0, column=1, padx=(0, 6), sticky="nsew")
+                self.__dict__.setdefault("_imgs", []).append(tk_img)
+            except Exception:
+                ctk.CTkLabel(row, text="No image",
+                             font=ctk.CTkFont(size=11, slant="italic")).grid(
+                    row=0, column=1, padx=(0, 6), sticky="nsew")
+
+            # cols 2-5: value entries, vertically centered, no per-row labels
+            entries = []
+            for col, (label, field) in enumerate(labeled, start=2):
+                entry = ctk.CTkEntry(row, width=140, justify="center")
+                if rec.get(field) is not None:
+                    entry.insert(0, str(rec[field]))
+                entry.grid(row=0, column=col, padx=4, sticky="ew")
+                entries.append((label, field, entry))
+            self._rows.append((rec, entries))
+
+    def _save(self):
+        for rec, entries in self._rows:
+            values = {}
+            for label, field, entry in entries:
+                text = entry.get().strip().replace(",", ".")
+                if text == "":
+                    values[field] = None
+                    continue
+                try:
+                    values[field] = float(text)
+                except ValueError:
+                    messagebox.showerror(
+                        "Invalid number",
+                        f"{rec['bbi_id']}: '{entry.get().strip()}' is not a "
+                        f"number ({label}).",
+                        parent=self,
+                    )
+                    return  # dialog stays open; the row is named above
+        # all rows valid: apply each row independently
+        for rec, entries in self._rows:
+            values = {}
+            for label, field, entry in entries:
+                text = entry.get().strip().replace(",", ".")
+                values[field] = float(text) if text else None
+            blank = [f for f, v in values.items() if v is None]
+            for field, value in values.items():
+                if value is not None:
+                    rec[field] = value
+            flagged_fields = set(rec.get("od_flag_fields") or _OD_FIELDS)
+            if blank:
+                rec["od_status"] = "PENDING"
+                rec["od_pending_fields"] = (flagged_fields | set(blank))
+            else:
+                rec["od_status"] = "MANUAL"
+                rec["od_pending_fields"] = set()
+        self.result = True
+        self._close()
+
+    def _skip_all(self):
+        # Nothing is written: every record in the dialog stays pending in its
+        # current state (the queue marks the flagged fields pending).
+        self.result = None
+        self._close()
+
+    def _close(self):
+        try:
+            self.grab_release()
+        except Exception:
+            pass
+        self.destroy()
+
+
 class BatchQCReportApp:
     """
     Batch QC report generator for the Gene Synthesis hub.
@@ -929,10 +1277,10 @@ class BatchQCReportApp:
 
         self._setup_ui()
 
-        # Warn (non-blocking) if Tesseract is missing: without it the OD
-        # values from the measurement table cannot be extracted. The user
-        # can still run the app for the other report columns.
-        self.master.after(200, self._check_tesseract_on_startup)
+        # Warn (non-blocking) if the OD reading engine cannot be built: the
+        # OD values from the measurement table cannot be extracted, but the
+        # user can still run the app for the other report columns.
+        self.master.after(200, self._check_ocr_on_startup)
 
     # ─────────────────────────────────────────────────────────────────────
     # UI
@@ -1119,18 +1467,26 @@ class BatchQCReportApp:
 
     # ─────────────────────────────────────────────────────────────────────
     # Browse
-    def _check_tesseract_on_startup(self):
-        """Warn once at startup if the Tesseract OCR engine is not found."""
-        try:
-            found = bool(find_tesseract())
-        except Exception:
-            found = False
-        if found:
+    def _check_ocr_on_startup(self):
+        """
+        Warn once at startup if the OD reading engine (rapidocr +
+        onnxruntime) is not importable. The check is import-only (no engine
+        construction): the engine builds lazily on first use and the ONNX
+        models ship inside the rapidocr wheel, so no download or model
+        loading happens at launch.
+        """
+        missing = []
+        for pkg in ("onnxruntime", "rapidocr"):
+            try:
+                __import__(pkg)
+            except ImportError:
+                missing.append(pkg)
+        if not missing:
             return
 
         popup = ctk.CTkToplevel(self.master)
-        popup.title("Tesseract not found")
-        popup.geometry("520x300")
+        popup.title("OD OCR engine not found")
+        popup.geometry("560x320")
         popup.transient(self.master)
         try:
             popup.grab_set()
@@ -1139,36 +1495,26 @@ class BatchQCReportApp:
 
         ctk.CTkLabel(
             popup,
-            text="Tesseract OCR was not found on this computer.",
+            text=f"Missing Python package(s): {', '.join(missing)}.",
             font=ctk.CTkFont(size=16, weight="bold"),
         ).pack(pady=(24, 8), padx=30)
 
         ctk.CTkLabel(
             popup,
             text=(
-                "Without Tesseract, the OD values from the measurement "
-                "table\nwill NOT be extracted (other report columns are "
-                "unaffected).\n\n"
-                "Install it from the link below, using the default "
-                "installation\nfolder, then reopen this app:"
+                "Without the RapidOCR engine, the OD values from the\n"
+                "measurement table will NOT be extracted (other report\n"
+                "columns are unaffected).\n\n"
+                "Install it into the hub's Python environment:"
             ),
             font=ctk.CTkFont(size=13),
             justify="left",
         ).pack(padx=30)
 
-        link = "https://digi.bib.uni-mannheim.de/tesseract/tesseract-ocr-w64-setup-5.4.0.20240606.exe"
-        lbl_link = ctk.CTkLabel(
-            popup,
-            text=link,
-            font=ctk.CTkFont(size=12, underline=True),
-            text_color="#1F6FEB",
-            cursor="hand2",
-        )
-        lbl_link.pack(pady=(10, 4))
-        lbl_link.bind(
-            "<Button-1>",
-            lambda e: self._open_report(link),
-        )
+        cmd_box = ctk.CTkTextbox(popup, height=30, font=("Consolas", 13))
+        cmd_box.pack(fill="x", padx=30, pady=(10, 4))
+        cmd_box.insert("1.0", "pip install rapidocr onnxruntime")
+        cmd_box.configure(state="disabled")
 
         btn_frame = ctk.CTkFrame(popup, fg_color="transparent")
         btn_frame.pack(pady=(18, 20), side="bottom")
@@ -1200,7 +1546,7 @@ class BatchQCReportApp:
         ).pack(side="left", padx=10)
 
     def _close_app(self):
-        """Close the app window (Cancel on the Tesseract warning)."""
+        """Close the app window (Cancel on the OCR-engine warning)."""
         self.master.destroy()
 
     # ─────────────────────────────────────────────────────────────────────
@@ -1244,10 +1590,11 @@ class BatchQCReportApp:
         thread.start()
 
     def _processing_thread(self, folder):
-        """Worker thread: process every ZIP and write the Excel report."""
+        """Worker thread: process every ZIP, then hand off to the review
+        queue (flagged records) on the main thread."""
         records = []
         tmp_dir = tempfile.mkdtemp()
-        output_path = None
+        review_handoff = False
         try:
             zips = sorted(z for z in Path(folder).glob("*.zip") if z.is_file())
             for i, zp in enumerate(zips, start=1):
@@ -1269,14 +1616,131 @@ class BatchQCReportApp:
                         f"{rec['od_ratio']} / {rec['ng_ul']} ng/uL"
                     )
 
-            output_path = os.path.join(folder, "QC_Report.xlsx")
+            # The pass is done: flagged records go to the review queue BEFORE
+            # the report is written, so the user's values land directly in
+            # the final file. This worker thread ends here; the review queue
+            # runs on the main thread (tkinter widgets), and the report write
+            # resumes on its own thread afterwards.
+            review_handoff = True
+            no_input = [rec for rec in records
+                        if not (rec.get("od_crop") or rec.get("od_blob"))]
+            readable = [rec for rec in records
+                        if rec.get("od_status") not in ("AUTO",)
+                        and (rec.get("od_crop") or rec.get("od_blob"))]
+            self.master.after(0, self._run_review_queue, records,
+                              os.path.join(folder, "QC_Report.xlsx"),
+                              no_input, readable)
+
+        except Exception as e:
+            self._log_threadsafe(f"\n✗  Error: {e}")
+            self._log_threadsafe(traceback.format_exc())
+            self.master.after(0, lambda err=str(e): self._log_status(f"Error: {err}", "red"))
+            self.master.after(0, lambda err=str(e): messagebox.showerror(
+                "Error", f"An error occurred:\n{err}", parent=self.master))
+        finally:
+            shutil.rmtree(tmp_dir, ignore_errors=True)
+            if not review_handoff:
+                # An error ended the pass: the review/writer handoff never
+                # happened, so nothing else will re-enable the UI.
+                self.master.after(0, self._finish_processing)
+
+    def _run_review_queue(self, records, output_path, no_input, readable):
+        """
+        Main thread: first ONE summary list dialog for all flagged records
+        without an OD table (nothing editable there), then the per-record
+        review dialogs for the readable flagged records. A skipped record
+        keeps its placeholder (PENDING) in the flagged fields only; values
+        that were read inside every gate stay in the table untouched.
+        """
+        if not (no_input or readable):
+            self._log("\nNo flagged rows - writing the report...")
+            self._start_report_write(records, output_path)
+            return
+
+        self._log(f"\n{len(no_input) + len(readable)} record(s) flagged for OD "
+                  f"review ({len(no_input)} with no OD table, "
+                  f"{len(readable)} to check):")
+        for rec in no_input:
+            self._log(f"  • {rec['zip_name']} - {rec['bbi_id']}: "
+                      f"{_short_od_reason(rec)}")
+        for rec in readable:
+            reasons = "; ".join(rec.get("od_flags") or [])
+            self._log(f"  • {rec['zip_name']} - {rec['bbi_id']}: {reasons}")
+        self._log_status(f"{len(no_input) + len(readable)} record(s) flagged "
+                         f"({len(no_input)} no OD table)", "orange")
+
+        # ONE dialog carries both sections (no-OD-table list + review rows).
+        dialog = None
+        try:
+            dialog = OdReviewDialog(self.master, no_input, readable)
+            self.master.wait_window(dialog)
+        except Exception as e:
+            if dialog is not None:
+                try:
+                    dialog.grab_release()
+                    dialog.destroy()
+                except Exception:
+                    pass
+            self._log(f"  ⚠ Review dialog failed "
+                      f"({e.__class__.__name__}: {e}) - flagged records "
+                      f"left pending.")
+            self._log_threadsafe(traceback.format_exc())
+        # no-OD-table records are always simply pending (nothing to type).
+        for rec in no_input:
+            rec["od_status"] = "PENDING"
+            rec["od_pending_fields"] = set(
+                rec.get("od_flag_fields") or _OD_FIELDS)
+        if no_input:
+            self._log(f"  ⏸ {len(no_input)} record(s) without an OD table left "
+                      f"pending.")
+        if readable:
+            if dialog is not None and dialog.result is True:
+                for rec in readable:
+                    if rec["od_status"] == "MANUAL":
+                        self._log(f"  ✔ {rec['zip_name']} ({rec['bbi_id']}): "
+                                  f"entered values {rec['od260']} / "
+                                  f"{rec['od280']} / {rec['od_ratio']} / "
+                                  f"{rec['ng_ul']} ng/uL")
+                    else:
+                        self._log(f"  ⏸ {rec['zip_name']} ({rec['bbi_id']}): "
+                                  f"left pending fields "
+                                  f"{sorted(rec['od_pending_fields']) or 'none'}")
+            else:
+                # skip / close / failure: nothing applied
+                for rec in readable:
+                    rec["od_status"] = "PENDING"
+                    rec["od_pending_fields"] = set(
+                        rec.get("od_flag_fields") or _OD_FIELDS)
+                self._log(f"  ⏸ {len(readable)} record(s) left pending "
+                          f"(dialog closed).")
+
+        self._log("\nReview finished - writing the report...")
+        self._start_report_write(records, output_path)
+
+    def _start_report_write(self, records, output_path):
+        """Spawn the report writer on its own thread (embedding the images is
+        I/O-heavy; the UI stays responsive)."""
+        self._log_status("Writing QC_Report.xlsx...", "blue")
+        self.progress.set(0)
+        threading.Thread(target=self._write_report_thread,
+                         args=(records, output_path), daemon=True).start()
+
+    def _write_report_thread(self, records, output_path):
+        """Worker thread: write the Excel report, then report the summary and
+        re-enable the UI."""
+        try:
             write_excel_report(records, output_path, log=self._log_threadsafe)
 
+            manual = sum(1 for rec in records if rec.get("od_status") == "MANUAL")
+            pending = sum(1 for rec in records if rec.get("od_status") == "PENDING")
+            auto = len(records) - manual - pending
+            summary = (f"Processed {len(records)} ZIP file(s): {auto} auto, "
+                       f"{manual} entered in review, {pending} pending review.")
             self.master.after(0, lambda: self._log_status(
-                f"Done! Processed {len(records)} ZIP file(s).", "green"))
+                f"Done! {summary}", "green" if not pending else "orange"))
             self.master.after(0, lambda: messagebox.showinfo(
                 "Done!",
-                f"Processed {len(records)} ZIP file(s).\n\nReport saved to:\n{output_path}",
+                f"{summary}\n\nReport saved to:\n{output_path}",
                 parent=self.master,
             ))
             self.master.after(0, self._open_report, output_path)
@@ -1288,7 +1752,6 @@ class BatchQCReportApp:
             self.master.after(0, lambda err=str(e): messagebox.showerror(
                 "Error", f"An error occurred:\n{err}", parent=self.master))
         finally:
-            shutil.rmtree(tmp_dir, ignore_errors=True)
             self.master.after(0, self._finish_processing)
 
     def _finish_processing(self):

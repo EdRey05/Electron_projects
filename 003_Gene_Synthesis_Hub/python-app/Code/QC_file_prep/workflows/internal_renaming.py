@@ -96,7 +96,7 @@ class InternalRenaming:
             return False
 
         if self.copy_output_var.get():
-            default_output_path = self.app.make_path_from_config('Paths', 'QC_Output_Folder')
+            default_output_path = self.app.make_path_from_config('Paths', 'QC_uploaded')
             if not default_output_path or not os.path.isdir(default_output_path):
                 messagebox.showerror("Error",
                                     "The destination folder for copying output files ('Received by BBI') does not exist. "
@@ -160,7 +160,7 @@ class InternalRenaming:
             self.zip_processed_folders(extracted_zips_dir, zip_output_dir, final_folder_names)
 
         if self.copy_output_var.get():
-            default_output_path = self.app.make_path_from_config('Paths', 'QC_Output_Folder')
+            default_output_path = self.app.make_path_from_config('Paths', 'QC_uploaded')
             self.log("[OK] \t Copying output files to default location...")
             for zip_name in final_folder_names:
                 source_zip_path = os.path.join(zip_output_dir, f"{zip_name}{self.ZIP_EXTENSION}")
@@ -188,7 +188,7 @@ class InternalRenaming:
     # --- Helper Methods for this Workflow ---
 
     def setup_default_paths(self):
-        default_path = self.app.make_path_from_config('Paths', 'QC_Input_Folder')
+        default_path = self.app.make_path_from_config('Paths', 'QC_received')
         if default_path:
             self.app.input_folder.set(default_path)
             self.log(f"[OK] \t Default input folder set to: {default_path}")

@@ -138,13 +138,33 @@ try {
         $python = Join-Path $pythonApp 'runtime\python.exe'
         if (!(Test-Path -LiteralPath $python)) { throw 'Bundled full Python interpreter is missing.' }
         $imports = 'import sys,numpy,tkinter; print(sys.prefix); print(numpy.__version__); t=tkinter.Tk(); t.update(); t.destroy()'
-        if ($recipe.app -eq '003_Gene_Synthesis_Hub') { $imports = 'import sys,numpy,pandas,customtkinter,Bio,docx,PIL,pytesseract,win32com.client,importlib.util; print(sys.prefix); assert importlib.util.find_spec(''streamlit'') is None' }
+        if ($recipe.app -eq '003_Gene_Synthesis_Hub') { $imports = 'import sys,numpy,pandas,customtkinter,Bio,docx,PIL,rapidocr,onnxruntime,win32com.client,importlib.util; assert importlib.util.find_spec(''streamlit'') is None; print(sys.prefix)' }
         if ($recipe.app -eq '004_Peak_Tracer') { $imports += '; import scipy,Bio' }
         if ($recipe.app -eq '005_KM_Plotter') { $imports += '; import pandas,openpyxl' }
         & $python -I -c $imports 2>&1 | Out-File C:\TestExport\python-runtime-test.log
         if ($LASTEXITCODE -ne 0) { throw 'Relocated packaged Python imports or Tk initialization failed.' }
         if ($recipe.app -eq '003_Gene_Synthesis_Hub') {$result.checks += 'packaged-headless-python-imports-passed'} else {$result.checks += 'packaged-python-imports-and-tk-passed'}
         if ($recipe.app -eq '003_Gene_Synthesis_Hub') {
+            $crtProbe = @'
+from pathlib import Path
+import ctypes,json,sys,onnxruntime
+root=Path(sys.executable).resolve().parent
+spec=json.loads((root/'msvc-runtime-provenance.json').read_text(encoding='utf-8-sig'))
+kernel=ctypes.WinDLL('kernel32',use_last_error=True)
+kernel.GetModuleHandleW.argtypes=[ctypes.c_wchar_p]
+kernel.GetModuleHandleW.restype=ctypes.c_void_p
+kernel.GetModuleFileNameW.argtypes=[ctypes.c_void_p,ctypes.c_wchar_p,ctypes.c_uint]
+for entry in spec['files']:
+    handle=kernel.GetModuleHandleW(entry['file'])
+    assert handle,entry['file']+' was not loaded'
+    buffer=ctypes.create_unicode_buffer(32768)
+    assert kernel.GetModuleFileNameW(handle,buffer,len(buffer)),entry['file']
+    assert Path(buffer.value).resolve()==root/entry['file'],buffer.value
+    print(buffer.value)
+'@
+            & $python -I -c $crtProbe 2>&1 | Out-File C:\TestExport\msvc-runtime-test.log
+            if ($LASTEXITCODE -ne 0) {throw 'ONNX did not load its Microsoft runtime DLLs from the portable folder.'}
+            $result.checks += 'onnx-msvc-dlls-loaded-app-locally'
             $layout = Evaluate 'window.api.getLayout()'
             $layout | ConvertTo-Json -Depth 8 | Set-Content C:\TestExport\hub-layout.json -Encoding UTF8
             foreach ($required in @('worker.py','processors','app_information.txt','default_directories.ini','Code','Templates','Databases')) {
@@ -191,27 +211,29 @@ with zipfile.ZipFile(r/'qc-input/BBI-PORTABLE QC.zip','w') as z:z.write(r/'repor
             $workers = @(Get-CimInstance Win32_Process | Where-Object { $_.Name -eq 'python.exe' -and $_.CommandLine -like '*worker.py*' })
             if ($workers.Count) {throw 'A completed Hub worker was left running.'}
             $result.checks += 'completed-workers-exited'
-            $ocr = Join-Path $pythonApp 'tools\tesseract\tesseract.exe'
-            & $ocr --version 2>&1 | Out-File C:\TestExport\tesseract-runtime-test.log
-            if ($LASTEXITCODE -ne 0) { throw 'Bundled Tesseract did not run in the clean guest.' }
-            @'
+            # OCR rides inside the rapidocr wheel (models packaged, CPU-only,
+            # no external executable). Render a numeric fixture and read it
+            # back through the packaged engine.
+            $ocr = @'
 import sys
+import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-import pytesseract
-pytesseract.pytesseract.tesseract_cmd = sys.argv[1]
+from rapidocr import RapidOCR
 image = Image.new('RGB', (450, 120), 'white')
 try:
     font = ImageFont.truetype('C:/Windows/Fonts/arial.ttf', 64)
 except OSError:
     font = ImageFont.load_default(size=64)
 ImageDraw.Draw(image).text((25, 15), '12345', font=font, fill='black')
-text = pytesseract.image_to_string(image, config='--psm 7').strip()
-print(text)
-assert text == '12345', repr(text)
+engine = RapidOCR(params={'Global.log_level': 'WARNING'})
+out = engine(np.asarray(image))
+texts = ''.join(getattr(out, 'txts', None) or ())
+print(texts)
+assert '12345' in texts.replace(' ', ''), repr(texts)
 '@ | Set-Content C:\SmokeFixtures\ocr_smoke.py -Encoding UTF8
-            & $python C:\SmokeFixtures\ocr_smoke.py $ocr 2>&1 | Out-File C:\TestExport\ocr-fixture.txt
-            if ($LASTEXITCODE -ne 0) { throw 'Bundled OCR failed to recognize the numeric fixture.' }
-            $result.checks += 'bundled-tesseract-started','offline-ocr-fixture-recognized'
+            & $python C:\SmokeFixtures\ocr_smoke.py 2>&1 | Out-File C:\TestExport\ocr-fixture.txt
+            if ($LASTEXITCODE -ne 0) { throw 'Bundled RapidOCR failed to recognize the numeric fixture.' }
+            $result.checks += 'packaged-rapidocr-loaded','ocr-fixture-recognized'
             $result.externalDependencies = 'Legacy .doc conversion requires Microsoft Word; .docx needs no Word installation. Network drive workflows require the configured data locations.'
         }
         if ($recipe.app -eq '004_Peak_Tracer') {

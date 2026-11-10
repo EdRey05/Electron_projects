@@ -39,10 +39,12 @@ export function matchFragmentsToJobs(layoutRows, fragments) {
       continue;
     }
 
-    // --- Priority 2: Monthly sheets ---
+    // --- Priority 2: Standard search (Fragments A, B, C) ---
+    // The Python scans the WHOLE consolidated frame including any PCR
+    // Fragments rows here (prefix match is the fallback after the exact
+    // PCR match missed).
     const passing = fragments.filter(
       (f) =>
-        f.sheetName !== "PCR Fragments" &&
         f.geneName.startsWith(jobId) &&
         f.purityPass !== "Fail"
     );

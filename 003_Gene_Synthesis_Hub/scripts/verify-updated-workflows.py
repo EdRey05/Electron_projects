@@ -14,7 +14,7 @@ from processors.upload_prep import run
 
 with tempfile.TemporaryDirectory(prefix='gsh-upload-parity-') as temporary:
     base=Path(temporary)
-    received=base/'3.6.5 QC files received';received.mkdir()
+    received=base/'3.6.6 QC files uploaded';received.mkdir()
     shipping=base/'shipping'
     for kind in ['OTHER','BATCH']:(shipping/'20261101'/kind).mkdir(parents=True)
     out=base/'QC_to_upload'
@@ -35,7 +35,7 @@ with tempfile.TemporaryDirectory(prefix='gsh-upload-parity-') as temporary:
     # Missing core identifiers must not become literal 'nan' placeholder rows.
     ws.append([date(2026,11,5),None,'MISSING','Gene','U99999','Tubes','In House','demo@example.test'])
     wb.save(workbook);wb.close()
-    payload=dict(workbook=str(workbook),outputFolder=str(out),paths={'QC_Output_Folder':str(received),'Shipping_List':str(shipping)})
+    payload=dict(workbook=str(workbook),outputFolder=str(out),paths={'QC_uploaded':str(received),'Shipping_List':str(shipping)})
     logs=[];progress=[]
     preview=run(payload,ROOT,logs.append,progress.append)
     assert len(preview['rows'])==8
@@ -54,7 +54,7 @@ with tempfile.TemporaryDirectory(prefix='gsh-upload-parity-') as temporary:
     assert progress[-1]==1.0
     assert len(list((base/'3.6.6 QC files uploaded'/'2026').glob('*.zip')))==3
     assert len(list(out.rglob('Plates')))==2 # BATCH date root and shared email root each contain a Plates folder
-    # A copied target collision must retain a new received original.
+    # A copied target collision must retain a new uploaded-source original.
     first.write_bytes(saved)
     retry=run({**payload,'stamp':preview['stamp'],'execute':True,'checked':[0]},ROOT,logs.append,progress.append)
     assert first.read_bytes()==saved

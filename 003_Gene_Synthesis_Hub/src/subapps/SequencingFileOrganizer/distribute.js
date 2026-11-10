@@ -29,7 +29,7 @@ export function mapReferenceFiles(referenceFilenames, organizedJobIds) {
   const jobIdSet = new Set(organizedJobIds);
   const fileMap = {};
   for (const fn of referenceFilenames) {
-    if (!fn.toLowerCase().endsWith(".txt")) continue;
+    if (!fn.endsWith(".txt")) continue;
     const base = referenceBaseName(fn);
     if (jobIdSet.has(base)) {
       if (!fileMap[base]) fileMap[base] = [];

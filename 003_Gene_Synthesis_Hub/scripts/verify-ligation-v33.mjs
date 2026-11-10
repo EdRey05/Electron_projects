@@ -8,10 +8,13 @@ const make = sheets => {
  for(const [name,rows] of Object.entries(sheets))XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),name);
  return XLSX.write(wb,{type:'array',bookType:'xlsx'});
 };
-const bytes=make({Initiated:[['Vector','BBI ID','Work No.','Length (bp)'],['','BB1','JOB1',1000],['DNA Fragment - No Vector','BB2','JOB2',2000],['pUC57','BB3','JOB3',3000]]});
+const bytes=make({Initiated:[['Vector','BBI ID','Work No.','Length (bp)','Filler1','Filler2','Cloning Site','Resistance','Filler3'],['','BB1','JOB1',1000,'','','','',''],['DNA Fragment - No Vector','BB2','JOB2',2000,'','','','',''],['pUC57','BB3','JOB3',3000,'','','','','']]});
 const jobs=extractJobLogInfo(bytes,['JOB1','JOB2','JOB3']);
 assert.deepEqual(jobs.jobs_needing_manual_entry,['JOB1','JOB2']);
 assert.equal(jobs.rows.JOB3.bbid,'BB3');
+// Upstream v3.3 fallback depth: without a fallback position (columns F-I)
+// resolution raises and aborts the run instead of reading blanks.
+assert.throws(()=>extractJobLogInfo(make({Initiated:[['Vector','BBI ID','Work No.']]}),['JOB1']),/no fallback position/);
 assert.deepEqual(validateWorkbookSheets(bytes,['Initiated']),['Initiated']);
 assert.throws(()=>validateWorkbookSheets(bytes,['Vector','Digested_Vectors']),/Missing sheets/);
 assert.throws(()=>validateWorkbookSheets(new TextEncoder().encode('not an Excel file').buffer),/valid XLSX/);
@@ -27,7 +30,7 @@ assert.equal(report.rows[0].concentration,20);
 assert.equal(report.rows[0].insertLength,4);
 assert(report.logs.some(line=>line.includes('Skipped')&&line.includes('U11 malformed')));
 const workbook=XLSX.utils.book_new();XLSX.utils.book_append_sheet(workbook,XLSX.utils.aoa_to_sheet([['']]),'Layout');
-writeLayoutRows(workbook,[{job_id:'MANUAL',vector:'custom',enzyme:'X',length:NaN,resistance:'Kan'}],{});
+writeLayoutRows(workbook,[{job_id:'MANUAL',vector:'custom',enzyme:'X',length:NaN,resistance:'Kan',is_manual:true}],{});
 assert.equal(workbook.Sheets.Layout.T2.v,'');
 assert.equal(workbook.Sheets.Layout.U2.v,'Kan');
 console.log('Ligation 3.3: named columns, blank vector prompts, malformed sheet skips, numeric gene IDs, named PCR concentration, finite output and manual resistance passed.');

@@ -18,7 +18,9 @@ def source(root, name):
 def prepare(payload,root):
     import pandas as pd
     helpers=source(root,'helpers')
-    ids=list(dict.fromkeys(str(v).strip() for v in payload.get('workNos',[]) if str(v).strip()))
+    # The Tk app runs every pasted line, duplicates included (a repeated Work
+    # No. simply writes its map twice); no dedupe, no upcasing of the data.
+    ids=[str(v).strip() for v in payload.get('workNos',[]) if str(v).strip()]
     if not ids:raise ValueError('Enter at least one Work No.')
     for value in ids:
         if re.search(r'[<>:"/\\|?*\x00-\x1f\s]',value) or value.endswith('.') or re.match(r'^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)',value,re.I):
@@ -40,10 +42,13 @@ def prepare(payload,root):
         if row is None:failures.append({'workNo':value,'reason':'Not found'});continue
         vector=helpers.get_field_from_row(row,['Final Vector Sequence','Final Vector','FinalVector'],8)
         insert=helpers.get_field_from_row(row,['Insert Sequence','Insert Seq','InsertSeq'],7)
-        vector=re.sub(r'\s','',vector).upper();insert=re.sub(r'\s','',insert).upper()
-        if not vector or re.search('[^ACGTRYSWKMBDHVN]',vector+insert):reason='Missing or invalid DNA sequence'
+        # Whitespace-only cleanup here (the writer does its own); case is
+        # PRESERVED for the outputs — the Tk app writes the raw cell case.
+        vector=re.sub(r'\s','',vector);insert=re.sub(r'\s','',insert)
+        vector_check=vector.upper();insert_check=insert.upper()
+        if not vector_check or re.search('[^ACGTRYSWKMBDHVN]',vector_check+insert_check):reason='Missing or invalid DNA sequence'
         elif len(insert)>len(vector):reason='Insert is longer than the vector'
-        elif insert and insert not in vector+vector:reason='Insert not found in circular vector'
+        elif insert_check and insert_check not in vector_check+vector_check:reason='Insert not found in circular vector'
         else:records.append((value,vector,insert));continue
         failures.append({'workNo':value,'reason':reason})
     folder=Path(payload['outputFolder']).resolve();folder.mkdir(parents=True,exist_ok=True)
@@ -81,18 +86,24 @@ def run(payload,root,log,ask,snapgene=False):
         countdown(10)
         processor=module.VectorMapPrepSnapGene(SimpleNamespace(log_queue=SimpleNamespace(put=log)))
         hotkey=module.pyautogui.hotkey;press=module.pyautogui.press;copy=module.pyperclip.copy
+        skip_focus_check=False
         try:
             for value,vector,insert in accepted:
-                while not is_snapgene(win32gui.GetForegroundWindow()):
-                    ask('SnapGene lost focus','Switch to SnapGene. Retry gives you five seconds.',['cancel','retry']);countdown(5)
+                while not is_snapgene(win32gui.GetForegroundWindow()) and not skip_focus_check:
+                    # Upstream's focus dialog offers Retry, Continue (skips the
+                    # per-record foreground check for the remaining records)
+                    # and Cancel; mirror those three choices.
+                    reply=ask('SnapGene lost focus','Switch to SnapGene. Retry gives you five seconds; Continue skips the focus check for the remaining maps.',['cancel','retry','proceed'])
+                    if reply['choice']=='proceed':skip_focus_check=True
+                    else:countdown(5)
                 target=folder/(value+extension);saving=False
                 def guarded_hotkey(*keys,**kwargs):
                     nonlocal saving
-                    if not is_snapgene(win32gui.GetForegroundWindow()):raise RuntimeError('SnapGene lost focus; automation stopped.')
+                    if not skip_focus_check and not is_snapgene(win32gui.GetForegroundWindow()):raise RuntimeError('SnapGene lost focus; automation stopped.')
                     if tuple(keys)==('ctrl','s'):saving=True
                     return hotkey(*keys,**kwargs)
                 def guarded_press(*keys,**kwargs):
-                    if not is_snapgene(win32gui.GetForegroundWindow()):raise RuntimeError('SnapGene lost focus; automation stopped.')
+                    if not skip_focus_check and not is_snapgene(win32gui.GetForegroundWindow()):raise RuntimeError('SnapGene lost focus; automation stopped.')
                     return press(*keys,**kwargs)
                 def redirected_copy(text):
                     nonlocal saving

@@ -27,7 +27,7 @@ Packaged checks:
 
 - FileSync: renderer/preload, portable user-data path, sql.js WASM database, dry run, real fixture copy, and history API.
 - Binding: XLSX fixture loading, perfect-match alignment, workbook-write IPC preserving bytes. The recording harness additionally exercised workbook export with a supplied synthetic save path.
-- Hub: bundled libraries/Tk, launcher/theme/templates/databases, persistent configuration path beside the outer EXE, Streamlit server health/start/stop, bundled Tesseract and numeric-image OCR.
+- Hub: bundled libraries/Tk, launcher/theme/templates/databases, persistent configuration path beside the outer EXE, Streamlit server health/start/stop, packaged RapidOCR import and numeric-image OCR fixture.
 - Peak: bundled runtime/imports/CLI and all 18 synthetic AB1/evidence tests against the packaged modules in each format.
 - KM: bundled runtime, clinical fixture inspection, survival analysis, and XLSX structure/export in each format.
 

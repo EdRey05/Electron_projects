@@ -1,6 +1,6 @@
 # Portable Windows builds
 
-The supported release target is Windows x64. End users extract the folder ZIP and double-click the application EXE, or run the optional self-extracting portable EXE. They do not install Node, npm, Python, uv, or Tesseract.
+The supported release target is Windows x64. End users extract the folder ZIP and double-click the application EXE, or run the optional self-extracting portable EXE. They do not install Node, npm, Python, or uv.
 
 ## Build one, several, or all apps
 
@@ -51,7 +51,7 @@ Packaged apps store Electron data in `data/` and logs in `logs/` beside the oute
 
 Extract to a writable folder. Preserve `data/` when replacing application files. To change the versioned folder name, move the complete folder or copy its data directory into the new version. Do not extract a new release over data from an unrelated app. Old FileSync AppData is not automatically imported: if needed, close FileSync and copy its existing user-data contents into the new portable data directory before first use. Keep a backup when migrating.
 
-Hub's optional legacy .doc conversion still requires Microsoft Word; SnapGene automation requires installed SnapGene. Hub tools render natively and do not start Tk windows or Streamlit servers. Use .docx for the standalone workflow. Network-drive workflows still need their user-provided data locations. OCR includes Tesseract and English trained data. These are application capability limits, not build-machine dependencies.
+Hub's optional legacy .doc conversion still requires Microsoft Word; SnapGene automation requires installed SnapGene. Hub tools render natively and do not start Tk windows or Streamlit servers. Use .docx for the standalone workflow. Network-drive workflows still need their user-provided data locations. OCR runs in-process through the RapidOCR wheel (PP-OCRv6-small models packaged inside the wheel; no external executable). These are application capability limits, not build-machine dependencies.
 
 ## Test the actual artifacts
 
@@ -76,3 +76,10 @@ Checks include FileSync database/copy, Binding XLSX/alignment, Hub native catalo
 7. Build and test offline, including relocation and persistence. Update this manual if the app needs an additional capability or exception.
 
 Do not merge all Python dependency sets or node_modules merely to reuse downloads. Separate application environments and shared download caches are intentional.
+
+
+### App-local Microsoft C++ runtime for ONNX
+
+GSH's `msvcRuntime` build profile stages two x64 Microsoft C++ runtime DLLs beside bundled Python. `msvc-runtime.json` pins the official Microsoft package URL, version, installer SHA256 and individual DLL hashes. `Stage-MsvcRuntime.ps1` verifies the package/signature and extracts its CAB payloads with staged Python and Windows expand.exe; it does not execute the installer. Runtime provenance and the package's RTF notices are retained in the portable runtime.
+
+The packaged smoke test verifies that ONNX loaded these DLLs from the portable Python folder. Build and clean-test machines do not need a separate Visual C++ installation. Upgrade this manifest deliberately, together with import, relocation and offline inference checks. Keep the complete transitive Python lock synchronized when adding scientific/OCR dependencies.

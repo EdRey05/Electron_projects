@@ -61,10 +61,6 @@
       "to": "python-app/app_theme_midnight.json"
     },
     {
-      "from": "python-app/tools",
-      "to": "python-app/tools"
-    },
-    {
       "from": "../build-tools/runtime.cjs",
       "to": "build-common/runtime.cjs"
     },

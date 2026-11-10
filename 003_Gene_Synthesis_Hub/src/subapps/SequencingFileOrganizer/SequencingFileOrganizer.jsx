@@ -73,12 +73,17 @@ export default function SequencingFileOrganizer({ onBack, initialPaths }) {
   const [createdFolderNames, setCreatedFolderNames] = useState([]);
 
   const handleOrganized = useCallback(async(workNos, folderNames, destination) => {
-    if(!workNos.length || !folderNames.length)return;
+    if(!workNos.length && !folderNames.length){
+      // A run that organized nothing leaves the previous session intact.
+      setSessionMessage('Nothing organized - last_session_log.json left unchanged.');
+      return;
+    }
     setSessionDest(destination);
     setOrganizedWorkNos(workNos);
     setCreatedFolderNames(folderNames);
     const result=await window.api.organizerSession({record:{dest_dir:destination,organized_work_nos:workNos,created_folder_names:folderNames}});
-    if(!result.ok)throw new Error('Files organized, but session could not be saved: '+result.error);
+    if(result.ok)setSessionMessage("Session saved as last_session_log.json for 'Load Last Session'.");
+    else setSessionMessage('Warning: could not save session log: '+result.error);
   }, []);
   const [sessionMessage,setSessionMessage]=useState('');
   const loadLastSession=async()=>{
@@ -231,7 +236,7 @@ function OrganizeTab({ initialPaths, onOrganized }) {
       appendLog("\nDeleting .seq files from source...");
       let deletedCount = 0;
       let failures=0;
-      for (const name of filenames.filter((n) => n.toLowerCase().endsWith(".seq"))) {
+      for (const name of filenames.filter((n) => n.endsWith(".seq"))) {
         const del = await window.api.deleteFile({ filePath: joinPath(sourceDir, name) });
         if (del.ok) deletedCount++;
         else {failures++;appendLog(`  Error deleting ${name}: ${del.error}`);}
@@ -482,7 +487,7 @@ function DistributeTab({ initialPaths, organizedWorkNos }) {
         const inserts=variants.filter(name=>name===folderBase+'.txt');
         const vectors=variants.filter(name=>name.startsWith(folderBase+'+'));
         if(inserts.length>1||vectors.length>1||inserts.length+vectors.length<variants.length)
-          appendLog(`  Unexpected reference variants for ${folderBase}, copying all (${variants.join(', ')})`);
+          appendLog(`  ⚠ ${folderBase}: unexpected reference variants, copying all (${variants.join(', ')})`);
         for (const refFilename of variants) {
           const sourceFile = joinPath(refDir, refFilename);
           const destFile = joinPath(destFolder, refFilename);
@@ -585,6 +590,24 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
   const fileInputRef = useRef(null);
   const { dialogState, requestAction, settle } = useIssuesDialog();
 
+  // Folder source: upstream carries a "Use organized folders from Tab 1"
+  // checkbox (auto-selected after every Tab-1 run) plus manually added
+  // folder names; the SG Check lists exactly those, never every subdirectory.
+  const [useOrganized, setUseOrganized] = useState(true);
+  const [manualFolders, setManualFolders] = useState([]);
+  const [manualEntry, setManualEntry] = useState("");
+  const combinedFolders = useMemo(() => {
+    const seen = new Set();
+    const out = [];
+    for (const f of [...(useOrganized ? createdFolderNames : []), ...manualFolders]) {
+      if (f && !seen.has(f)) {
+        seen.add(f);
+        out.push(f);
+      }
+    }
+    return out;
+  }, [useOrganized, createdFolderNames, manualFolders]);
+
   useEffect(() => {
     if (initialPaths?.sg_check_template_path) setTemplateFile(initialPaths.sg_check_template_path);
     if (initialPaths?.sg_check_output_path) setOutputDir(initialPaths.sg_check_output_path);
@@ -596,7 +619,23 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
 
   const appendLog = (msg) => setLogs((prev) => [...prev, { msg, t: Date.now() }]);
 
-  const canRun = templateFile && outputDir && destDir && !running;
+  const canRun = templateFile && outputDir && destDir && !running && combinedFolders.length > 0;
+
+  const addManualFolder = () => {
+    const raw = manualEntry.trim();
+    if (!raw) return;
+    // The Tk entry takes a folder name or a full path and adds its basename.
+    const name = raw.replace(/[\\/]+$/, "").split(/[\\/]/).pop();
+    if (name && !manualFolders.includes(name)) setManualFolders((prev) => [...prev, name]);
+    setManualEntry("");
+  };
+  const browseManualFolder = async () => {
+    const dir = await window.api.chooseOutputDir(destDir);
+    if (dir) {
+      const name = dir.split(/[\\/]/).pop();
+      if (name && !manualFolders.includes(name)) setManualFolders((prev) => [...prev, name]);
+    }
+  };
 
   const chooseFile = async () => {
     if (!window.api.chooseFile) {
@@ -640,18 +679,10 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
     setStatus({ text: "Loading template + scanning folders...", color: "info" });
 
     try {
-      // Step 1: list subdirectories of destDir (= "Sorted Sequencing Folder")
-      const foldersResult = await window.api.listDirectory({ dirPath: destDir, filter: "dirs" });
-      if (!foldersResult.ok) {
-        appendLog(`ERROR: ${foldersResult.error}`);
-        setStatus({ text: `Failed to list destination: ${foldersResult.error}`, color: "bad" });
-        setRunning(false);
-        return;
-      }
-      const folderNames = foldersResult.entries.map((e) => e.name);
-
-      // Step 2: classify each folder
-      appendLog(`Scanning ${folderNames.length} folders...`);
+      // Step 1: the folder list is the CURRENT Tab-1 batch (when the
+      // "Use organized folders from Tab 1" box is checked) plus the
+      // manually added names — never the whole destination directory.
+      const folderNames = combinedFolders;
       const folderContents = {};
       for (const fn of folderNames) {
         const inner = await window.api.listDirectory({
@@ -746,8 +777,9 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
         setRunning(false);
         return;
       }
-      if(writeResult.canceled){setStatus({text:'Save canceled. Existing workbook kept.',color:'info'});return;}
+      if(writeResult.canceled){appendLog(`\nSave cancelled, existing file kept: ${filename}`);setStatus({text:'Save cancelled. Existing workbook kept.',color:'info'});return;}
       const savedName=writeResult.filePath.split(/[\\/]/).pop();
+      if(savedName!==filename)appendLog(`Existing file found, saving as: ${savedName}`);
       appendLog(`Saving file as: ${savedName}`);
       appendLog(`File successfully saved to: ${outputDir}`);
       appendLog("\n--- SG Check Generation Complete ---");
@@ -792,7 +824,7 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
       <Panel
         icon={<FolderOpen size={15} style={{ color: C.teal }} />}
         title="Folder Source"
-        subtitle="Organized folders from Tab 1"
+        subtitle="Organized folders from Tab 1 plus manually added names"
       >
         <FolderPicker
           id="sfo-folder-source"
@@ -800,6 +832,50 @@ function SgCheckTab({ initialPaths, createdFolderNames }) {
           onChange={setDestDir}
           onBrowse={() => chooseDir(setDestDir)}
         />
+        <label className="mt-3 flex items-center gap-2" style={{ fontSize: 14 }}>
+          <input
+            aria-label="Use organized folders from Tab 1"
+            type="checkbox"
+            checked={useOrganized}
+            onChange={(e) => setUseOrganized(e.target.checked)}
+          />
+          <span>
+            Use organized folders from Tab 1
+            {createdFolderNames.length ? ` (${createdFolderNames.length})` : " — run Tab 1 first"}
+          </span>
+        </label>
+        <div className="mt-2 flex gap-2">
+          <input
+            aria-label="Add folder manually"
+            value={manualEntry}
+            disabled={running}
+            onChange={(e) => setManualEntry(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") addManualFolder(); }}
+            placeholder="Type a folder name or paste its full path here..."
+            className="flex-1 p-2 rounded"
+            style={{ background: C.surface, border: "1px solid " + C.border, fontSize: 14 }}
+          />
+          <Button disabled={running} onClick={browseManualFolder}>Browse</Button>
+          <Button variant="primary" disabled={running} onClick={addManualFolder}>Add</Button>
+        </div>
+        <div className="mt-2">
+          {manualFolders.length === 0 && (
+            <span style={{ fontSize: 12, color: C.inkMuted }}>No folders added manually.</span>
+          )}
+          {manualFolders.map((name) => (
+            <div key={name} className="flex items-center justify-between gap-2 py-1">
+              <span style={{ fontSize: 13 }}>{name}</span>
+              <Button
+                aria-label={`Remove ${name}`}
+                variant="danger"
+                disabled={running}
+                onClick={() => setManualFolders((prev) => prev.filter((f) => f !== name))}
+              >
+                ✕
+              </Button>
+            </div>
+          ))}
+        </div>
       </Panel>
 
       <div className="flex items-center justify-between gap-4">

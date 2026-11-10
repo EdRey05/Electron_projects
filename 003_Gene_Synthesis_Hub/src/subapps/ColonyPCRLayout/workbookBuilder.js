@@ -111,7 +111,8 @@ export async function buildWorkbookBytes(
   summaryData = [],
   requestedCloneCounts = new Map(),
   templateBytes = null,
-  date = new Date()
+  date = new Date(),
+  plateHeaderStem = null
 ) {
   const wb = new ExcelJS.Workbook();
   if (templateBytes) {
@@ -137,8 +138,28 @@ export async function buildWorkbookBytes(
       pNum === 1
         ? templateSheet
         : cloneSheet(wb, templateSnapshot, `Plate ${pNum}`);
-    writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, date);
+    writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, date, plateHeaderStem);
   });
+
+  // Python stamps the saved file stem on every Plate sheet's A1 at save
+  // time; the stem arrives from the save dialog before serialization.
+  if (plateHeaderStem) {
+    for (const sheet of wb.worksheets) {
+      if (sheet.name && sheet.name.startsWith("Plate")) {
+        const cell = sheet.getCell("A1");
+        cell.value = plateHeaderStem;
+        setCellFont(sheet, 1, 1, { ...(cell.font || {}), bold: true });
+      }
+    }
+  }
+
+  // Apply final formatting to all plate sheets: B..M column width 25, like
+  // the Python's save-time pass.
+  for (const sheet of wb.worksheets) {
+    if (sheet.name && sheet.name.startsWith("Plate")) {
+      for (let c = 2; c <= 13; c++) sheet.getColumn(c).width = 25;
+    }
+  }
 
   // The Label sheet is always last.
   writeLabelSheet(wb, plates, summaryData, date);
@@ -192,27 +213,26 @@ function writeLabelSheet(wb, plates, summaryData, date) {
     }
   }
 
-  const seen = new Set();
   let rowIdx = 2;
-  for (const plate of plates) {
-    for (const j of plate.jobs) {
-      const key = `${j.jobId}\0${jobSourceFile(j, summaryData)}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      if ((cloneCounts.get(key) ?? 0) === 0) continue;
+  // The Python emits one label row per summary row with counts > 0 — no
+  // dedupe, so repeated (Work No., SourceFile) pairs repeat identically.
+  for (const summaryRow of summaryData) {
+    const jobId = summaryRow["Work No."];
+    const sourceFile = summaryRow.SourceFile || "";
+    const key = `${jobId}\0${sourceFile}`;
+    if ((cloneCounts.get(key) ?? 0) === 0) continue;
 
-      const sourceFile = jobSourceFile(j, summaryData);
-      const itemNum = `${j.jobId}-ColoPCR`;
-      const lot1 = `${colopcrDateCode}-${itemNum}-FL`;
+    const itemNum = `${jobId}-ColoPCR`;
+    const lot1 = `${colopcrDateCode}-${itemNum}-FL`;
 
-      // Strip a trailing "-FL" from the ligation filename's basename.
-      let ligationBasename = sourceFile.split(/[\\/]/).pop().replace(/\.[^.]+$/, "");
-      if (ligationBasename.toUpperCase().endsWith("-FL")) {
-        ligationBasename = ligationBasename.slice(0, -3);
-      }
-      const lot2 = `${ligationBasename}._.${colopcrDateCode}-ColoPCR._.${j.jobId}`;
+    // Strip a trailing "-FL" from the ligation filename's basename.
+    let ligationBasename = sourceFile.split(/[\\/]/).pop().replace(/\.[^.]+$/, "");
+    if (ligationBasename.toUpperCase().endsWith("-FL")) {
+      ligationBasename = ligationBasename.slice(0, -3);
+    }
+    const lot2 = `${ligationBasename}._.${colopcrDateCode}-ColoPCR._.${jobId}`;
 
-      const row = ws.getRow(rowIdx);
+    const row = ws.getRow(rowIdx);
       row.getCell(1).value = dateStrMdy;
       row.getCell(2).value = null;
       row.getCell(3).value = itemNum;
@@ -223,7 +243,6 @@ function writeLabelSheet(wb, plates, summaryData, date) {
       row.getCell(8).value = null;
       row.getCell(9).value = lot2;
       rowIdx += 1;
-    }
   }
 
   // Column widths = longest cell + 2, matching the Python
@@ -244,12 +263,13 @@ function writeLabelSheet(wb, plates, summaryData, date) {
  * Write one plate: the clone grid, the samples table, the mix calculation
  * table and the borders.
  */
-function writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, date) {
+function writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, date, stemOverride) {
   ws.name = `Plate ${pNum}`;
 
-  // A1: the plate header (bold, matching the Python's Font(bold=True)).
+  // A1: at save time the Python replaces every Plate sheet's A1 with the
+  // saved file's stem; before saving it carries the dated plate header.
   const headerCell = ws.getCell("A1");
-  headerCell.value = buildPlateHeader(date, pNum);
+  headerCell.value = stemOverride || buildPlateHeader(date, pNum);
   setCellFont(ws, 1, 1, { ...(headerCell.font || {}), bold: true });
 
   // --- The plate grid -------------------------------------------------
@@ -382,11 +402,15 @@ function writePlateSheet(ws, plate, summaryData, pNum, requestedCloneCounts, dat
   // from the REQUESTED counts (what the operator typed into the clone-count
   // dialog), not from the clones actually placed — the Python sums
   // `all_clone_counts` for every job on the plate that shares the primer.
+  // Column order matters: the Python iterates `plate_summary["Primers"].unique()`
+  // — first-appearance in SUMMARY FILE order, not plate placement order.
+  const plateWorkNos = new Set(plate.jobs.map((j) => j.jobId));
   const primerGroups = new Map();
-  for (const j of plate.jobs) {
-    if (!j.primers) continue;
-    if (!primerGroups.has(j.primers)) primerGroups.set(j.primers, new Set());
-    primerGroups.get(j.primers).add(j.jobId);
+  for (const row of summaryData) {
+    if (!plateWorkNos.has(row["Work No."])) continue;
+    if (!row.Primers) continue;
+    if (!primerGroups.has(row.Primers)) primerGroups.set(row.Primers, new Set());
+    primerGroups.get(row.Primers).add(row["Work No."]);
   }
 
   let mixCol = 3; // column C, after the row labels

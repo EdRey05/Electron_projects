@@ -47,8 +47,13 @@ export function generateSheetPrefix(date) {
 }
 
 function addMonths(date, delta) {
-  const d = new Date(date);
+  // Mirror pandas' relativedelta: overlong day-of-month clamps to the
+  // month's last day (Mar 31 - 1 month = Feb 28/29), never overflows.
+  const d = new Date(date.getTime());
+  const day = d.getDate();
+  d.setDate(1);
   d.setMonth(d.getMonth() + delta);
+  d.setDate(Math.min(day, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
   return d;
 }
 
@@ -157,7 +162,9 @@ export function extractVectorDbLookups(arrayBuffer) {
       const rawLen = r[5];
       if (rawLen != null && rawLen !== "") {
         const lenNum = Number(rawLen);
-        if (Number.isFinite(lenNum) && lenNum > 0) {
+        if (Number.isFinite(lenNum)) {
+          // Python float() accepts 0/negative lot lengths and overwrites the
+          // size map with them; only non-numeric cells keep the base size.
           result.length[vectorName] = lenNum;
         }
       }
@@ -205,25 +212,37 @@ export function extractJobLogInfo(arrayBuffer, jobIds) {
     }
     return null;
   };
-  // Historic positional fallbacks: Work No.=A(0), BBI ID=B(1), Vector=C(2),
-  // Cloning Site=D(3), Resistance=E(4), Length (bp)=F(5).
-  const COL_JOB_ID = find(["work no.", "jobid", "job id", "job_id"]) ?? 0;
-  const COL_BBID = find(["bbi id", "bbid"]) ?? 1;
-  const COL_VECTOR = find(["vector"]) ?? 2;
-  const COL_ENZYME = find(["cloning site", "cloningsite", "enzyme", "enzymes"]) ?? 3;
-  const COL_RESISTANCE = find(["resistance", "antibiotic"]) ?? 4;
-  const COL_LENGTH = find(["length (bp)", "length"]) ?? 5;
+  // Historic positional fallbacks: Work No.=A(0), BBI ID=B(1), Vector=F(5),
+  // Cloning Site=G(6), Resistance=H(7), Length (bp)=I(8). When the named
+  // column is absent AND the sheet has no fallback position, resolution
+  // raises and the whole run aborts — matching _resolve_column upstream.
+  const resolveOr = (canonical, candidates, fallbackIdx) => {
+    if (fallbackIdx == null || fallbackIdx >= headers.length) {
+      throw new Error(
+        `Column '${canonical}' not found: no header matches ` +
+          `${canonical} and there is no fallback position ` +
+          `(sheet has ${headers.length} columns).`
+      );
+    }
+    return fallbackIdx;
+  };
+  const COL_JOB_ID = find(["work no.", "jobid", "job id", "job_id"]) ?? resolveOr("Work No.", ["Work No.", "JobID", "Job ID", "Job_ID"], 0);
+  const COL_BBID = find(["bbi id", "bbid", "bbi-id"]) ?? resolveOr("BBI ID", ["BBI ID", "BBID", "BBI-ID"], 1);
+  const COL_VECTOR = find(["vector"]) ?? resolveOr("Vector", ["Vector"], 5);
+  const COL_ENZYME = find(["cloning site"]) ?? resolveOr("Cloning Site", ["Cloning Site"], 6);
+  const COL_RESISTANCE = find(["resistance", "antibiotic"]) ?? resolveOr("Resistance", ["Resistance", "Antibiotic"], 7);
+  const COL_LENGTH = find(["length (bp)", "length"]) ?? resolveOr("Length (bp)", ["Length (bp)", "Length"], 8);
 
   // Provenance report: which path fired for each column (name vs fixed
   // fallback), using the shared helper so the wording matches the rest of
   // the hub.
   const resolution = resolveColumns(headers, [
     { key: "workNo", label: "Work No.", candidates: ["Work No.", "JobID", "Job ID", "Job_ID"], fallback: 0 },
-    { key: "bbiId", label: "BBI ID", candidates: ["BBI ID", "BBID"], fallback: 1 },
-    { key: "vector", label: "Vector", candidates: ["Vector"], fallback: 2 },
-    { key: "cloningSite", label: "Cloning Site", candidates: ["Cloning Site", "CloningSite", "Enzyme", "Enzymes"], fallback: 3 },
-    { key: "resistance", label: "Resistance", candidates: ["Resistance", "Antibiotic"], fallback: 4 },
-    { key: "length", label: "Length (bp)", candidates: ["Length (bp)", "Length"], fallback: 5 },
+    { key: "bbiId", label: "BBI ID", candidates: ["BBI ID", "BBID", "BBI-ID"], fallback: 1 },
+    { key: "vector", label: "Vector", candidates: ["Vector"], fallback: 5 },
+    { key: "cloningSite", label: "Cloning Site", candidates: ["Cloning Site"], fallback: 6 },
+    { key: "resistance", label: "Resistance", candidates: ["Resistance", "Antibiotic"], fallback: 7 },
+    { key: "length", label: "Length (bp)", candidates: ["Length (bp)", "Length"], fallback: 8 },
   ]);
   const resolutionLog = columnResolutionLog("Initiated", resolution);
 
@@ -237,6 +256,9 @@ export function extractJobLogInfo(arrayBuffer, jobIds) {
     if (jobIdVal == null) continue;
     const jobId = String(jobIdVal).trim();
     if (!jobId || !jobIds.includes(jobId)) continue;
+    // Python takes the FIRST matching row (job_row_df.iloc[0]); later
+    // duplicates of the same Work No. never overwrite it.
+    if (jobRows[jobId]) continue;
     const data = {
       job_id: jobId,
       bbid: r[COL_BBID] != null ? String(r[COL_BBID]).trim() : "",
@@ -421,10 +443,27 @@ const FRAGMENT_COLUMNS = {
  * Returns { position, geneName, purityPass, yieldPass, sequence,
  *           concentration, <key>ByName }.
  */
-function resolveFragmentColumns(headers) {
+function resolveFragmentColumns(headers, concentrationColumnRequested = false) {
   const headerMap = buildHeaderMap(headers);
   const out = {};
   for (const [key, spec] of Object.entries(FRAGMENT_COLUMNS)) {
+    if (key === "concentration" && concentrationColumnRequested) {
+      // The Tk app resolves the PCR-sheet Concentration by header name
+      // first, positionally (column G) only when the sheet has more than
+      // six columns, and a sheet with neither is skipped wholesale
+      // ("read failed"). Reproduce exactly.
+      const r = resolveColumn(headerMap, spec.candidates, headers.length > 6 ? spec.fallback : -1);
+      if (r.idx === -1) {
+        throw new Error(
+          "Column 'Concentration' not found: no header matches " +
+            "['Concentration'] and there is no fallback position " +
+            `(sheet has ${headers.length} columns).`
+        );
+      }
+      out[key] = r.idx;
+      out[`${key}ByName`] = r.byName;
+      continue;
+    }
     const r = resolveColumn(headerMap, spec.candidates, spec.fallback);
     out[key] = r.idx;
     out[`${key}ByName`] = r.byName;
@@ -503,12 +542,19 @@ export function extractFragmentsWithReport(
     const sheet = wb.Sheets["PCR Fragments"];
     const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: false, raw: true });
     const headers = (aoa[0] || []).map((h) => (h == null ? "" : String(h)));
-    const cols = resolveFragmentColumns(headers);
     logs.push("    - Checking special sheet 'PCR Fragments'...");
     const missing = missingRequired(headers);
     if (missing.length) {
       logs.push(`    - Skipped 'PCR Fragments': missing required columns ${missing.join(', ')}.`);
     } else {
+    let cols;
+    try {
+      cols = resolveFragmentColumns(headers, true);
+    } catch (err) {
+      logs.push(`    - Skipped 'PCR Fragments': read failed: ${err.message}.`);
+      cols = null;
+    }
+    if (cols) {
     let pcrCount = 0;
     for (let i = 1; i < aoa.length; i++) {
       const row = readFragmentRow(aoa[i] || [], cols, "PCR Fragments");
@@ -518,6 +564,7 @@ export function extractFragmentsWithReport(
     }
     if (cols.sequenceByName) anySequenceColumn = true;
     logs.push(`      > Found ${pcrCount} PCR fragments.`);
+    }
     }
   }
 

@@ -103,6 +103,19 @@ export function resolveSheetColumns(sheet, sheetName) {
  * Read the data block of one sheet (Excel row 35 onward) using the resolved
  * column indices. Returns the primer candidates found on that sheet.
  */
+// The Python renders cell values through str(): integral floats keep a
+// trailing ".0" and booleans print True/False.
+function pyStr(v) {
+  if (v == null) return "";
+  if (typeof v === "boolean") return v ? "True" : "False";
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return String(v);
+    const s = String(v);
+    return s.includes(".") || s.includes("e") || s.includes("E") ? s : s + ".0";
+  }
+  return String(v).replace(/\r\n?/g, "\n");
+}
+
 function readSheetCandidates(sheet, sheetName, nameIdx, seqIdx) {
   const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
   const maxCol = Math.max(range.e.c, 1);
@@ -118,18 +131,16 @@ function readSheetCandidates(sheet, sheetName, nameIdx, seqIdx) {
     header: 1,
     range: XLSX.utils.encode_range(dataRange),
     blankrows: false,
-    raw: false, // gives strings
+    raw: true,
   });
 
   const out = [];
   for (const row of aoa) {
     const nameCell = row[nameIdx];
     const seqCell = row[seqIdx];
-    const name =
-      nameCell == null || nameCell === ""
-        ? "Unknown"
-        : String(nameCell).trim() || "Unknown";
-    const seqRaw = seqCell == null ? "" : String(seqCell).trim().toUpperCase();
+    const nameText = nameCell == null || nameCell === "" ? "" : pyStr(nameCell).trim();
+    const name = nameText || "Unknown";
+    const seqRaw = seqCell == null ? "" : pyStr(seqCell).trim().toUpperCase();
     if (!isValidPrimer(seqRaw)) continue;
     out.push({ sheet: sheetName, name, sequence: seqRaw });
   }
@@ -143,9 +154,17 @@ export async function loadPrimerCandidatesFromFile(file) {
   const relevantSheets = wb.SheetNames.filter(isRelevantSheet);
   const out = [];
   const resolutions = [];
+  const skipped = [];
   for (const sheetName of relevantSheets) {
     const sheet = wb.Sheets[sheetName];
     if (!sheet) continue;
+    // The Tk app skips a sheet whose data block has no readable Name +
+    // Sequence pair (fewer than two columns) and reports it in the summary.
+    const range = XLSX.utils.decode_range(sheet["!ref"] || "A1");
+    if (range.e.c < 1) {
+      skipped.push(sheetName);
+      continue;
+    }
     const { nameIdx, seqIdx, byName, log } = resolveSheetColumns(sheet, sheetName);
     resolutions.push({ sheet: sheetName, nameIdx, seqIdx, byName, log });
     for (const cand of readSheetCandidates(sheet, sheetName, nameIdx, seqIdx)) {
@@ -155,9 +174,15 @@ export async function loadPrimerCandidatesFromFile(file) {
   return {
     candidates: out,
     sheetsScanned: relevantSheets,
+    sheetsSkipped: skipped,
     // Per-sheet provenance: which columns were used and whether the
     // name-first pass fired. The caller logs these lines.
     resolutions,
-    logs: resolutions.map((r) => r.log),
+    logs: [
+      ...resolutions.map((r) => r.log),
+      ...(skipped.length
+        ? [`${skipped.length} sheet(s) skipped: ${skipped.join(", ")}`]
+        : []),
+    ],
   };
 }

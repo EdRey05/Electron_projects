@@ -1,4 +1,5 @@
-"""Headless adapters for the seven reference QC File Prep workflows.
+"""Headless adapters for the five reference QC File Prep workflows (upload
+Prep ships its own native adapter).
 
 Upstream processing stays in Code/. Only UI state, dialogs, paths, staging,
 Word lifecycle and publication are adapted here.
@@ -19,8 +20,6 @@ WORKFLOWS={
  'inhouse-new':('inhouse_newnames','InHouseNewNames'),
  'inhouse-old':('inhouse_oldnames','InHouseOldNames'),
  'internal':('internal_renaming','InternalRenaming'),
- 'wgk':('wgk_correction','WgkCorrection'),
- 'resuspension':('resuspension_prep','ResuspensionPrep'),
  'batch-post':('batch_post_processing','BatchPostProcessing'),
  'scratch':('inhouse_qc_new','InHouseQcNew'),
 }
@@ -73,8 +72,8 @@ def run(payload,root,log,ask):
     if hasattr(module,'win32'):module.win32=SimpleNamespace(Dispatch=private_word,DispatchEx=private_word)
     try:
         with tempfile.TemporaryDirectory(prefix='gsh-qc-prep-') as temporary:
-            workspace=Path(temporary);inputs=workspace/'input';inputs.mkdir();private_output=workspace/'scratch-output';private_output.mkdir()
-            paths={**payload.get('paths',{}),'QC_Input_Folder':str(inputs),'QC_Output_Folder':str(private_output),'Default_Output_QC_Folder':str(private_output)}
+            workspace=Path(temporary).resolve();inputs=workspace/'input';inputs.mkdir();private_output=workspace/'scratch-output';private_output.mkdir()
+            paths={**payload.get('paths',{}),'QC_Input_Folder':str(inputs),'QC_uploaded':str(private_output)}
             paths['Default_Gel_Images_Folder']=paths.get('QC_Gel_Images','')
             config=configparser.ConfigParser();config['DEFAULT']={'Max_Img_Width_Inches':str(payload.get('maxWidth',2.3)),'Max_Img_Height_Inches':str(payload.get('maxHeight',2.8))}
             for key in ('Max_Img_Width_Inches','Max_Img_Height_Inches'):
@@ -118,16 +117,34 @@ def run(payload,root,log,ask):
                             if normalized in renamed:raise ValueError('Replacement map produces duplicate archive paths.')
                             renamed.append(normalized)
                 processor.remove_qc_table_var.set(bool(payload.get('removeQcTable')))
-            elif name=='wgk':
-                processor.input_mode.set(payload.get('quantityMode','single'))
-                processor.plasmid_qty.set(payload.get('quantity','10 µg'));processor.batch_file_path.set(payload.get('replacementFile',''))
-                if not processor.validate_inputs():raise ValueError('Invalid quantity inputs.')
             elif name=='batch-post':
                 def assignments(ready,input_folder=None):
                     result={}
+                    # Upstream dialog auto-fill: {vector}.fasta next to the zips plus
+                    # tab/comma NanoDrop paste txts (header lines skipped).
+                    vector_by_name={};od_by_workno={}
+                    source=Path(input_folder) if input_folder else None
+                    if source and source.is_dir():
+                        for entry in ready:
+                            candidate=source/(entry['vector']+'.fasta')
+                            if candidate.is_file():vector_by_name[entry['vector']+'.fasta']=str(candidate)
+                        for txt in source.iterdir():
+                            if not txt.is_file() or txt.suffix.lower()!='.txt':continue
+                            try:
+                                for line in txt.read_text(encoding='utf-8',errors='replace').splitlines():
+                                    line=line.strip()
+                                    if not line:continue
+                                    parts=[p.strip() for p in re.split(r'[\t,]',line)]
+                                    if len(parts)<5:continue
+                                    if 'od260' in parts[0].lower() or 'work no' in parts[0].lower():continue
+                                    if parts[0] and all(parts[1:5]):od_by_workno[parts[0]]=parts[1:5]
+                            except OSError:continue
                     for entry in ready:
-                        fields=[{'key':'vector','label':entry['vector']+' vector FASTA','type':'file','extension':'.fasta','value':payload.get('vectorFasta','')}]
-                        fields += [{'key':f'od{i}','label':label,'value':str((payload.get('odValues') or ['','','',''])[i])} for i,label in enumerate(['OD260','OD280','OD260/OD280','µg/µL'])]
+                        preset=payload.get('vectorFasta','') or vector_by_name.get(entry['vector']+'.fasta','')
+                        fields=[{'key':'vector','label':entry['vector']+' vector FASTA','type':'file','extension':'.fasta','value':preset}]
+                        od_values=payload.get('odValues')
+                        if not od_values or not any(str(v).strip() for v in od_values):od_values=od_by_workno.get(entry['work_no'])
+                        fields += [{'key':f'od{i}','label':label,'value':str((od_values or ['','','',''])[i])} for i,label in enumerate(['OD260','OD280','OD260/OD280','µg/µL'])]
                         while True:
                             reply=ask('BATCH vector and OD',entry['zip_name']+'\nConfirm vector FASTA and all four OD values.',['cancel','skip','proceed'],fields)
                             if reply['choice']=='skip':result[entry['zip_stem']]={'skipped':True};break
@@ -156,26 +173,33 @@ def run(payload,root,log,ask):
                 processor.txt_ids=Value('\n'.join(ids))
                 def alignments(ready):
                     result={};alignment=Path(payload.get('alignmentFolder',''))
+                    def expected(value,extension):return f'Alignment for {value}{extension}'
                     for entry in ready:
                         value=entry['work_no'];row=entry['row']
                         for key in ('BBI ID','Vector','Plasmid No.','Tube ID'):safe_component(str(row[key]).strip())
-                        def locate(extension):
-                            matches=[p for p in alignment.glob('*') if p.is_file() and p.suffix.lower()==extension and re.match(re.escape(value)+r'(?=[^A-Za-z0-9]|$)',p.stem,re.I)] if alignment.is_dir() else []
-                            return str(matches[0]) if len(matches)==1 else ''
-                        fields=[{'key':'pdf','label':value+' alignment PDF','type':'file','extension':'.pdf','value':locate('.pdf')},{'key':'sqd','label':value+' alignment SQD','type':'file','extension':'.sqd','value':locate('.sqd')}]
+                        pdf_pick=alignment/expected(value,'.pdf');sqd_pick=alignment/expected(value,'.sqd')
+                        pair_ready=alignment.is_dir() and pdf_pick.is_file() and sqd_pick.is_file()
+                        def file_or_blank(path):
+                            return str(path) if pair_ready and path.is_file() else ''
+                        fields=[{'key':'pdf','label':value+' alignment PDF','type':'file','extension':'.pdf','value':file_or_blank(pdf_pick)},{'key':'sqd','label':value+' alignment SQD','type':'file','extension':'.sqd','value':file_or_blank(sqd_pick)}]
                         while True:
                             reply=ask('Alignment files',value+' — '+entry['vector'],['cancel','skip','proceed'],fields)
                             if reply['choice']=='skip':result[value]={'skipped':True};break
                             values=reply.get('data') or {}
-                            if all(Path(values.get(k,'')).is_file() and Path(values[k]).suffix.lower()=='.'+k for k in ('pdf','sqd')):result[value]=values;break
-                            record('[WARNING] Choose an existing PDF and SQD.');fields=[{**f,'value':values.get(f['key'],'')} for f in fields]
+                            pdf_path,sqd_path=Path(values.get('pdf','')),Path(values.get('sqd',''))
+                            if (pdf_path.is_file() and pdf_path.name==expected(value,'.pdf')
+                                    and sqd_path.is_file() and sqd_path.name==expected(value,'.sqd')
+                                    and pdf_path.suffix.lower()=='.pdf' and sqd_path.suffix.lower()=='.sqd'):
+                                result[value]=values;break
+                            record('[WARNING] PDF and SQD must be named "'
+                                   +expected(value,'.pdf')+'" and "'+expected(value,'.sqd')+'".')
+                            fields=[{**f,'value':values.get(f['key'],'')} for f in fields]
                     return result
                 processor._show_alignment_dialog=alignments
             processor.run_processing_task()
             products=[]
             for directory in workspace.iterdir():
                 if directory.is_dir() and ('output_zip' in directory.name or directory==private_output):products.extend(directory.glob('*.zip'))
-            if name=='resuspension':products.extend(inputs.glob('Resuspension_Prep_Data_*.docx'))
             if not products:raise ValueError('No output was produced. Check the processing log for skipped or failed records.')
             for product in products:
                 product.resolve().relative_to(workspace)

@@ -35,10 +35,12 @@
       "Bio",
       "docx",
       "PIL",
-      "pytesseract",
+      "rapidocr",
+      "onnxruntime",
       "win32com.client"
     ],
-    "tesseract": true
+    "msvcRuntime": true,
+    "tesseract": false
   },
   {
     "id": "004_Peak_Tracer",

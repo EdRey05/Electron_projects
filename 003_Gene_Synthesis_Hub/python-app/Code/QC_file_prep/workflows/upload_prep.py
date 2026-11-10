@@ -9,8 +9,8 @@ Scenario types — FOUR overall separations, each in a Tubes (T) or Plate
 (P) flavor; the row's Tubes cell chooses the flavor ("plate" -> P):
 
   S1T / S1P — In House: QC Folder == 'In House' AND Tube ID NOT
-             starting with 'P'. step 1: COPY from '3.6.5 QC files
-             received' into <email>\\ ; plate rows go one level deeper
+             starting with 'P'. step 1: COPY from '3.6.6 QC files
+             uploaded' into <email>\\ ; plate rows go one level deeper
              into <email>\\Plates\\<BBI ID root>\\
   S2T / S2P — Sg Other: Tube ID starts with 'P' AND QC Folder parses
              as a date AND BBI ID has no BATCH token. COPY from
@@ -22,8 +22,8 @@ Scenario types — FOUR overall separations, each in a Tubes (T) or Plate
              into <email>\\ (+ the Plates layer for plate rows).
   S4T / S4P — BATCH: BBI ID contains 'BATCH '. ZIP source: when the
              QC Folder parses as a date, COPY from 4.6\\<YYYYMMDD>\\BATCH\\;
-             when it reads 'In House', COPY from '3.6.5 QC files
-             received'. Target = QC_to_upload\\<YYYYMMDD of the row's
+             when it reads 'In House', COPY from '3.6.6 QC files
+             uploaded'. Target = QC_to_upload\\<YYYYMMDD of the row's
              shipment date>\\ (a DATE code, not an email folder) with
              the Plates\\<BBI ID root>\\ layer for plate rows.
 
@@ -51,10 +51,10 @@ for them. The progress bar tracks the EXECUTION (step 1 copies, step 2
 archives); the fast screening reports none.
 
 Move scenarios run in TWO steps: first COPY + distribute into
-QC_to_upload, then the '3.6.5 QC files received' originals move to the
-sibling archive '\\3.6.6 QC files uploaded\\<YYYY>\\' (YYYY = the row's
+QC_to_upload, then the '3.6.6 QC files uploaded' originals move into
+their year subfolder '\\<YYYY>\\' (YYYY = the row's
 shipment-date year). Target-collision rows copy nothing and are NOT
-archived (original stays in 3.6.5, logged loudly). Log messages that
+archived (original stays in 3.6.6, logged loudly). Log messages that
 are separate facts get their own line; related parts share one line.
 
 Full spec: agent task folder Tasks/Ongoing/Upload_prep/Upload_prep_spec.md.
@@ -808,9 +808,10 @@ class UploadPrep:
         else:
             self.log("[INFO] \t No hub workbook path resolved — Browse for the "
                      "In-House Progress workbook.")
-        self.log("[INFO] \t Upload Prep v1.1 (dev) — sources: 3.6.5 QC files "
-                 "received (copies archived to 3.6.6 after) + 4.6 Shipping "
-                 "list (COPY); output Desktop\\QC_to_upload.")
+        self.log("[INFO] \t Upload Prep v1.1 (dev) — sources: 3.6.6 QC files "
+                 "uploaded (originals archived into their 3.6.6\\<YYYY> "
+                 "subfolder after) + 4.6 Shipping list (COPY); output "
+                 "Desktop\\QC_to_upload.")
 
     # ---------------------------------------------------------- validation --
     def validate_inputs(self):
@@ -834,13 +835,13 @@ class UploadPrep:
 
     # ------------------------------------------------------ preflight/plan --
     def _resolve_sources(self):
-        """QC files received + Shipping list root: hub-passed first, ini
+        """QC files uploaded + Shipping list root: hub-passed first, ini
         fallback. Returns (qc_dir, ship_root, setup_problems) — when a
         folder is unusable, setup_problems records exactly which hub/ini
         values were tried."""
         setup_problems = []
-        qc_dir = self._resolve_one("QC_Output_Folder",
-                                   "3.6.5 QC files received", setup_problems)
+        qc_dir = self._resolve_one("QC_uploaded",
+                                   "3.6.6 QC files uploaded", setup_problems)
         ship_root = self._resolve_one("Shipping_List", "4.6 Shipping list",
                                       setup_problems)
         return qc_dir, ship_root, setup_problems
@@ -1049,9 +1050,9 @@ class UploadPrep:
         step 1 — COPY every ready zip into its QC_to_upload target (a
                  same-name file already in the target is a collision ->
                  skipped, never overwritten, and NOT archived);
-        step 2 — for received-source rows, move the '3.6.5 QC files
-                 received' original into the sibling archive
-                 '\\3.6.6 QC files uploaded\\<YYYY>\\' (YYYY = shipment year).
+        step 2 — for received-source rows, move the '3.6.6 QC files
+                 uploaded' original into its year subfolder
+                 '\\<YYYY>\\' (YYYY = shipment year).
         Only rows whose copy succeeded get archived."""
         self.log("")
         self.log("[INFO] \t Step 1 — copying into QC_to_upload ...")
@@ -1085,8 +1086,8 @@ class UploadPrep:
                          f"{exc.__class__.__name__}: {exc}")
         if pending_archive:
             self.log("")
-            self.log("[INFO] \t Step 2 — archiving the copied '3.6.5' "
-                     "originals to '3.6.6 QC files uploaded\\<YYYY>' ...")
+            self.log("[INFO] \t Step 2 — archiving the copied '3.6.6' "
+                     "originals into '3.6.6 QC files uploaded\\<YYYY>' ...")
             self.app.after(0, self._progress_set, 0.85)
             for m, e in enumerate(pending_archive, 1):
                 self.app.after(0, self._progress_set,
@@ -1102,8 +1103,8 @@ class UploadPrep:
                         not_archived += 1
                         self.log(f"[WARNING] \t Not archived: '{e['name']}' "
                                  f"already exists in {arch_dir} — the "
-                                 "original stays in '3.6.5 QC files "
-                                 "received'.")
+                                 "original stays in '3.6.6 QC files "
+                                 "uploaded'.")
                         continue
                     shutil.move(os.path.join(e["src_dir"], e["name"]), adst)
                     archived += 1
@@ -1122,5 +1123,5 @@ class UploadPrep:
         if not_archived:
             self.log(f"[WARNING] \t {not_archived} copied original(s) could "
                      "NOT be archived (see the warnings above) — they stay "
-                     "in '3.6.5 QC files received'; re-run the date later "
+                     "in '3.6.6 QC files uploaded'; re-run the date later "
                      "or move them manually.")

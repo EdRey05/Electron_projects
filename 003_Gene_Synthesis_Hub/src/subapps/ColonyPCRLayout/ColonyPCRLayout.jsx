@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {useWorkbookValidation,useWorkbookSetValidation} from '../../ui/useWorkbookValidation.js';
+import {validateColonyGridShape} from '../../ui/workbookValidation.js';
 import {ValidationStatus} from '../../ui/kit.jsx';
 import {
   FileSpreadsheet,
@@ -47,8 +48,12 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
   const [templatePath, setTemplatePath] = useState(initialPaths?.colony_pcr_template_path || "");
   const [outputDir, setOutputDir] = useState("");
   const primerValidation=useWorkbookValidation(primerLogPath,['input addon']);
-  const templateValidation=useWorkbookValidation(templatePath);
-  const ligationValidation=useWorkbookSetValidation(ligationFiles.map(file=>file.path),['Layout']);
+  // Template validation includes the Tk app's fail-closed plate-grid shape
+  // gate: B2..M2 = 1..12 and A3..A10 = A..H on the active sheet.
+  const templateValidation=useWorkbookValidation(templatePath,[],validateColonyGridShape);
+  // Ligation files are only XLSX magic-gated here — a file without a
+  // 'Layout' sheet is read best-effort at launch and logged as unprocessable.
+  const ligationValidation=useWorkbookSetValidation(ligationFiles.map(file=>file.path),[]);
 
   const [running, setRunning] = useState(false);
   const [status, setStatus] = useState({ text: "Ready", color: "info" });
@@ -112,14 +117,28 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
       appendLog(primerLog);
       appendLog(`Primer Log loaded (${Object.keys(primerMap).length} Work Nos.).`);
 
-      // Step 2: read each ligation file
+      // Step 2: read each ligation file. The Tk app processes files
+      // individually — any file that cannot be parsed only logs a warning
+      // and the run continues; total failure only when every file failed.
       let allRows = [];
+      let anyFileProcessed = false;
       for (const lf of ligationFiles) {
-        const lfBuf = await readFileAsArrayBuffer(lf.path);
-        const { rows, log } = readLigationLayout(lfBuf, lf.path);
-        appendLog(log);
-        appendLog(`Loaded ${rows.length} rows from ${baseName(lf.path)}.`);
-        allRows = allRows.concat(rows);
+        try {
+          const lfBuf = await readFileAsArrayBuffer(lf.path);
+          const { rows, log } = readLigationLayout(lfBuf, lf.path);
+          appendLog(log);
+          appendLog(`Loaded ${rows.length} rows from ${baseName(lf.path)}.`);
+          anyFileProcessed = true;
+          allRows = allRows.concat(rows);
+        } catch (err) {
+          appendLog(`WARNING: Could not process file ${baseName(lf.path)}: ${err.message}`);
+        }
+      }
+      if (!anyFileProcessed) {
+        appendLog("ERROR: No valid Ligation Layout files could be processed.");
+        setStatus({ text: "No ligation rows found.", color: "bad" });
+        setRunning(false);
+        return;
       }
 
       // Step 3: build summary data
@@ -127,12 +146,9 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
       for (const w of warnings) appendLog(`WARNING: ${w}`);
       appendLog(`Summary data: ${summaryRows.length} unique job entries.`);
 
-      if (summaryRows.length === 0) {
-        appendLog("ERROR: No valid ligation rows found.");
-        setStatus({ text: "No ligation rows found.", color: "bad" });
-        setRunning(false);
-        return;
-      }
+      // The Tk app opens the clone-count dialog with whatever the summary
+      // holds — even empty — and cancels after a zero-count confirm. The
+      // pre-dialog abort would skip that flow, so none here.
 
       // Step 4: ask the user for clone counts via the modal.
       const details = uniqueJobDetails(summaryRows);
@@ -167,10 +183,18 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
       }
       const { rows: summaryRows } = buildSummary(allRows, primerMap);
 
-      // Build clone-counts Map for the planner.
+      // Clone-counts Map for the planner (non-negative selects only).
       const counts = new Map();
       for (const [key, val] of Object.entries(pendingCloneCounts)) {
         if (val > 0) counts.set(key, val);
+      }
+      // The Tk app filters the summary down to counts > 0 and cancels the
+      // run when nothing was selected.
+      if (counts.size === 0) {
+        appendLog("No clones selected. Process cancelled.");
+        setStatus({ text: "Cancelled — no clones selected.", color: "warn" });
+        setRunning(false);
+        return;
       }
 
       // Plan plates
@@ -195,25 +219,35 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
       }
       // The mix calculation table uses the REQUESTED clone counts (the
       // `counts` map), matching the Python's `all_clone_counts`.
-      const bytes = await buildWorkbookBytes(plan, summaryRows, counts, templateBytes, new Date());
 
-      // Choose output dir if user didn't pick one
-      let destDir = outputDir;
-      if (!destDir) {
-        destDir = await window.api.chooseOutputDir("");
-        if (!destDir) {
-          appendLog("Aborted: no output folder selected.");
-          setStatus({ text: "Cancelled — no output folder.", color: "warn" });
-          setRunning(false);
-          return;
-        }
-        setOutputDir(destDir);
-      }
-
+      // Choose where the workbook goes BEFORE building it: the save dialog
+      // defaults to the first ligation file's folder with the date-coded
+      // name (rename-able, with the overwrite prompt), and the plate
+      // headers carry the saved file's stem.
       const filename = buildOutputFilename(new Date());
-      const sep = destDir.includes("\\") && !destDir.includes("/") ? "\\" : "/";
-      const outPath = `${destDir}${sep}${filename}`;
-      const writeResult = await window.api.writeBinaryFile({ filePath: outPath, bytes });
+      const firstLigationDir = ligationFiles.length
+        ? ligationFiles[0].path.replace(/[\\/][^\\/]*$/, "")
+        : "";
+      const defaultDir = outputDir || firstLigationDir;
+      const sep = defaultDir && defaultDir.includes("\\") && !defaultDir.includes("/") ? "\\" : "/";
+      const defaultPath = defaultDir ? `${defaultDir}${sep}${filename}` : filename;
+      const savePath = await window.api.chooseSavePath(defaultPath, filename);
+      if (!savePath) {
+        appendLog("Save operation cancelled by user. No file was saved.");
+        setStatus({ text: "Cancelled — nothing saved.", color: "warn" });
+        setRunning(false);
+        return;
+      }
+      const stem = baseName(savePath).replace(/\.xlsx$/i, "");
+      const bytes = await buildWorkbookBytes(
+        plan,
+        summaryRows,
+        counts,
+        templateBytes,
+        new Date(),
+        stem
+      );
+      const writeResult = await window.api.writeBinaryFile({ filePath: savePath, bytes });
       if (!writeResult?.ok) {
         appendLog(`ERROR saving file: ${writeResult.error}`);
         setStatus({ text: `Save failed: ${writeResult.error}`, color: "bad" });
@@ -221,7 +255,7 @@ export default function ColonyPCRLayout({ onBack, initialPaths }) {
         return;
       }
 
-      appendLog(`Saved: ${outPath}`);
+      appendLog(`File successfully saved to: ${savePath}`);
       appendLog("\n--- Processing Finished ---");
       setStatus({
         text: `Done. ${plan.plates.length} plate(s) saved to ${filename}.`,

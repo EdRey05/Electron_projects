@@ -54,9 +54,6 @@ def main():
     old=base/'old';make_zip(old,'XTEST001.2026A001');result=invoke('inhouse-old',old);assert 'BBI-TEST-01 in pUC57 2026-10-29.2026A001' in result['files'][0]['name']
     mapping=base/'rename.txt';mapping.write_text('BBI-TEST-01\tBBI-TEST-99\n',encoding='utf-8')
     internal=base/'internal';make_zip(internal,'BBI-TEST-01 QC');result=invoke('internal',internal,replacementFile=str(mapping),removeQcTable=True);assert 'BBI-TEST-99' in result['files'][0]['name'];report=read_report(result['files'][0]['path']);assert report.tables[0].cell(0,1).text=='BBI-TEST-99';assert len(report.tables)==2
-    wgk=base/'wgk';make_zip(wgk,'WGK001');result=invoke('wgk',wgk,quantity='25 µg');report=read_report(result['files'][0]['path']);assert report.tables[0].cell(5,2).text.strip()=='25 µg'
-    qty=base/'qty.txt';qty.write_text('WGK001\t35 µg\n',encoding='utf-8');result=invoke('wgk',wgk,quantityMode='batch',replacementFile=str(qty));assert read_report(result['files'][0]['path']).tables[0].cell(5,2).text.strip()=='35 µg'
-    resuspension=base/'resuspension';make_zip(resuspension,'BATCH001');result=invoke('resuspension',resuspension);doc=Document(result['files'][0]['path']);assert doc.tables[0].cell(1,0).text=='BBI-TEST-01';assert doc.tables[0].cell(1,3).text=='1.95'
     # Gel-positive path uses the reference dated directory and exact IDs.
     today=date.today();gels=base/'gels'/str(today.year)/(chr(ord('S')+today.year-2024)+today.strftime('%m%d'));gels.mkdir(parents=True)
     Image.new('RGB',(600,400),'gray').save(gels/'ZTEST001.2026A001.EcoRI.1200bp.png');gel_source=base/'gel';make_zip(gel_source,'ZTEST001.2026A001','ZTEST001')
@@ -71,7 +68,7 @@ def main():
         assert any(n.endswith('XTEST001 BBI-TEST-01.fasta') for n in names)
     # Build-from-scratch uses shipped report/PDF templates and local references.
     sorted_dir=base/'sorted';reference=sorted_dir/'XTEST001.2026A001';reference.mkdir(parents=True);(reference/'XTEST001.txt').write_text('ACGTACGT',encoding='utf-8');(reference/'read.ab1').write_bytes(b'synthetic copied trace; not an AB1 parser test')
-    align=base/'align';align.mkdir();(align/'XTEST001.pdf').write_bytes(b'synthetic user alignment PDF');(align/'XTEST001.sqd').write_bytes(b'synthetic user alignment SQD')
+    align=base/'align';align.mkdir();(align/'Alignment for XTEST001.pdf').write_bytes(b'synthetic user alignment PDF');(align/'Alignment for XTEST001.sqd').write_bytes(b'synthetic user alignment SQD')
     book=Workbook();sheet=book.active;sheet.title='Initiated';sheet.append(['Work No.','BBI ID','Vector','Plasmid No.','Tube ID','Gene Name','Length (bp)','Quantity','Prep']);sheet.append(['XTEST001','BBI-TEST-01','pUC57','2026A001','U12345','GeneOne',8,'10 µg','No digestion']);logfile=base/'jobs.xlsx';book.save(logfile)
     result=invoke('scratch',workNos=['XTEST001'],alignmentFolder=str(align),paths={'Job_Log':str(logfile),'Sorted_Sequencing_Files':str(sorted_dir)})
     with zipfile.ZipFile(result['files'][0]['path']) as archive:
@@ -80,7 +77,7 @@ def main():
     assert hashlib.sha256(original.read_bytes()).hexdigest()==digest
     hostile=base/'hostile';hostile.mkdir()
     with zipfile.ZipFile(hostile/'bad.zip','w') as archive:archive.writestr('../escape.txt','no')
-    try:invoke('resuspension',hostile);raise AssertionError('Unsafe ZIP accepted')
+    try:invoke('inhouse-new',hostile);raise AssertionError('Unsafe ZIP accepted')
     except ValueError as exc:assert 'Unsafe archive' in str(exc)
-    print(json.dumps({'status':'passed','workflows':7,'wordRequired':False,'realUpstreamProcessing':True,'nativePromptsExercised':prompts,'originalZipUnchanged':True,'tests':['new/no-gel','shipment renaming','old naming','internal doc/folder rename','WGK single+batch quantities','resuspension values','dated gel lookup+image','BATCH flanks+FASTA+OD','scratch report+templates+references+alignments','archive traversal guard']}))
+    print(json.dumps({'status':'passed','workflows':5,'wordRequired':False,'realUpstreamProcessing':True,'nativePromptsExercised':prompts,'originalZipUnchanged':True,'tests':['new/no-gel','shipment renaming','old naming','internal doc/folder rename','dated gel lookup+image','BATCH flanks+FASTA+OD','scratch report+templates+references+alignments','archive traversal guard']}))
 if __name__=='__main__':main()

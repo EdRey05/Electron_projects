@@ -208,13 +208,10 @@ export default function LigationLayout({ onBack, initialPaths }) {
       const jlBuf = await readFileAsArrayBuffer(jobLogPath);
       const jobExtraction = extractJobLogInfo(jlBuf, jobIdsList);
 
-      // Filter out manual jobs that weren't filled in
-      const filteredManualResults = {};
-      for (const [jid, m] of Object.entries(manualResults)) {
-        if (m.vector && m.vector.trim()) filteredManualResults[jid] = m;
-        else appendLog(`  WARNING: ${jid} skipped (no vector entered).`);
-      }
-      await runFinalSteps(lookups, jobExtraction, filteredManualResults);
+      // The Tk dialog's Apply collects every selected row verbatim: rows
+      // left blank stay manual jobs and are written with a blank vector
+      // (their control becomes CK--<site>).
+      await runFinalSteps(lookups, jobExtraction, manualResults);
     } catch (err) {
       appendLog(`ERROR: ${err.message}`);
       setStatus({ text: `Error: ${err.message}`, color: "bad" });
@@ -222,9 +219,29 @@ export default function LigationLayout({ onBack, initialPaths }) {
     } finally {setRunning(false);}
   };
 
-  const onCancelManual = () => {
+  const onCancelManual = async () => {
+    // The Tk bulk dialog's Cancel returns no results: every pending Work
+    // No. is skipped with a warning and the run CONTINUES, saving the
+    // layout for the jobs resolved from the Job Log.
     setManualOpen(false);
-    setStatus({ text: "Cancelled — manual vector entry aborted.", color: "warn" });
+    setRunning(true);
+    try {
+      appendLog("\nLoading vector database lookups...");
+      const vdbBuf = await readFileAsArrayBuffer(vectorDbPath);
+      const lookups = extractVectorDbLookups(vdbBuf);
+      setVectorDb(lookups);
+      for (const jid of pendingManualJobs) {
+        appendLog(`  WARNING: ${jid} skipped (manual entry cancelled).`);
+      }
+      appendLog("Extracting Work No. information from Job Log...");
+      const jlBuf = await readFileAsArrayBuffer(jobLogPath);
+      const jobExtraction = extractJobLogInfo(jlBuf, jobIdsList);
+      await runFinalSteps(lookups, jobExtraction, {});
+    } catch (err) {
+      appendLog(`ERROR: ${err.message}`);
+      setStatus({ text: `Error: ${err.message}`, color: "bad" });
+      setRunning(false);
+    } finally {setRunning(false);}
   };
 
   // The post-extraction flow: build rows, match fragments, write workbook.

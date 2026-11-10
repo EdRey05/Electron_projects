@@ -12,7 +12,7 @@
  *      - Write `{Work No.}+{Vector}.txt` with the Final Vector Sequence.
  */
 import * as XLSX from "xlsx";
-import { resolveSpecSet, columnResolutionLog, normHeader } from "../../ui/columns.js";
+import { resolveColumns, columnResolutionLog, normHeader } from "../../ui/columns.js";
 
 /**
  * Resolve column indices from a header row.
@@ -20,11 +20,13 @@ import { resolveSpecSet, columnResolutionLog, normHeader } from "../../ui/column
  * can log which resolution path fired.
  */
 export function resolveColumnIndices(headers) {
-  const { indices, byName, report, mode } = resolveSpecSet(headers, [
-    "workNo",
-    "vector",
-    "insertSequence",
-    "finalVectorSequence",
+  // Local spec set: this app's upstream resolves these four columns with
+  // exactly these candidates and fallbacks A/E/H/I — no extra aliases.
+  const { indices, byName, report, mode } = resolveColumns(headers, [
+    { key: "workNo", label: "Work No.", candidates: ["Work No.", "JobID", "Job ID"], fallback: 0 },
+    { key: "vector", label: "Vector", candidates: ["Vector"], fallback: 4 },
+    { key: "insertSequence", label: "Insert Sequence", candidates: ["Insert Sequence", "Insert Seq"], fallback: 7 },
+    { key: "finalVectorSequence", label: "Final Vector Sequence", candidates: ["Final Vector Sequence", "Final Vector"], fallback: 8 },
   ]);
   return {
     // Legacy key names kept so the existing callers keep working.
@@ -110,10 +112,16 @@ export function planOutputs(row) {
   if (row.insertSeq) {
     out.push({ name: `${row.jobId}.txt`, contents: row.insertSeq });
   }
-  if (row.finalVector && row.vector) {
-    out.push({ name: `${row.jobId}+${row.vector}.txt`, contents: row.finalVector });
+  if (row.finalVector) {
+    if (row.vector) {
+      out.push({ name: `${row.jobId}+${row.vector}.txt`, contents: row.finalVector });
+    } else {
+      // The combined name needs a vector: the Tk app counts and logs the skip.
+      out.push({ name: `${row.jobId}+${row.vector}.txt`, skipped: true });
+    }
   }
   for (const file of out) {
+    if (file.skipped) continue;
     if (/[<>:"/\\|?*\x00-\x1f]/.test(file.name) || /[. ]$/.test(file.name) || /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(file.name)) {
       throw new Error(`Invalid output filename: ${file.name}. Correct the Work No. or Vector in the workbook.`);
     }

@@ -63,7 +63,7 @@ for (const [dateId, expected] of B18_CASES) {
 }
 
 console.log("\n--- 2. undecipherable date_ID keeps the template value ---");
-for (const bad of ["", "nodigits", "U", "12345"]) {
+for (const bad of ["", "nodigits", "U", "12345", "Run U0304-1", "UU0304-1", "U0304-x", "A0304-1", "U0304-1-2"]) {
   const r = deriveOrderFormId(bad);
   check(`'${bad}' -> null + warning`, r.id === null && !!r.warning, `id=${r.id}`);
 }

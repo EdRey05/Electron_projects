@@ -348,6 +348,19 @@ ipcMain.handle("hub:saveResultsXlsx", async (_evt, { defaultName, bytes } = {}) 
   }
 });
 
+// Open a native save dialog and return ONLY the chosen path (without
+// writing) so the renderer can still patch save-dependent cells (e.g. the
+// Colony PCR plate headers carry the final file stem). Returns null on
+// cancel.
+ipcMain.handle("hub:chooseSavePath", async (_evt, { defaultPath, defaultName } = {}) => {
+  const r = await dialog.showSaveDialog({
+    title: "Save results",
+    defaultPath: defaultPath || defaultName || "output.xlsx",
+    filters: [{ name: "Excel", extensions: ["xlsx"] }],
+  });
+  return r.canceled || !r.filePath ? null : r.filePath;
+});
+
 // Write a text file to an absolute path. Used by React subapps to save
 // results without going through the save dialog flow (e.g. when the path
 // was already chosen via hub:chooseOutputDir). Returns { ok, error? }.
